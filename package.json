@@ -1,0 +1,27 @@
+{
+  "name": "buildkite-pipeline-builder",
+  "version": "1.0.0",
+  "description": "Visual GUI application for creating Buildkite CI/CD pipelines",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "buildkite",
+    "pipeline",
+    "ci-cd",
+    "gui",
+    "visual-builder"
+  ],
+  "author": "Buildkite Pipeline Builder",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "compression": "^1.7.4",
+    "helmet": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
