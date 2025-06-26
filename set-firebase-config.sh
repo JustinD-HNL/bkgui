@@ -9,7 +9,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 SERVICE_NAME="buildkite-pipeline-builder"
-REGION="us-central1"
 
 echo -e "${BLUE}🔧 Firebase Configuration Setup for Cloud Run${NC}"
 echo -e "${BLUE}==============================================${NC}"
@@ -32,17 +31,26 @@ if [ -z "$PROJECT_ID" ]; then
 fi
 
 echo -e "${GREEN}✅ Using project: $PROJECT_ID${NC}"
-echo -e "${GREEN}✅ Service: $SERVICE_NAME${NC}"
-echo -e "${GREEN}✅ Region: $REGION${NC}"
-echo ""
 
-# Check if service exists
-if ! gcloud run services describe $SERVICE_NAME --region=$REGION --quiet >/dev/null 2>&1; then
-    echo -e "${RED}❌ Service '$SERVICE_NAME' not found in region '$REGION'.${NC}"
+# Find the service and its region
+echo -e "${BLUE}🔍 Looking for service '$SERVICE_NAME'...${NC}"
+
+# Get service info from the standard table output
+SERVICE_LINE=$(gcloud run services list | grep "$SERVICE_NAME")
+
+if [ -z "$SERVICE_LINE" ]; then
+    echo -e "${RED}❌ Service '$SERVICE_NAME' not found in any region.${NC}"
     echo -e "${YELLOW}Available services:${NC}"
-    gcloud run services list --region=$REGION
+    gcloud run services list
     exit 1
 fi
+
+# Extract region (column 2 in the table)
+REGION=$(echo "$SERVICE_LINE" | awk '{print $2}')
+
+echo -e "${GREEN}✅ Found service: $SERVICE_NAME${NC}"
+echo -e "${GREEN}✅ Region: $REGION${NC}"
+echo ""
 
 # Prompt for Firebase configuration
 echo -e "${BLUE}📋 Please enter your Firebase configuration values:${NC}"
