@@ -31,25 +31,23 @@ if [ -z "$PROJECT_ID" ]; then
 fi
 
 echo -e "${GREEN}✅ Using project: $PROJECT_ID${NC}"
+echo -e "${GREEN}✅ Service: $SERVICE_NAME${NC}"
+echo ""
 
-# Find the service and its region
-echo -e "${BLUE}🔍 Looking for service '$SERVICE_NAME'...${NC}"
+# Show available services for reference
+echo -e "${BLUE}📋 Available Cloud Run services:${NC}"
+gcloud run services list
+echo ""
 
-# Get service info from the standard table output
-SERVICE_LINE=$(gcloud run services list | grep "$SERVICE_NAME")
+# Prompt for region
+read -p "Enter the region for your service (e.g., us-west1): " REGION
 
-if [ -z "$SERVICE_LINE" ]; then
-    echo -e "${RED}❌ Service '$SERVICE_NAME' not found in any region.${NC}"
-    echo -e "${YELLOW}Available services:${NC}"
-    gcloud run services list
+if [ -z "$REGION" ]; then
+    echo -e "${RED}❌ Region is required.${NC}"
     exit 1
 fi
 
-# Extract region (column 2 in the table)
-REGION=$(echo "$SERVICE_LINE" | awk '{print $2}')
-
-echo -e "${GREEN}✅ Found service: $SERVICE_NAME${NC}"
-echo -e "${GREEN}✅ Region: $REGION${NC}"
+echo -e "${GREEN}✅ Using region: $REGION${NC}"
 echo ""
 
 # Prompt for Firebase configuration
