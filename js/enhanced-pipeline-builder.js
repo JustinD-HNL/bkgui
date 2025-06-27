@@ -19,6 +19,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 name: 'Docker',
                 description: 'Run commands in Docker containers',
                 version: 'v5.12.0',
+                category: 'docker',
                 fields: {
                     image: { type: 'text', label: 'Docker Image', required: true },
                     command: { type: 'text', label: 'Command Override' },
@@ -33,6 +34,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 name: 'Artifacts',
                 description: 'Upload and download build artifacts',
                 version: 'v1.9.4',
+                category: 'deployment',
                 fields: {
                     upload: { type: 'array', label: 'Upload Patterns' },
                     download: { type: 'array', label: 'Download Patterns' },
@@ -43,6 +45,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 name: 'JUnit Annotate',
                 description: 'Create annotations from JUnit test results',
                 version: 'v2.6.0',
+                category: 'testing',
                 fields: {
                     artifacts: { type: 'text', label: 'JUnit XML Pattern', required: true },
                     context: { type: 'text', label: 'Annotation Context' },
@@ -53,6 +56,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 name: 'Docker Compose',
                 description: 'Run commands with Docker Compose',
                 version: 'v4.16.0',
+                category: 'docker',
                 fields: {
                     run: { type: 'text', label: 'Service to Run', required: true },
                     config: { type: 'text', label: 'Compose File Path' },
@@ -63,10 +67,44 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 name: 'Amazon ECR',
                 description: 'Login to Amazon Elastic Container Registry',
                 version: 'v2.7.0',
+                category: 'deployment',
                 fields: {
                     login: { type: 'boolean', label: 'Auto-login', default: true },
                     region: { type: 'text', label: 'AWS Region' },
                     registry_ids: { type: 'array', label: 'Registry IDs' }
+                }
+            },
+            'slack': {
+                name: 'Slack',
+                description: 'Send notifications to Slack',
+                version: 'v1.4.2',
+                category: 'notifications',
+                fields: {
+                    channels: { type: 'array', label: 'Channels', required: true },
+                    message: { type: 'text', label: 'Message' },
+                    emoji: { type: 'text', label: 'Emoji' }
+                }
+            },
+            'cache': {
+                name: 'Cache',
+                description: 'Cache files and directories',
+                version: 'v2.5.0',
+                category: 'deployment',
+                fields: {
+                    cache_key: { type: 'text', label: 'Cache Key', required: true },
+                    paths: { type: 'array', label: 'Paths to Cache' },
+                    restore_keys: { type: 'array', label: 'Restore Keys' }
+                }
+            },
+            'kubernetes': {
+                name: 'Kubernetes',
+                description: 'Deploy to Kubernetes clusters',
+                version: 'v1.3.0',
+                category: 'deployment',
+                fields: {
+                    namespace: { type: 'text', label: 'Namespace' },
+                    config_file: { type: 'text', label: 'Config File Path' },
+                    context: { type: 'text', label: 'Kubectl Context' }
                 }
             }
         };
@@ -125,6 +163,37 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                         }
                     }
                 }
+            },
+            'microservice-pipeline': {
+                name: 'Microservice Pipeline',
+                description: 'Complete microservice CI/CD',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Microservice Build',
+                        command: 'npm install && npm test && npm run build',
+                        plugins: {
+                            'docker': {
+                                image: 'node:18-alpine',
+                                workdir: '/app'
+                            }
+                        }
+                    }
+                }
+            },
+            'deployment-pipeline': {
+                name: 'Deployment Pipeline',
+                description: 'Deploy with approvals',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Deploy to Production',
+                        command: 'npm run deploy',
+                        agents: {
+                            queue: 'deployment'
+                        }
+                    }
+                }
             }
         };
     }
@@ -137,57 +206,97 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
             },
             'os_matrix': {
                 name: 'Operating Systems',
-                matrix: { os: ['ubuntu', 'windows', 'macos'] }
+                matrix: { os: ['ubuntu-latest', 'windows-latest', 'macos-latest'] }
             },
             'browser_matrix': {
                 name: 'Browser Testing',
-                matrix: { browser: ['chrome', 'firefox', 'safari', 'edge'] }
+                matrix: { 
+                    browser: ['chrome', 'firefox', 'safari'],
+                    version: ['latest', 'latest-1']
+                }
             },
-            'environments': {
-                name: 'Deployment Environments',
-                matrix: { env: ['development', 'staging', 'production'] }
+            'database_matrix': {
+                name: 'Database Testing',
+                matrix: {
+                    database: ['postgresql', 'mysql', 'sqlite'],
+                    version: ['latest', '14', '13']
+                }
             }
         };
     }
 
-    createStep(stepType) {
-        const step = super.createStep(stepType);
+    // Enhanced step type support
+    getDefaultProperties(type) {
+        const baseProperties = super.getDefaultProperties(type);
         
-        // Add enhanced properties for existing step types
-        if (stepType === 'command') {
-            Object.assign(step.properties, {
+        // Add enhanced properties for existing types
+        if (type === 'command') {
+            return {
+                ...baseProperties,
+                parallelism: null,
+                concurrency: null,
+                concurrency_group: '',
+                matrix: {},
+                depends_on: [],
                 skip: '',
                 if: '',
                 branches: '',
-                concurrency: null,
-                concurrency_group: '',
+                soft_fail: false,
                 cancel_on_build_failing: false,
-                allow_dependency_failure: false,
-                matrix: null,
-                plugins: {},
-                meta_data: {},
-                timeout_in_minutes: 10
-            });
+                allow_dependency_failure: false
+            };
         }
         
         // Add new step types
-        const enhancedStepConfigs = {
+        const enhancedDefaults = {
             annotation: {
-                type: 'annotation',
                 label: 'Annotation Step',
+                body: '',
+                style: 'info',
+                context: 'default',
+                priority: 0
+            },
+            plugin: {
+                label: 'Plugin Step',
+                command: '',
+                plugins: {},
+                selected_plugin: ''
+            },
+            notify: {
+                label: 'Notification Step',
+                notify: [],
+                command: ''
+            },
+            'pipeline-upload': {
+                label: 'Pipeline Upload',
+                dynamic_script: '',
+                pipeline_file: '.buildkite/pipeline.yml'
+            }
+        };
+
+        return enhancedDefaults[type] || baseProperties;
+    }
+
+    // Enhanced step creation
+    createStep(stepType) {
+        const step = super.createStep(stepType);
+        
+        const enhancedStepConfigs = {
+            'annotation': {
+                type: 'annotation',
+                label: 'Annotation',
                 icon: 'fas fa-comment',
                 properties: {
-                    label: `Annotation Step ${this.stepCounter}`,
-                    command: 'buildkite-agent annotate "Your annotation content here"',
+                    label: `Annotation ${this.stepCounter}`,
+                    body: '# Build Status\n\nBuild completed successfully!',
+                    style: 'success',
                     context: 'default',
-                    style: 'info',
-                    body: 'Your **markdown** content here',
                     priority: 0
                 }
             },
-            plugin: {
+            'plugin': {
                 type: 'plugin',
-                label: 'Plugin Step',
+                label: 'Plugin',
                 icon: 'fas fa-plug',
                 properties: {
                     label: `Plugin Step ${this.stepCounter}`,
@@ -196,18 +305,17 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     selected_plugin: ''
                 }
             },
-            notify: {
+            'notify': {
                 type: 'notify',
-                label: 'Notify Step',
+                label: 'Notification',
                 icon: 'fas fa-bell',
                 properties: {
-                    label: `Notify Step ${this.stepCounter}`,
-                    command: '',
+                    label: `Notification ${this.stepCounter}`,
+                    command: 'echo "Sending notification"',
                     notify: {
                         slack: {
                             webhook_url: '',
-                            channel: '#builds',
-                            message: 'Build completed!'
+                            channel: '#builds'
                         }
                     }
                 }
@@ -255,149 +363,165 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
 
     generateEnhancedCommandForm(step) {
         return `
-            <!-- Basic Properties -->
-            <div class="property-group">
-                <label>Step Label</label>
-                <input type="text" name="label" value="${step.properties.label}" />
-            </div>
-            
-            <div class="property-group">
-                <label>Command</label>
-                <textarea name="command" placeholder="echo 'Hello World'">${step.properties.command}</textarea>
-            </div>
+            <div class="properties-form">
+                <h3><i class="fas fa-terminal"></i> Enhanced Command Step Properties</h3>
+                
+                <!-- Basic Properties -->
+                <div class="property-section">
+                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <div class="property-group">
+                        <label>Step Label</label>
+                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Command</label>
+                        <textarea name="command" placeholder="echo 'Hello World'">${step.properties.command || ''}</textarea>
+                    </div>
+                </div>
 
-            <!-- Advanced Conditions -->
-            <div class="property-section">
-                <h4><i class="fas fa-question-circle"></i> Conditions & Flow Control</h4>
-                
-                <div class="property-group">
-                    <label>Skip Condition</label>
-                    <input type="text" name="skip" value="${step.properties.skip}" 
-                           placeholder="e.g., 'Temporarily disabled'" />
-                    <small>Message to display when step is skipped</small>
+                <!-- Advanced Conditions -->
+                <div class="property-section">
+                    <h4><i class="fas fa-question-circle"></i> Conditions & Flow Control</h4>
+                    
+                    <div class="property-group">
+                        <label>Skip Condition</label>
+                        <input type="text" name="skip" value="${step.properties.skip || ''}" 
+                               placeholder="e.g., 'Temporarily disabled'" />
+                        <small>Message to display when step is skipped</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>If Condition</label>
+                        <input type="text" name="if" value="${step.properties.if || ''}" 
+                               placeholder="e.g., build.branch == 'main'" />
+                        <small>Boolean expression to control when step runs</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Branch Filter</label>
+                        <input type="text" name="branches" value="${step.properties.branches || ''}" 
+                               placeholder="main feature/*" />
+                        <small>Space-separated list of branch patterns</small>
+                    </div>
                 </div>
-                
-                <div class="property-group">
-                    <label>If Condition</label>
-                    <input type="text" name="if" value="${step.properties.if}" 
-                           placeholder="e.g., build.branch == 'main'" />
-                    <small>Boolean expression to control when step runs</small>
-                </div>
-                
-                <div class="property-group">
-                    <label>Branch Filter</label>
-                    <input type="text" name="branches" value="${step.properties.branches}" 
-                           placeholder="e.g., main develop/* feature/*" />
-                    <small>Branch patterns where this step should run</small>
-                </div>
-            </div>
 
-            <!-- Concurrency & Dependencies -->
-            <div class="property-section">
-                <h4><i class="fas fa-link"></i> Concurrency & Dependencies</h4>
-                
-                <div class="property-group">
-                    <label>Concurrency Limit</label>
-                    <input type="number" name="concurrency" value="${step.properties.concurrency || ''}" 
-                           min="1" placeholder="e.g., 1" />
-                    <small>Max number of parallel jobs for this step</small>
+                <!-- Execution Control -->
+                <div class="property-section">
+                    <h4><i class="fas fa-play"></i> Execution Control</h4>
+                    
+                    <div class="property-group">
+                        <label>Parallelism</label>
+                        <input type="number" name="parallelism" value="${step.properties.parallelism || ''}" 
+                               min="1" max="50" placeholder="1" />
+                        <small>Number of jobs to run in parallel</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Concurrency</label>
+                        <input type="number" name="concurrency" value="${step.properties.concurrency || ''}" 
+                               min="1" placeholder="1" />
+                        <small>Limit concurrent executions</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Concurrency Group</label>
+                        <input type="text" name="concurrency_group" value="${step.properties.concurrency_group || ''}" 
+                               placeholder="deployment" />
+                        <small>Group name for concurrency limiting</small>
+                    </div>
                 </div>
-                
-                <div class="property-group">
-                    <label>Concurrency Group</label>
-                    <input type="text" name="concurrency_group" value="${step.properties.concurrency_group}" 
-                           placeholder="e.g., my-app/deploy" />
-                    <small>Group name for shared concurrency limits</small>
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="allow_dependency_failure" ${step.properties.allow_dependency_failure ? 'checked' : ''} />
-                    <label>Allow dependency failure</label>
-                    <small>Run even if dependent steps fail</small>
-                </div>
-            </div>
 
-            <!-- Failure Handling -->
-            <div class="property-section">
-                <h4><i class="fas fa-exclamation-triangle"></i> Failure Handling</h4>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="cancel_on_build_failing" ${step.properties.cancel_on_build_failing ? 'checked' : ''} />
-                    <label>Cancel on build failing</label>
-                    <small>Cancel this step if any other step fails</small>
+                <!-- Error Handling -->
+                <div class="property-section">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Error Handling</h4>
+                    
+                    <div class="property-checkbox">
+                        <input type="checkbox" name="retry" ${step.properties.retry ? 'checked' : ''} />
+                        <label>Retry on failure</label>
+                    </div>
+                    
+                    <div class="property-checkbox">
+                        <input type="checkbox" name="soft_fail" ${step.properties.soft_fail ? 'checked' : ''} />
+                        <label>Soft fail</label>
+                        <small>Don't fail the build if this step fails</small>
+                    </div>
+                    
+                    <div class="property-checkbox">
+                        <input type="checkbox" name="cancel_on_build_failing" ${step.properties.cancel_on_build_failing ? 'checked' : ''} />
+                        <label>Cancel on build failing</label>
+                        <small>Cancel this step if the build is already failing</small>
+                    </div>
+                    
+                    <div class="property-checkbox">
+                        <input type="checkbox" name="allow_dependency_failure" ${step.properties.allow_dependency_failure ? 'checked' : ''} />
+                        <label>Allow dependency failure</label>
+                        <small>Run even if dependencies fail</small>
+                    </div>
                 </div>
-                
-                <div class="property-group">
-                    <label>Timeout (minutes)</label>
-                    <input type="number" name="timeout_in_minutes" value="${step.properties.timeout_in_minutes}" min="1" />
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="retry" ${step.properties.retry ? 'checked' : ''} />
-                    <label>Retry on failure</label>
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="soft_fail" ${step.properties.soft_fail ? 'checked' : ''} />
-                    <label>Soft fail</label>
-                    <small>Don't fail the build if this step fails</small>
-                </div>
-            </div>
 
-            <!-- Matrix Builds -->
-            <div class="property-section">
-                <h4><i class="fas fa-th"></i> Matrix Builds</h4>
-                <div class="property-group">
-                    <div class="matrix-builder">
-                        <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.openMatrixBuilder('${step.id}')">
-                            <i class="fas fa-plus"></i> Configure Matrix
-                        </button>
-                        <div id="matrix-preview-${step.id}" class="matrix-preview">
-                            ${this.renderMatrixPreview(step.properties.matrix)}
+                <!-- Matrix Builds -->
+                <div class="property-section">
+                    <h4><i class="fas fa-th"></i> Matrix Builds</h4>
+                    <div class="property-group">
+                        <div class="matrix-builder">
+                            <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.openMatrixBuilder('${step.id}')">
+                                <i class="fas fa-plus"></i> Configure Matrix
+                            </button>
+                            <div id="matrix-preview-${step.id}" class="matrix-preview">
+                                ${this.renderMatrixPreview(step.properties.matrix)}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Plugins -->
-            <div class="property-section">
-                <h4><i class="fas fa-plug"></i> Plugins</h4>
-                <div class="property-group">
-                    <div class="plugin-builder">
-                        <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.openPluginBuilder('${step.id}')">
-                            <i class="fas fa-plus"></i> Add Plugin
-                        </button>
-                        <div id="plugins-preview-${step.id}" class="plugins-preview">
-                            ${this.renderPluginsPreview(step.properties.plugins)}
+                <!-- Plugins -->
+                <div class="property-section">
+                    <h4><i class="fas fa-plug"></i> Plugins</h4>
+                    <div class="property-group">
+                        <div class="plugin-builder">
+                            <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.openPluginBuilder('${step.id}')">
+                                <i class="fas fa-plus"></i> Add Plugin
+                            </button>
+                            <div id="plugins-preview-${step.id}" class="plugins-preview">
+                                ${this.renderPluginsPreview(step.properties.plugins)}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Agents & Environment -->
-            <div class="property-section">
-                <h4><i class="fas fa-server"></i> Agents & Environment</h4>
-                
-                <div class="property-group">
-                    <label>Agent Query</label>
-                    <input type="text" name="agents" value="${step.properties.agents}" 
-                           placeholder="queue=default,os=linux" />
-                    <small>Key=value pairs to target specific agents</small>
+                <!-- Agents & Environment -->
+                <div class="property-section">
+                    <h4><i class="fas fa-server"></i> Agents & Environment</h4>
+                    
+                    <div class="property-group">
+                        <label>Agent Query</label>
+                        <input type="text" name="agents" value="${step.properties.agents || ''}" 
+                               placeholder="queue=default,os=linux" />
+                        <small>Key=value pairs to target specific agents</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Environment Variables (JSON)</label>
+                        <textarea name="env" placeholder='{"NODE_ENV": "test", "API_KEY": "secret"}'>${JSON.stringify(step.properties.env || {}, null, 2)}</textarea>
+                    </div>
                 </div>
-                
-                <div class="property-group">
-                    <label>Environment Variables (JSON)</label>
-                    <textarea name="env" placeholder='{"NODE_ENV": "test", "API_KEY": "secret"}'>${JSON.stringify(step.properties.env || {}, null, 2)}</textarea>
-                </div>
-            </div>
 
-            <!-- Artifacts -->
-            <div class="property-section">
-                <h4><i class="fas fa-archive"></i> Artifacts</h4>
-                <div class="property-group">
-                    <label>Artifact Paths</label>
-                    <textarea name="artifact_paths" placeholder="logs/**/*${String.fromCharCode(10)}coverage/**/*">${(step.properties.artifact_paths || []).join('\n')}</textarea>
-                    <small>File patterns to upload as artifacts (one per line)</small>
+                <!-- Artifacts -->
+                <div class="property-section">
+                    <h4><i class="fas fa-archive"></i> Artifacts</h4>
+                    
+                    <div class="property-group">
+                        <label>Artifact Paths</label>
+                        <textarea name="artifact_paths" placeholder="build/**/*${String.fromCharCode(10)}test-results/**/*${String.fromCharCode(10)}coverage/**/*">${Array.isArray(step.properties.artifact_paths) ? step.properties.artifact_paths.join('\n') : ''}</textarea>
+                        <small>One path per line, supports glob patterns</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Timeout (minutes)</label>
+                        <input type="number" name="timeout_in_minutes" value="${step.properties.timeout_in_minutes || ''}" 
+                               min="1" max="1440" placeholder="30" />
+                    </div>
                 </div>
             </div>
         `;
@@ -405,39 +529,46 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
 
     generateAnnotationForm(step) {
         return `
-            <div class="property-group">
-                <label>Step Label</label>
-                <input type="text" name="label" value="${step.properties.label}" />
-            </div>
-            
-            <div class="property-group">
-                <label>Annotation Context</label>
-                <input type="text" name="context" value="${step.properties.context}" 
-                       placeholder="default" />
-                <small>Unique identifier for this annotation</small>
-            </div>
-            
-            <div class="property-group">
-                <label>Style</label>
-                <select name="style">
-                    <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
-                    <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
-                    <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
-                    <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
-                </select>
-            </div>
-            
-            <div class="property-group">
-                <label>Content (Markdown)</label>
-                <textarea name="body" rows="6" placeholder="# Your Markdown Here${String.fromCharCode(10)}${String.fromCharCode(10)}Add **formatted** content to your build.">${step.properties.body}</textarea>
-                <small>CommonMark markdown content for the annotation</small>
-            </div>
-            
-            <div class="property-group">
-                <label>Priority</label>
-                <input type="number" name="priority" value="${step.properties.priority}" 
-                       min="0" max="10" />
-                <small>Display priority (0-10, higher numbers shown first)</small>
+            <div class="properties-form">
+                <h3><i class="fas fa-comment"></i> Annotation Step Properties</h3>
+                
+                <div class="property-section">
+                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <div class="property-group">
+                        <label>Step Label</label>
+                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Context</label>
+                        <input type="text" name="context" value="${step.properties.context || 'default'}" 
+                               placeholder="default" />
+                        <small>Unique identifier for this annotation</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Style</label>
+                        <select name="style">
+                            <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
+                            <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
+                            <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
+                            <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
+                        </select>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Content (Markdown)</label>
+                        <textarea name="body" rows="6" placeholder="# Your Markdown Here${String.fromCharCode(10)}${String.fromCharCode(10)}Add **formatted** content to your build.">${step.properties.body || ''}</textarea>
+                        <small>CommonMark markdown content for the annotation</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Priority</label>
+                        <input type="number" name="priority" value="${step.properties.priority || 0}" 
+                               min="0" max="10" />
+                        <small>Display priority (0-10, higher numbers shown first)</small>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -448,68 +579,89 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
             .join('');
             
         return `
-            <div class="property-group">
-                <label>Step Label</label>
-                <input type="text" name="label" value="${step.properties.label}" />
-            </div>
-            
-            <div class="property-group">
-                <label>Command</label>
-                <textarea name="command" placeholder="echo 'Running with plugins'">${step.properties.command}</textarea>
-            </div>
-            
-            <div class="property-group">
-                <label>Select Plugin</label>
-                <select name="selected_plugin" onchange="pipelineBuilder.updatePluginConfig('${step.id}', this.value)">
-                    <option value="">Choose a plugin...</option>
-                    ${pluginOptions}
-                </select>
-            </div>
-            
-            <div id="plugin-config-${step.id}" class="plugin-config">
-                ${this.renderPluginConfig(step.properties.selected_plugin, step.properties.plugins)}
+            <div class="properties-form">
+                <h3><i class="fas fa-plug"></i> Plugin Step Properties</h3>
+                
+                <div class="property-section">
+                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <div class="property-group">
+                        <label>Step Label</label>
+                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Command</label>
+                        <textarea name="command" placeholder="echo 'Running with plugins'">${step.properties.command || ''}</textarea>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Select Plugin</label>
+                        <select name="selected_plugin" onchange="pipelineBuilder.updatePluginConfig('${step.id}', this.value)">
+                            <option value="">Choose a plugin...</option>
+                            ${pluginOptions}
+                        </select>
+                    </div>
+                    
+                    <div id="plugin-config-${step.id}" class="plugin-config">
+                        ${this.renderPluginConfig(step.properties.selected_plugin, step.properties.plugins)}
+                    </div>
+                </div>
             </div>
         `;
     }
 
     generateNotifyForm(step) {
         return `
-            <div class="property-group">
-                <label>Step Label</label>
-                <input type="text" name="label" value="${step.properties.label}" />
-            </div>
-            
-            <div class="property-group">
-                <label>Command</label>
-                <textarea name="command" placeholder="echo 'Sending notification'">${step.properties.command}</textarea>
-            </div>
-            
-            <div class="property-group">
-                <label>Notification Config (JSON)</label>
-                <textarea name="notify" placeholder='{"slack": {"webhook_url": "", "channel": "#builds"}}'>${JSON.stringify(step.properties.notify, null, 2)}</textarea>
+            <div class="properties-form">
+                <h3><i class="fas fa-bell"></i> Notification Step Properties</h3>
+                
+                <div class="property-section">
+                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <div class="property-group">
+                        <label>Step Label</label>
+                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Command</label>
+                        <textarea name="command" placeholder="echo 'Sending notification'">${step.properties.command || ''}</textarea>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Notification Config (JSON)</label>
+                        <textarea name="notify" placeholder='{"slack": {"webhook_url": "", "channel": "#builds"}}'>${JSON.stringify(step.properties.notify || {}, null, 2)}</textarea>
+                    </div>
+                </div>
             </div>
         `;
     }
 
     generatePipelineUploadForm(step) {
         return `
-            <div class="property-group">
-                <label>Step Label</label>
-                <input type="text" name="label" value="${step.properties.label}" />
-            </div>
-            
-            <div class="property-group">
-                <label>Pipeline File</label>
-                <input type="text" name="pipeline_file" value="${step.properties.pipeline_file}" 
-                       placeholder=".buildkite/pipeline.yml" />
-                <small>Path to the pipeline file to upload</small>
-            </div>
-            
-            <div class="property-group">
-                <label>Dynamic Script</label>
-                <input type="text" name="dynamic_script" value="${step.properties.dynamic_script}" 
-                       placeholder="./scripts/generate-pipeline.sh" />
-                <small>Script to generate pipeline dynamically</small>
+            <div class="properties-form">
+                <h3><i class="fas fa-upload"></i> Pipeline Upload Properties</h3>
+                
+                <div class="property-section">
+                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <div class="property-group">
+                        <label>Step Label</label>
+                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Pipeline File</label>
+                        <input type="text" name="pipeline_file" value="${step.properties.pipeline_file || '.buildkite/pipeline.yml'}" 
+                               placeholder=".buildkite/pipeline.yml" />
+                        <small>Path to the pipeline file to upload</small>
+                    </div>
+                    
+                    <div class="property-group">
+                        <label>Dynamic Script</label>
+                        <input type="text" name="dynamic_script" value="${step.properties.dynamic_script || ''}" 
+                               placeholder="./scripts/generate-pipeline.sh" />
+                        <small>Script to generate pipeline dynamically</small>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -527,7 +679,8 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 <p><strong>Matrix Dimensions:</strong></p>
                 <ul>
                     ${dimensions.map(([key, values]) => 
-                        `<li>${key}: ${Array.isArray(values) ? values.join(', ') : values}</li>`
+                        `<li>${key}: ${Array.isArray(values) ? 
+                            values.join(', ') : values}</li>`
                     ).join('')}
                 </ul>
                 <p><strong>Total Combinations:</strong> ${combinations}</p>
@@ -629,10 +782,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         alert('Matrix templates modal coming soon!');
     }
 
-    showPluginCatalog() {
-        console.log('Showing plugin catalog');
-        alert('Plugin catalog modal coming soon!');
-    }
+    // ✅ REMOVED STUB - Now inherits working showPluginCatalog from parent class
 
     showStepTemplates() {
         console.log('Showing step templates');
@@ -754,6 +904,27 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
             }
         }
 
+        // Enhanced features
+        if (props.parallelism) {
+            yaml += `${this.indent}${this.indent}parallelism: ${props.parallelism}\n`;
+        }
+        
+        if (props.concurrency) {
+            yaml += `${this.indent}${this.indent}concurrency: ${props.concurrency}\n`;
+        }
+        
+        if (props.concurrency_group) {
+            yaml += `${this.indent}${this.indent}concurrency_group: "${props.concurrency_group}"\n`;
+        }
+
+        // Dependencies
+        if (props.depends_on && props.depends_on.length > 0) {
+            yaml += `${this.indent}${this.indent}depends_on:\n`;
+            props.depends_on.forEach(dep => {
+                yaml += `${this.indent}${this.indent}${this.indent}- "${dep}"\n`;
+            });
+        }
+
         // Plugins
         if (props.plugins && Object.keys(props.plugins).length > 0) {
             yaml += `${this.indent}${this.indent}plugins:\n`;
@@ -766,7 +937,8 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
                             yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}${subKey}: "${subValue}"\n`;
                         });
                     } else {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}: ${typeof value === 'string' ? `"${value}"` : value}\n`;
+                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}: ${typeof value === 'string' ? 
+                            `"${value}"` : value}\n`;
                     }
                 });
             });
