@@ -1,15 +1,196 @@
-// Pipeline Builder Core Functionality
+// js/pipeline-builder.js
+// Pipeline Builder Core Functionality with Enhanced Features
 class PipelineBuilder {
     constructor() {
         this.steps = [];
         this.selectedStep = null;
         this.stepCounter = 0;
+        this.pluginCatalog = this.initializePluginCatalog();
+        this.stepTemplates = this.initializeStepTemplates();
+        this.matrixPresets = this.initializeMatrixPresets();
         this.init();
     }
 
     init() {
         this.setupDragAndDrop();
         this.setupEventListeners();
+        this.setupEnhancedKeyboardShortcuts();
+    }
+
+    initializePluginCatalog() {
+        return {
+            'docker': {
+                name: 'Docker',
+                description: 'Run commands in Docker containers',
+                version: 'v5.12.0',
+                category: 'docker',
+                fields: {
+                    image: { type: 'text', label: 'Docker Image', required: true },
+                    command: { type: 'text', label: 'Command Override' },
+                    workdir: { type: 'text', label: 'Working Directory' },
+                    environment: { type: 'keyvalue', label: 'Environment Variables' },
+                    volumes: { type: 'array', label: 'Volume Mounts' },
+                    user: { type: 'text', label: 'User ID' },
+                    always_pull: { type: 'boolean', label: 'Always Pull Image' }
+                }
+            },
+            'artifacts': {
+                name: 'Artifacts',
+                description: 'Upload and download build artifacts',
+                version: 'v1.9.4',
+                category: 'deployment',
+                fields: {
+                    upload: { type: 'array', label: 'Upload Patterns' },
+                    download: { type: 'array', label: 'Download Patterns' },
+                    compressed: { type: 'text', label: 'Compressed Archive Name' }
+                }
+            },
+            'junit-annotate': {
+                name: 'JUnit Annotate',
+                description: 'Create annotations from JUnit test results',
+                version: 'v2.6.0',
+                category: 'testing',
+                fields: {
+                    artifacts: { type: 'text', label: 'JUnit XML Pattern', required: true },
+                    context: { type: 'text', label: 'Annotation Context' },
+                    fail_on_error: { type: 'boolean', label: 'Fail on Test Errors' }
+                }
+            },
+            'docker-compose': {
+                name: 'Docker Compose',
+                description: 'Run commands with Docker Compose',
+                version: 'v4.16.0',
+                category: 'docker',
+                fields: {
+                    run: { type: 'text', label: 'Service to Run', required: true },
+                    config: { type: 'text', label: 'Compose File Path' },
+                    env: { type: 'keyvalue', label: 'Environment Variables' }
+                }
+            },
+            'ecr': {
+                name: 'Amazon ECR',
+                description: 'Login to Amazon Elastic Container Registry',
+                version: 'v2.7.0',
+                category: 'deployment',
+                fields: {
+                    login: { type: 'boolean', label: 'Auto-login', default: true },
+                    region: { type: 'text', label: 'AWS Region' },
+                    registry_ids: { type: 'array', label: 'Registry IDs' }
+                }
+            },
+            'slack': {
+                name: 'Slack Notify',
+                description: 'Send notifications to Slack',
+                version: 'v1.4.2',
+                category: 'notifications',
+                fields: {
+                    webhook_url: { type: 'text', label: 'Webhook URL', required: true },
+                    channel: { type: 'text', label: 'Channel' },
+                    message: { type: 'text', label: 'Message' }
+                }
+            }
+        };
+    }
+
+    initializeStepTemplates() {
+        return {
+            'node-test': {
+                name: 'Node.js Test Suite',
+                description: 'Standard Node.js testing with coverage',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Node.js Tests',
+                        command: 'npm ci\nnpm test',
+                        artifact_paths: ['coverage/**/*', 'test-results.xml'],
+                        plugins: {
+                            'junit-annotate': {
+                                artifacts: 'test-results.xml'
+                            }
+                        }
+                    }
+                }
+            },
+            'docker-build': {
+                name: 'Docker Build & Push',
+                description: 'Build Docker image and push to registry',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Docker Build',
+                        command: 'docker build -t $IMAGE_TAG .\ndocker push $IMAGE_TAG',
+                        plugins: {
+                            'ecr': { login: true },
+                            'docker': {
+                                image: 'docker:latest',
+                                always_pull: true
+                            }
+                        }
+                    }
+                }
+            },
+            'parallel-tests': {
+                name: 'Parallel Test Matrix',
+                description: 'Run tests in parallel across multiple environments',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Tests ({{matrix.env}})',
+                        command: 'npm test',
+                        matrix: {
+                            setup: {
+                                env: ['development', 'staging', 'production'],
+                                node: ['16', '18', '20']
+                            }
+                        }
+                    }
+                }
+            },
+            'node-lint': {
+                name: 'Linting & Code Quality',
+                description: 'ESLint, Prettier, and TypeScript checking',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Code Quality',
+                        command: 'npm run lint\nnpm run prettier:check\nnpm run type-check'
+                    }
+                }
+            },
+            'k8s-deploy': {
+                name: 'Kubernetes Deployment',
+                description: 'Deploy to Kubernetes with health checks',
+                template: {
+                    type: 'command',
+                    properties: {
+                        label: 'Deploy to Kubernetes',
+                        command: 'kubectl apply -f k8s/\nkubectl rollout status deployment/myapp',
+                        timeout_in_minutes: 15
+                    }
+                }
+            }
+        };
+    }
+
+    initializeMatrixPresets() {
+        return {
+            'node_versions': {
+                name: 'Node.js Versions',
+                matrix: { node: ['16', '18', '20', '21'] }
+            },
+            'os_matrix': {
+                name: 'Operating Systems',
+                matrix: { os: ['ubuntu', 'windows', 'macos'] }
+            },
+            'browser_matrix': {
+                name: 'Browser Testing',
+                matrix: { browser: ['chrome', 'firefox', 'safari', 'edge'] }
+            },
+            'environments': {
+                name: 'Deployment Environments',
+                matrix: { env: ['development', 'staging', 'production'] }
+            }
+        };
     }
 
     setupDragAndDrop() {
@@ -32,15 +213,82 @@ class PipelineBuilder {
         document.getElementById('load-example').addEventListener('click', this.loadExample.bind(this));
         document.getElementById('export-yaml').addEventListener('click', this.exportYAML.bind(this));
 
-        // Modal events
-        document.querySelector('.modal-close').addEventListener('click', this.closeModal.bind(this));
-        document.getElementById('copy-yaml').addEventListener('click', this.copyYAML.bind(this));
-        document.getElementById('download-yaml').addEventListener('click', this.downloadYAML.bind(this));
+        // Modal events for YAML export
+        const yamlModalClose = document.querySelector('#yaml-modal .modal-close');
+        if (yamlModalClose) {
+            yamlModalClose.addEventListener('click', this.closeModal.bind(this));
+        }
+        
+        const copyYamlBtn = document.getElementById('copy-yaml');
+        if (copyYamlBtn) {
+            copyYamlBtn.addEventListener('click', this.copyYAML.bind(this));
+        }
+        
+        const downloadYamlBtn = document.getElementById('download-yaml');
+        if (downloadYamlBtn) {
+            downloadYamlBtn.addEventListener('click', this.downloadYAML.bind(this));
+        }
 
         // Click outside modal to close
-        document.getElementById('yaml-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'yaml-modal') {
-                this.closeModal();
+        const yamlModal = document.getElementById('yaml-modal');
+        if (yamlModal) {
+            yamlModal.addEventListener('click', (e) => {
+                if (e.target.id === 'yaml-modal') {
+                    this.closeModal();
+                }
+            });
+        }
+    }
+
+    setupEnhancedKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Existing shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                this.exportYAML();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                this.clearPipeline();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                this.loadExample();
+            }
+            
+            // New enhanced shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                this.showPluginCatalog();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+                e.preventDefault();
+                this.showMatrixTemplates();
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                e.preventDefault();
+                this.showStepTemplates();
+            }
+            
+            if (e.key === 'Delete' && this.selectedStep) {
+                const stepIndex = this.steps.findIndex(
+                    step => step.id === this.selectedStep.id
+                );
+                if (stepIndex !== -1) {
+                    this.removeStep(stepIndex);
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                this.selectedStep = null;
+                this.renderProperties();
+                document.querySelectorAll('.pipeline-step').forEach(el => {
+                    el.classList.remove('selected');
+                });
             }
         });
     }
@@ -102,7 +350,9 @@ class PipelineBuilder {
                     env: {},
                     timeout_in_minutes: 10,
                     retry: false,
-                    soft_fail: false
+                    soft_fail: false,
+                    artifact_paths: [],
+                    plugins: {}
                 }
             },
             wait: {
@@ -152,6 +402,57 @@ class PipelineBuilder {
                 properties: {
                     label: `Group Step ${this.stepCounter}`,
                     steps: []
+                }
+            },
+            // Enhanced step types
+            annotation: {
+                type: 'annotation',
+                label: 'Annotation Step',
+                icon: 'fas fa-comment',
+                properties: {
+                    label: `Annotation Step ${this.stepCounter}`,
+                    context: 'default',
+                    style: 'info',
+                    body: 'Your **markdown** content here',
+                    priority: 0
+                }
+            },
+            plugin: {
+                type: 'plugin',
+                label: 'Plugin Step',
+                icon: 'fas fa-plug',
+                properties: {
+                    label: `Plugin Step ${this.stepCounter}`,
+                    command: '',
+                    plugins: {},
+                    selected_plugin: ''
+                }
+            },
+            notify: {
+                type: 'notify',
+                label: 'Notify Step',
+                icon: 'fas fa-bell',
+                properties: {
+                    label: `Notify Step ${this.stepCounter}`,
+                    command: '',
+                    notify: {
+                        slack: {
+                            webhook_url: '',
+                            channel: '#builds',
+                            message: 'Build completed!'
+                        }
+                    }
+                }
+            },
+            'pipeline-upload': {
+                type: 'pipeline-upload',
+                label: 'Pipeline Upload',
+                icon: 'fas fa-upload',
+                properties: {
+                    label: `Pipeline Upload ${this.stepCounter}`,
+                    command: 'buildkite-agent pipeline upload',
+                    pipeline_file: '.buildkite/pipeline.yml',
+                    dynamic_script: ''
                 }
             }
         };
@@ -246,6 +547,15 @@ class PipelineBuilder {
                 return step.properties.trigger || 'No pipeline specified';
             case 'group':
                 return `Contains ${step.properties.steps.length} step(s)`;
+            case 'annotation':
+                return step.properties.body || 'Build annotation';
+            case 'plugin':
+                const pluginCount = Object.keys(step.properties.plugins).length;
+                return pluginCount > 0 ? `Uses ${pluginCount} plugin(s)` : 'No plugins configured';
+            case 'notify':
+                return 'Sends notifications';
+            case 'pipeline-upload':
+                return 'Uploads dynamic pipeline';
             default:
                 return 'Step configuration';
         }
@@ -305,6 +615,11 @@ class PipelineBuilder {
                     <input type="number" name="timeout_in_minutes" value="${step.properties.timeout_in_minutes}" min="1" />
                 </div>
                 <div class="property-group">
+                    <label>Artifact Paths (one per line)</label>
+                    <textarea name="artifact_paths" placeholder="logs/**/*&#10;coverage/**/*">${(step.properties.artifact_paths || []).join('\n')}</textarea>
+                    <small>File patterns to upload as artifacts</small>
+                </div>
+                <div class="property-group">
                     <div class="property-checkbox">
                         <input type="checkbox" name="retry" ${step.properties.retry ? 'checked' : ''} />
                         <label>Retry on failure</label>
@@ -313,6 +628,14 @@ class PipelineBuilder {
                         <input type="checkbox" name="soft_fail" ${step.properties.soft_fail ? 'checked' : ''} />
                         <label>Soft fail</label>
                     </div>
+                </div>
+                <div class="property-group">
+                    <label>Environment Variables (JSON)</label>
+                    <textarea name="env" placeholder='{"NODE_ENV": "test"}'>${JSON.stringify(step.properties.env || {}, null, 2)}</textarea>
+                </div>
+                <div class="property-group">
+                    <label>Plugins (JSON)</label>
+                    <textarea name="plugins" placeholder='{"docker": {"image": "node:18"}}'>${JSON.stringify(step.properties.plugins || {}, null, 2)}</textarea>
                 </div>
             `,
             wait: `
@@ -388,6 +711,67 @@ class PipelineBuilder {
                     <label>Steps (JSON)</label>
                     <textarea name="steps" placeholder='[{"command": "echo 'step 1'"}, {"command": "echo 'step 2'"}]'>${JSON.stringify(step.properties.steps, null, 2)}</textarea>
                 </div>
+            `,
+            annotation: `
+                <div class="property-group">
+                    <label>Step Label</label>
+                    <input type="text" name="label" value="${step.properties.label}" />
+                </div>
+                <div class="property-group">
+                    <label>Context</label>
+                    <input type="text" name="context" value="${step.properties.context}" placeholder="default" />
+                </div>
+                <div class="property-group">
+                    <label>Style</label>
+                    <select name="style">
+                        <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
+                        <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
+                        <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
+                        <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
+                    </select>
+                </div>
+                <div class="property-group">
+                    <label>Content (Markdown)</label>
+                    <textarea name="body" rows="6">${step.properties.body}</textarea>
+                </div>
+            `,
+            plugin: `
+                <div class="property-group">
+                    <label>Step Label</label>
+                    <input type="text" name="label" value="${step.properties.label}" />
+                </div>
+                <div class="property-group">
+                    <label>Command</label>
+                    <textarea name="command">${step.properties.command}</textarea>
+                </div>
+                <div class="property-group">
+                    <label>Plugins (JSON)</label>
+                    <textarea name="plugins" placeholder='{"docker": {"image": "node:18"}}'>${JSON.stringify(step.properties.plugins, null, 2)}</textarea>
+                </div>
+            `,
+            notify: `
+                <div class="property-group">
+                    <label>Step Label</label>
+                    <input type="text" name="label" value="${step.properties.label}" />
+                </div>
+                <div class="property-group">
+                    <label>Notification Config (JSON)</label>
+                    <textarea name="notify" placeholder='{"slack": {"webhook_url": "", "channel": "#builds"}}'>${JSON.stringify(step.properties.notify, null, 2)}</textarea>
+                </div>
+            `,
+            'pipeline-upload': `
+                <div class="property-group">
+                    <label>Step Label</label>
+                    <input type="text" name="label" value="${step.properties.label}" />
+                </div>
+                <div class="property-group">
+                    <label>Pipeline File</label>
+                    <input type="text" name="pipeline_file" value="${step.properties.pipeline_file}" placeholder=".buildkite/pipeline.yml" />
+                </div>
+                <div class="property-group">
+                    <label>Dynamic Script</label>
+                    <input type="text" name="dynamic_script" value="${step.properties.dynamic_script}" placeholder="./scripts/generate-pipeline.sh" />
+                </div>
             `
         };
 
@@ -409,12 +793,14 @@ class PipelineBuilder {
         
         if (type === 'checkbox') {
             this.selectedStep.properties[name] = checked;
-        } else if (name === 'fields' || name === 'build' || name === 'steps') {
+        } else if (['fields', 'build', 'steps', 'env', 'plugins', 'notify'].includes(name)) {
             try {
-                this.selectedStep.properties[name] = JSON.parse(value || '[]');
+                this.selectedStep.properties[name] = JSON.parse(value || (name === 'env' || name === 'plugins' || name === 'notify' ? '{}' : '[]'));
             } catch (error) {
                 console.warn('Invalid JSON:', error);
             }
+        } else if (name === 'artifact_paths') {
+            this.selectedStep.properties[name] = value.split('\n').filter(path => path.trim() !== '');
         } else if (type === 'number') {
             this.selectedStep.properties[name] = parseInt(value) || 0;
         } else {
@@ -544,6 +930,98 @@ class PipelineBuilder {
 
     closeModal() {
         document.getElementById('yaml-modal').classList.add('hidden');
+    }
+
+    // Enhanced methods for new features
+    addTemplate(templateKey) {
+        const template = this.stepTemplates[templateKey];
+        if (!template) {
+            console.warn('Template not found:', templateKey);
+            return;
+        }
+
+        const step = {
+            id: `step-${++this.stepCounter}`,
+            ...template.template
+        };
+
+        this.steps.push(step);
+        this.renderPipeline();
+        this.selectStep(step.id);
+        
+        console.log('Applied template:', template.name);
+    }
+
+    addPattern(patternKey) {
+        // This would integrate with pipeline patterns if they're available
+        if (window.pipelinePatterns) {
+            window.pipelinePatterns.applyPattern(patternKey);
+        } else {
+            console.warn('Pipeline patterns not available');
+        }
+    }
+
+    showPluginCatalog() {
+        const modal = document.getElementById('plugin-catalog-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            // Trigger population of plugin catalog
+            if (typeof populatePluginCatalog === 'function') {
+                populatePluginCatalog();
+            }
+        }
+    }
+
+    showMatrixTemplates() {
+        const modal = document.getElementById('matrix-builder-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    showStepTemplates() {
+        const modal = document.getElementById('step-templates-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    openPipelineValidator() {
+        const modal = document.getElementById('pipeline-validator-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            // Trigger validation
+            if (typeof runValidation === 'function') {
+                runValidation();
+            }
+        }
+    }
+
+    showKeyboardShortcuts() {
+        const modal = document.getElementById('shortcuts-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    addPluginStep(pluginKey) {
+        const plugin = this.pluginCatalog[pluginKey];
+        if (!plugin) {
+            console.warn('Plugin not found:', pluginKey);
+            return;
+        }
+
+        const step = this.createStep('command');
+        step.properties.label = `${plugin.name} Step`;
+        step.properties.plugins = {
+            [pluginKey]: {}
+        };
+
+        this.steps.push(step);
+        this.renderPipeline();
+        this.selectStep(step.id);
+        
+        console.log('Added plugin step:', plugin.name);
     }
 }
 
