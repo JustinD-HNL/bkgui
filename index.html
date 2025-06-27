@@ -94,267 +94,6 @@
             font-size: 0.8rem;
         }
 
-        /* Conditional Builder Styles */
-        .conditional-builder {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .condition-groups {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .condition-group {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .condition-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .condition-header h4 {
-            margin: 0;
-            color: #2d3748;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .conditions-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .condition-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 1rem;
-        }
-
-        .condition-builder {
-            display: grid;
-            grid-template-columns: 1fr 1fr 2fr auto;
-            gap: 0.5rem;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .condition-field,
-        .condition-operator,
-        .condition-value {
-            padding: 0.5rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        .condition-examples {
-            color: #718096;
-            font-size: 0.75rem;
-            font-style: italic;
-        }
-
-        .condition-preview {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .condition-preview h4 {
-            margin: 0 0 1rem 0;
-            color: #2d3748;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .condition-preview pre {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 1rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            overflow-x: auto;
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .condition-templates {
-            grid-column: 1 / -1;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .condition-templates h4 {
-            margin: 0 0 1rem 0;
-            color: #2d3748;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .template-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 1px solid #cbd5e0;
-            color: #4a5568;
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-
-        .btn-outline:hover {
-            border-color: #667eea;
-            color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        /* Dependency Manager Styles */
-        .dependency-manager {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .dependency-types {
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 1rem;
-        }
-
-        .dependency-types h4 {
-            margin: 0 0 1rem 0;
-            color: #2d3748;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-
-        .dependency-type-buttons {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-
-        .dependency-type-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            border: 1px solid #cbd5e0;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            color: #4a5568;
-        }
-
-        .dependency-type-btn:hover {
-            border-color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
-        }
-
-        .dependency-type-btn.active {
-            border-color: #667eea;
-            background: #667eea;
-            color: white;
-        }
-
-        .dependency-type-btn i {
-            font-size: 1rem;
-        }
-
-        .dependency-content {
-            min-height: 300px;
-        }
-
-        .dependency-section {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .dependency-section h5 {
-            margin: 0 0 1rem 0;
-            color: #2d3748;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .step-dependencies {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .step-dependency-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .step-info {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .step-label {
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .step-type {
-            color: #718096;
-            font-size: 0.9rem;
-            font-style: italic;
-        }
-
-        .dependency-controls {
-            display: grid;
-            grid-template-columns: auto 1fr auto 2fr;
-            gap: 0.75rem;
-            align-items: center;
-        }
-
-        .dependency-controls label {
-            font-weight: 500;
-            color: #4a5568;
-            font-size: 0.9rem;
-        }
-
-        .dependency-key,
-        .dependency-list {
-            padding: 0.5rem;
-            border: 1px solid #cbd5e0;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
         /* Enhanced Quick Actions */
         .quick-actions {
             display: grid;
@@ -529,17 +268,17 @@
                     <div class="step-category">
                         <h4><i class="fas fa-clipboard-list"></i> Quick Templates</h4>
                         <div class="template-palette">
-                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('node-test')">
+                            <div class="template-item" data-template="node-test">
                                 <i class="fab fa-node-js"></i>
                                 <span>Node.js Tests</span>
                                 <small>Test with coverage</small>
                             </div>
-                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('docker-build')">
+                            <div class="template-item" data-template="docker-build">
                                 <i class="fab fa-docker"></i>
                                 <span>Docker Build</span>
                                 <small>Build & push image</small>
                             </div>
-                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('parallel-tests')">
+                            <div class="template-item" data-template="parallel-tests">
                                 <i class="fas fa-th"></i>
                                 <span>Parallel Tests</span>
                                 <small>Matrix test execution</small>
@@ -551,22 +290,22 @@
                     <div class="step-category">
                         <h4><i class="fas fa-sitemap"></i> Pipeline Patterns</h4>
                         <div class="pattern-palette">
-                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('ci-cd')">
+                            <div class="pattern-item" data-pattern="ci-cd">
                                 <i class="fas fa-infinity"></i>
                                 <span>CI/CD Pipeline</span>
                                 <small>Test → Build → Deploy</small>
                             </div>
-                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('monorepo')">
+                            <div class="pattern-item" data-pattern="monorepo">
                                 <i class="fas fa-folder-tree"></i>
                                 <span>Monorepo Pipeline</span>
                                 <small>Conditional builds</small>
                             </div>
-                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('matrix-testing')">
+                            <div class="pattern-item" data-pattern="matrix-testing">
                                 <i class="fas fa-th-large"></i>
                                 <span>Matrix Testing</span>
                                 <small>Multi-environment tests</small>
                             </div>
-                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('staged-deployment')">
+                            <div class="pattern-item" data-pattern="staged-deployment">
                                 <i class="fas fa-stairs"></i>
                                 <span>Staged Deployment</span>
                                 <small>Multi-stage with approvals</small>
@@ -578,32 +317,32 @@
                     <div class="step-category">
                         <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
                         <div class="quick-actions">
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showPluginCatalog()" title="Browse Plugins (Ctrl+P)">
+                            <button class="action-btn" data-action="plugin-catalog" title="Browse Plugins (Ctrl+P)">
                                 <i class="fas fa-plug"></i>
                                 <span>Plugin Catalog</span>
                             </button>
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showMatrixTemplates()" title="Matrix Builder (Ctrl+M)">
+                            <button class="action-btn" data-action="matrix-builder" title="Matrix Builder (Ctrl+M)">
                                 <i class="fas fa-th"></i>
                                 <span>Matrix Builder</span>
                             </button>
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showStepTemplates()" title="Step Templates (Ctrl+T)">
+                            <button class="action-btn" data-action="step-templates" title="Step Templates (Ctrl+T)">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Templates</span>
                             </button>
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.openPipelineValidator()">
+                            <button class="action-btn" data-action="pipeline-validator">
                                 <i class="fas fa-check-circle"></i>
                                 <span>Validate Pipeline</span>
                             </button>
                             <!-- NEW ENHANCED FEATURES -->
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyGraph()" title="Dependency Graph (Ctrl+G)">
+                            <button class="action-btn" data-action="dependency-graph" title="Dependency Graph (Ctrl+G)">
                                 <i class="fas fa-project-diagram"></i>
                                 <span>Dependency Graph</span>
                             </button>
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showConditionalBuilder()" title="Conditional Logic (Ctrl+L)">
+                            <button class="action-btn" data-action="conditional-builder" title="Conditional Logic (Ctrl+L)">
                                 <i class="fas fa-code-branch"></i>
                                 <span>Conditions</span>
                             </button>
-                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyManager()" title="Dependency Manager (Ctrl+D)">
+                            <button class="action-btn" data-action="dependency-manager" title="Dependency Manager (Ctrl+D)">
                                 <i class="fas fa-sitemap"></i>
                                 <span>Dependencies</span>
                             </button>
@@ -614,19 +353,19 @@
                     <div class="step-category">
                         <h4><i class="fas fa-rocket"></i> Popular Plugins</h4>
                         <div class="plugin-quickstart">
-                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('docker')">
+                            <div class="plugin-quick" data-plugin="docker">
                                 <i class="fab fa-docker"></i>
                                 <span>Docker</span>
                             </div>
-                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('junit-annotate')">
+                            <div class="plugin-quick" data-plugin="junit-annotate">
                                 <i class="fas fa-file-alt"></i>
                                 <span>JUnit</span>
                             </div>
-                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('ecr')">
+                            <div class="plugin-quick" data-plugin="ecr">
                                 <i class="fab fa-aws"></i>
                                 <span>AWS ECR</span>
                             </div>
-                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('artifacts')">
+                            <div class="plugin-quick" data-plugin="artifacts">
                                 <i class="fas fa-archive"></i>
                                 <span>Artifacts</span>
                             </div>
@@ -645,7 +384,7 @@
                                 <i class="fas fa-list"></i>
                                 <span>Step Reference</span>
                             </a>
-                            <a href="#" onclick="window.pipelineBuilder && window.pipelineBuilder.showKeyboardShortcuts()" class="help-link">
+                            <a href="#" class="help-link" data-action="keyboard-shortcuts">
                                 <i class="fas fa-keyboard"></i>
                                 <span>Shortcuts</span>
                             </a>
@@ -708,18 +447,18 @@
                 <div class="modal-content large">
                     <div class="modal-header">
                         <h3><i class="fas fa-project-diagram"></i> Pipeline Dependency Graph</h3>
-                        <button class="modal-close" onclick="closeModal('dependency-graph-modal')">&times;</button>
+                        <button class="modal-close" data-modal="dependency-graph-modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="graph-controls">
                             <div>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
+                                <button class="btn btn-secondary" data-action="reset-view">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.autoLayout()">
+                                <button class="btn btn-secondary" data-action="auto-layout">
                                     <i class="fas fa-magic"></i> Auto Layout
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
+                                <button class="btn btn-secondary" data-action="export-graph">
                                     <i class="fas fa-download"></i> Export SVG
                                 </button>
                             </div>
@@ -753,7 +492,7 @@
                 <div class="modal-content large">
                     <div class="modal-header">
                         <h3><i class="fas fa-code-branch"></i> Conditional Logic Builder</h3>
-                        <button class="modal-close" onclick="closeModal('conditional-builder-modal')">&times;</button>
+                        <button class="modal-close" data-modal="conditional-builder-modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="conditional-builder">
@@ -761,7 +500,7 @@
                                 <div class="condition-group">
                                     <div class="condition-header">
                                         <h4>IF Conditions</h4>
-                                        <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('if')">
+                                        <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="if">
                                             <i class="fas fa-plus"></i> Add Condition
                                         </button>
                                     </div>
@@ -771,7 +510,7 @@
                                 <div class="condition-group">
                                     <div class="condition-header">
                                         <h4>UNLESS Conditions</h4>
-                                        <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('unless')">
+                                        <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="unless">
                                             <i class="fas fa-plus"></i> Add Condition
                                         </button>
                                     </div>
@@ -787,16 +526,16 @@
                             <div class="condition-templates">
                                 <h4>Quick Templates</h4>
                                 <div class="template-buttons">
-                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('main-branch')">
+                                    <button class="btn btn-outline" data-template="main-branch">
                                         Main Branch Only
                                     </button>
-                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('pull-request')">
+                                    <button class="btn btn-outline" data-template="pull-request">
                                         Pull Request Only
                                     </button>
-                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('file-changes')">
+                                    <button class="btn btn-outline" data-template="file-changes">
                                         File Changes
                                     </button>
-                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('env-var')">
+                                    <button class="btn btn-outline" data-template="env-var">
                                         Environment Variable
                                     </button>
                                 </div>
@@ -804,8 +543,8 @@
                         </div>
                     </div>
                     <div class="modal-actions">
-                        <button class="btn btn-secondary" onclick="closeModal('conditional-builder-modal')">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyConditions()">Apply Conditions</button>
+                        <button class="btn btn-secondary" data-modal="conditional-builder-modal">Cancel</button>
+                        <button class="btn btn-primary" data-action="apply-conditions">Apply Conditions</button>
                     </div>
                 </div>
             </div>
@@ -815,7 +554,7 @@
                 <div class="modal-content large">
                     <div class="modal-header">
                         <h3><i class="fas fa-sitemap"></i> Dependency Manager</h3>
-                        <button class="modal-close" onclick="closeModal('dependency-manager-modal')">&times;</button>
+                        <button class="modal-close" data-modal="dependency-manager-modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="dependency-manager">
@@ -884,8 +623,8 @@
                         </div>
                     </div>
                     <div class="modal-actions">
-                        <button class="btn btn-secondary" onclick="closeModal('dependency-manager-modal')">Cancel</button>
-                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyDependencies()">Apply Dependencies</button>
+                        <button class="btn btn-secondary" data-modal="dependency-manager-modal">Cancel</button>
+                        <button class="btn btn-primary" data-action="apply-dependencies">Apply Dependencies</button>
                     </div>
                 </div>
             </div>
@@ -895,7 +634,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
-                        <button class="modal-close" onclick="closeModal('shortcuts-modal')">&times;</button>
+                        <button class="modal-close" data-modal="shortcuts-modal">&times;</button>
                     </div>
                     <div class="modal-body">
                         <div class="shortcuts-grid">
