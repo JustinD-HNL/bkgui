@@ -14,7 +14,8 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             scriptSrc: [
                 "'self'", 
-                "'unsafe-inline'", // Allow inline scripts for debug pages
+                "'unsafe-inline'", // Allow inline scripts for Firebase and debug functionality
+                "'unsafe-eval'", // Sometimes needed for Firebase dynamic imports
                 "https://www.gstatic.com",
                 "https://cdnjs.cloudflare.com",
                 // Required for Firebase Google Auth
@@ -22,11 +23,14 @@ app.use(helmet({
                 "https://www.google.com",
                 "https://accounts.google.com"
             ],
+            // Allow inline event handlers for Firebase auth popups and dynamic content
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: [
                 "'self'", 
                 "'unsafe-inline'", 
                 "https://cdnjs.cloudflare.com",
-                "https://accounts.google.com"
+                "https://accounts.google.com",
+                "https://fonts.googleapis.com"
             ],
             imgSrc: [
                 "'self'", 
@@ -35,7 +39,8 @@ app.use(helmet({
                 "blob:",
                 // Required for Google user avatars
                 "https://lh3.googleusercontent.com",
-                "https://www.google.com"
+                "https://www.google.com",
+                "https://ssl.gstatic.com"
             ],
             connectSrc: [
                 "'self'", 
@@ -46,14 +51,13 @@ app.use(helmet({
                 "https://www.googleapis.com",
                 // Google services for auth
                 "https://accounts.google.com",
-                "https://oauth2.googleapis.com"
+                "https://oauth2.googleapis.com",
+                "https://firebaseinstallations.googleapis.com"
             ],
             frameSrc: [
                 "'self'", 
                 "https://accounts.google.com",
-                "https://www.google.com",
-                // Firebase auth domain - CRITICAL for popup auth
-                "https://buildkite-pipeline-builder.firebaseapp.com"
+                "https://www.google.com"
             ],
             fontSrc: [
                 "'self'", 
@@ -71,10 +75,80 @@ app.use(helmet({
             formAction: [
                 "'self'",
                 "https://accounts.google.com"
-            ]
+            ],
+            // Allow workers for Firebase
+            workerSrc: ["'self'", "blob:"],
+            // Manifest for PWA if needed
+            manifestSrc: ["'self'"]
         },
     },
     crossOriginEmbedderPolicy: false, // Disable COEP for Firebase compatibility
+    // Allow iframes for Google auth
+    contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'",
+                "'unsafe-eval'",
+                "https://www.gstatic.com",
+                "https://cdnjs.cloudflare.com",
+                "https://apis.google.com",
+                "https://www.google.com",
+                "https://accounts.google.com"
+            ],
+            styleSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://cdnjs.cloudflare.com",
+                "https://accounts.google.com",
+                "https://fonts.googleapis.com"
+            ],
+            imgSrc: [
+                "'self'", 
+                "data:", 
+                "https:",
+                "blob:",
+                "https://lh3.googleusercontent.com",
+                "https://www.google.com",
+                "https://ssl.gstatic.com"
+            ],
+            connectSrc: [
+                "'self'", 
+                "https://identitytoolkit.googleapis.com", 
+                "https://securetoken.googleapis.com",
+                "https://firebase.googleapis.com",
+                "https://www.googleapis.com",
+                "https://accounts.google.com",
+                "https://oauth2.googleapis.com",
+                "https://firebaseinstallations.googleapis.com"
+            ],
+            frameSrc: [
+                "'self'", 
+                "https://accounts.google.com",
+                "https://www.google.com"
+            ],
+            fontSrc: [
+                "'self'", 
+                "https://cdnjs.cloudflare.com",
+                "https://fonts.googleapis.com",
+                "https://fonts.gstatic.com"
+            ],
+            objectSrc: ["'none'"],
+            mediaSrc: ["'self'"],
+            childSrc: [
+                "'self'", 
+                "https://accounts.google.com"
+            ],
+            formAction: [
+                "'self'",
+                "https://accounts.google.com"
+            ],
+            workerSrc: ["'self'", "blob:"],
+            manifestSrc: ["'self'"]
+        },
+    }
 }));
 
 // Compression middleware
@@ -85,6 +159,10 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    // Add additional headers for Firebase compatibility
+    res.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
     
     if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -218,6 +296,26 @@ app.get('/api/debug/firebase-status', (req, res) => {
     });
 });
 
+// New endpoint to test authentication flows
+app.get('/api/debug/auth-test', (req, res) => {
+    res.json({
+        message: 'Auth test endpoint',
+        timestamp: new Date().toISOString(),
+        cspHeaders: {
+            scriptSrc: 'self, unsafe-inline, unsafe-eval, Firebase domains',
+            connectSrc: 'Firebase and Google OAuth endpoints',
+            frameSrc: 'Google OAuth domains'
+        },
+        supportedAuthMethods: ['popup', 'redirect'],
+        recommendations: [
+            'Use redirect method if popups are blocked',
+            'Check browser console for CSP violations',
+            'Ensure all Firebase domains are whitelisted',
+            'Test in incognito mode to isolate extension issues'
+        ]
+    });
+});
+
 // Cloud Run specific endpoints
 app.get('/api/debug/cloud-run-info', (req, res) => {
     res.json({
@@ -254,6 +352,12 @@ app.use(express.static(path.join(__dirname), {
         if (filePath.includes('debug-auth')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
+        
+        // Add security headers for auth-related files
+        if (filePath.includes('firebase-auth') || filePath.includes('index.html')) {
+            res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+        }
     }
 }));
 
@@ -277,6 +381,16 @@ app.get('/health', (req, res) => {
                 'FIREBASE_PROJECT_ID'
             ].every(key => !!process.env[key])
         },
+        authMethods: {
+            popup: 'supported',
+            redirect: 'supported',
+            recommended: 'redirect for mobile, popup for desktop'
+        },
+        security: {
+            csp: 'Firebase-optimized',
+            cors: 'enabled',
+            popup_policy: 'permissive'
+        },
         memory: process.memoryUsage(),
         uptime: process.uptime()
     };
@@ -296,14 +410,21 @@ app.get('/api/test', (req, res) => {
 // CSP test endpoint to verify current policy
 app.get('/api/debug/csp-test', (req, res) => {
     res.json({
-        message: 'CSP test endpoint',
+        message: 'CSP test endpoint - Enhanced for Firebase Auth',
         timestamp: new Date().toISOString(),
         cspDirectives: [
-            'script-src includes: self, unsafe-inline, www.gstatic.com, cdnjs.cloudflare.com, apis.google.com, www.google.com, accounts.google.com',
-            'connect-src includes: Firebase and Google OAuth endpoints',
-            'frame-src includes: accounts.google.com'
+            'script-src: self, unsafe-inline, unsafe-eval, Firebase domains, Google domains',
+            'connect-src: Firebase and Google OAuth endpoints',
+            'frame-src: Google OAuth domains',
+            'img-src: Google user avatars and Firebase assets',
+            'style-src: Google Fonts and inline styles'
         ],
-        note: 'If you can see this, basic CSP is working. Check browser console for script loading errors.'
+        authSupport: {
+            popupAuth: 'enabled',
+            redirectAuth: 'enabled',
+            inlineHandlers: 'allowed for Firebase compatibility'
+        },
+        note: 'CSP optimized for Firebase Auth with both popup and redirect methods'
     });
 });
 
@@ -368,15 +489,19 @@ const server = app.listen(PORT, () => {
     console.log(`📱 Health check: http://localhost:${PORT}/health`);
     console.log(`🔍 Debug tool: http://localhost:${PORT}/debug-auth.html`);
     console.log(`🔧 CSP test: http://localhost:${PORT}/api/debug/csp-test`);
+    console.log(`🔐 Auth test: http://localhost:${PORT}/api/debug/auth-test`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Firebase configured: ${!!process.env.FIREBASE_API_KEY}`);
     console.log(`☁️  Cloud Run service: ${process.env.K_SERVICE || 'Not on Cloud Run'}`);
+    console.log(`🔒 Security: CSP optimized for Firebase Auth (popup + redirect)`);
     
     if (!process.env.FIREBASE_API_KEY) {
         console.log('⚠️  Firebase authentication not configured');
         console.log('   Set FIREBASE_API_KEY and other Firebase environment variables');
     } else if (!process.env.FIREBASE_API_KEY.startsWith('AIza')) {
         console.log('⚠️  Firebase API key format appears invalid (should start with AIza)');
+    } else {
+        console.log('✅ Firebase authentication properly configured');
     }
 });
 
