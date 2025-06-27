@@ -259,39 +259,185 @@
             </header>
 
             <div class="main-content">
-                <!-- Sidebar with Step Types -->
-                <aside class="sidebar">
+                <!-- ENHANCED SIDEBAR WITH NEW STEP TYPES AND TEMPLATES -->
+                <aside class="sidebar enhanced-sidebar">
                     <h3><i class="fas fa-puzzle-piece"></i> Step Types</h3>
-                    <div class="step-palette">
-                        <div class="step-type" draggable="true" data-step-type="command">
-                            <i class="fas fa-terminal"></i>
-                            <span>Command Step</span>
-                            <small>Execute commands/scripts</small>
+                    
+                    <!-- Core Step Types -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-terminal"></i> Core Steps</h4>
+                        <div class="step-palette">
+                            <div class="step-type" draggable="true" data-step-type="command">
+                                <i class="fas fa-terminal"></i>
+                                <span>Command Step</span>
+                                <small>Execute commands/scripts</small>
+                            </div>
+                            <div class="step-type" draggable="true" data-step-type="wait">
+                                <i class="fas fa-hourglass-half"></i>
+                                <span>Wait Step</span>
+                                <small>Wait for dependencies</small>
+                            </div>
+                            <div class="step-type" draggable="true" data-step-type="block">
+                                <i class="fas fa-hand-paper"></i>
+                                <span>Block Step</span>
+                                <small>Manual approval</small>
+                            </div>
+                            <div class="step-type" draggable="true" data-step-type="input">
+                                <i class="fas fa-keyboard"></i>
+                                <span>Input Step</span>
+                                <small>Collect user input</small>
+                            </div>
+                            <div class="step-type" draggable="true" data-step-type="trigger">
+                                <i class="fas fa-play"></i>
+                                <span>Trigger Step</span>
+                                <small>Trigger other pipelines</small>
+                            </div>
+                            <div class="step-type" draggable="true" data-step-type="group">
+                                <i class="fas fa-layer-group"></i>
+                                <span>Group Step</span>
+                                <small>Group related steps</small>
+                            </div>
                         </div>
-                        <div class="step-type" draggable="true" data-step-type="wait">
-                            <i class="fas fa-hourglass-half"></i>
-                            <span>Wait Step</span>
-                            <small>Wait for dependencies</small>
+                    </div>
+
+                    <!-- Advanced Step Types -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-star"></i> Advanced Steps</h4>
+                        <div class="step-palette">
+                            <div class="step-type advanced" draggable="true" data-step-type="annotation">
+                                <i class="fas fa-comment"></i>
+                                <span>Annotation Step</span>
+                                <small>Add build annotations</small>
+                            </div>
+                            <div class="step-type advanced" draggable="true" data-step-type="plugin">
+                                <i class="fas fa-plug"></i>
+                                <span>Plugin Step</span>
+                                <small>Use Buildkite plugins</small>
+                            </div>
+                            <div class="step-type advanced" draggable="true" data-step-type="notify">
+                                <i class="fas fa-bell"></i>
+                                <span>Notify Step</span>
+                                <small>Send notifications</small>
+                            </div>
+                            <div class="step-type advanced" draggable="true" data-step-type="pipeline-upload">
+                                <i class="fas fa-upload"></i>
+                                <span>Pipeline Upload</span>
+                                <small>Dynamic pipeline generation</small>
+                            </div>
                         </div>
-                        <div class="step-type" draggable="true" data-step-type="block">
-                            <i class="fas fa-hand-paper"></i>
-                            <span>Block Step</span>
-                            <small>Manual approval</small>
+                    </div>
+
+                    <!-- Step Templates -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-clipboard-list"></i> Quick Templates</h4>
+                        <div class="template-palette">
+                            <div class="template-item" onclick="pipelineBuilder.addTemplate('node-test')">
+                                <i class="fab fa-node-js"></i>
+                                <span>Node.js Tests</span>
+                                <small>Test with coverage</small>
+                            </div>
+                            <div class="template-item" onclick="pipelineBuilder.addTemplate('docker-build')">
+                                <i class="fab fa-docker"></i>
+                                <span>Docker Build</span>
+                                <small>Build & push image</small>
+                            </div>
+                            <div class="template-item" onclick="pipelineBuilder.addTemplate('parallel-tests')">
+                                <i class="fas fa-th"></i>
+                                <span>Parallel Tests</span>
+                                <small>Matrix test execution</small>
+                            </div>
                         </div>
-                        <div class="step-type" draggable="true" data-step-type="input">
-                            <i class="fas fa-keyboard"></i>
-                            <span>Input Step</span>
-                            <small>Collect user input</small>
+                    </div>
+
+                    <!-- Pipeline Patterns -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-sitemap"></i> Pipeline Patterns</h4>
+                        <div class="pattern-palette">
+                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('ci-cd')">
+                                <i class="fas fa-infinity"></i>
+                                <span>CI/CD Pipeline</span>
+                                <small>Test → Build → Deploy</small>
+                            </div>
+                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('monorepo')">
+                                <i class="fas fa-folder-tree"></i>
+                                <span>Monorepo Pipeline</span>
+                                <small>Conditional builds</small>
+                            </div>
+                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('matrix-testing')">
+                                <i class="fas fa-th-large"></i>
+                                <span>Matrix Testing</span>
+                                <small>Multi-environment tests</small>
+                            </div>
+                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('staged-deployment')">
+                                <i class="fas fa-stairs"></i>
+                                <span>Staged Deployment</span>
+                                <small>Multi-stage with approvals</small>
+                            </div>
                         </div>
-                        <div class="step-type" draggable="true" data-step-type="trigger">
-                            <i class="fas fa-play"></i>
-                            <span>Trigger Step</span>
-                            <small>Trigger other pipelines</small>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
+                        <div class="quick-actions">
+                            <button class="action-btn" onclick="pipelineBuilder.showPluginCatalog()" title="Browse Plugins (Ctrl+P)">
+                                <i class="fas fa-plug"></i>
+                                <span>Plugin Catalog</span>
+                            </button>
+                            <button class="action-btn" onclick="pipelineBuilder.showMatrixTemplates()" title="Matrix Builder (Ctrl+M)">
+                                <i class="fas fa-th"></i>
+                                <span>Matrix Builder</span>
+                            </button>
+                            <button class="action-btn" onclick="pipelineBuilder.showStepTemplates()" title="Step Templates (Ctrl+T)">
+                                <i class="fas fa-clipboard-list"></i>
+                                <span>Templates</span>
+                            </button>
+                            <button class="action-btn" onclick="pipelineBuilder.openPipelineValidator()">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Validate Pipeline</span>
+                            </button>
                         </div>
-                        <div class="step-type" draggable="true" data-step-type="group">
-                            <i class="fas fa-layer-group"></i>
-                            <span>Group Step</span>
-                            <small>Group related steps</small>
+                    </div>
+
+                    <!-- Plugin Quick Access -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-rocket"></i> Popular Plugins</h4>
+                        <div class="plugin-quickstart">
+                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('docker')">
+                                <i class="fab fa-docker"></i>
+                                <span>Docker</span>
+                            </div>
+                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('junit-annotate')">
+                                <i class="fas fa-file-alt"></i>
+                                <span>JUnit</span>
+                            </div>
+                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('ecr')">
+                                <i class="fab fa-aws"></i>
+                                <span>AWS ECR</span>
+                            </div>
+                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('artifacts')">
+                                <i class="fas fa-archive"></i>
+                                <span>Artifacts</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Help & Documentation -->
+                    <div class="step-category">
+                        <h4><i class="fas fa-question-circle"></i> Help</h4>
+                        <div class="help-links">
+                            <a href="https://buildkite.com/docs" target="_blank" class="help-link">
+                                <i class="fas fa-book"></i>
+                                <span>Buildkite Docs</span>
+                            </a>
+                            <a href="https://buildkite.com/docs/pipelines/step-reference" target="_blank" class="help-link">
+                                <i class="fas fa-list"></i>
+                                <span>Step Reference</span>
+                            </a>
+                            <a href="#" onclick="pipelineBuilder.showKeyboardShortcuts()" class="help-link">
+                                <i class="fas fa-keyboard"></i>
+                                <span>Shortcuts</span>
+                            </a>
                         </div>
                     </div>
                 </aside>
@@ -322,7 +468,7 @@
                 </aside>
             </div>
 
-            <!-- YAML Export Modal -->
+            <!-- EXISTING YAML Export Modal -->
             <div id="yaml-modal" class="modal hidden">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -342,6 +488,273 @@
                     </div>
                 </div>
             </div>
+
+            <!-- NEW ADVANCED FEATURE MODALS -->
+
+            <!-- Plugin Catalog Modal -->
+            <div id="plugin-catalog-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-plug"></i> Plugin Catalog</h3>
+                        <button class="modal-close" onclick="closeModal('plugin-catalog-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="plugin-search">
+                            <input type="text" id="plugin-search" placeholder="Search plugins..." />
+                            <div class="plugin-categories">
+                                <button class="category-btn active" data-category="all">All</button>
+                                <button class="category-btn" data-category="docker">Docker</button>
+                                <button class="category-btn" data-category="testing">Testing</button>
+                                <button class="category-btn" data-category="deployment">Deployment</button>
+                                <button class="category-btn" data-category="notifications">Notifications</button>
+                            </div>
+                        </div>
+                        <div class="plugin-grid" id="plugin-grid">
+                            <!-- Plugins will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matrix Builder Modal -->
+            <div id="matrix-builder-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-th"></i> Matrix Builder</h3>
+                        <button class="modal-close" onclick="closeModal('matrix-builder-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="matrix-builder-content">
+                            <div class="matrix-dimensions">
+                                <h4>Matrix Dimensions</h4>
+                                <div id="matrix-dimensions-list">
+                                    <!-- Dimensions will be added here -->
+                                </div>
+                                <button class="btn btn-secondary" onclick="addMatrixDimension()">
+                                    <i class="fas fa-plus"></i> Add Dimension
+                                </button>
+                            </div>
+                            
+                            <div class="matrix-preview-section">
+                                <h4>Preview</h4>
+                                <div id="matrix-combinations-preview">
+                                    <p class="empty-state">Add dimensions to see combinations</p>
+                                </div>
+                            </div>
+
+                            <div class="matrix-presets">
+                                <h4>Quick Presets</h4>
+                                <div class="preset-buttons">
+                                    <button class="preset-btn" onclick="applyMatrixPreset('node_versions')">
+                                        <i class="fab fa-node-js"></i>
+                                        Node.js Versions
+                                    </button>
+                                    <button class="preset-btn" onclick="applyMatrixPreset('os_matrix')">
+                                        <i class="fas fa-desktop"></i>
+                                        Operating Systems
+                                    </button>
+                                    <button class="preset-btn" onclick="applyMatrixPreset('browser_matrix')">
+                                        <i class="fas fa-globe"></i>
+                                        Browsers
+                                    </button>
+                                    <button class="preset-btn" onclick="applyMatrixPreset('environments')">
+                                        <i class="fas fa-server"></i>
+                                        Environments
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('matrix-builder-modal')">Cancel</button>
+                        <button class="btn btn-primary" onclick="applyMatrix()">Apply Matrix</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step Templates Modal -->
+            <div id="step-templates-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-clipboard-list"></i> Step Templates</h3>
+                        <button class="modal-close" onclick="closeModal('step-templates-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="template-categories">
+                            <div class="template-category">
+                                <h4><i class="fab fa-js"></i> JavaScript/Node.js</h4>
+                                <div class="template-grid">
+                                    <div class="template-card" onclick="applyTemplate('node-test')">
+                                        <div class="template-icon">
+                                            <i class="fab fa-node-js"></i>
+                                        </div>
+                                        <div class="template-info">
+                                            <h5>Node.js Test Suite</h5>
+                                            <p>Complete testing with coverage reports and JUnit output</p>
+                                            <div class="template-features">
+                                                <span class="feature">npm ci</span>
+                                                <span class="feature">npm test</span>
+                                                <span class="feature">Coverage</span>
+                                                <span class="feature">JUnit</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="template-card" onclick="applyTemplate('node-lint')">
+                                        <div class="template-icon">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        <div class="template-info">
+                                            <h5>Linting & Code Quality</h5>
+                                            <p>ESLint, Prettier, and TypeScript checking</p>
+                                            <div class="template-features">
+                                                <span class="feature">ESLint</span>
+                                                <span class="feature">Prettier</span>
+                                                <span class="feature">TypeScript</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="template-category">
+                                <h4><i class="fab fa-docker"></i> Docker & Containers</h4>
+                                <div class="template-grid">
+                                    <div class="template-card" onclick="applyTemplate('docker-build')">
+                                        <div class="template-icon">
+                                            <i class="fab fa-docker"></i>
+                                        </div>
+                                        <div class="template-info">
+                                            <h5>Docker Build & Push</h5>
+                                            <p>Build Docker image and push to registry</p>
+                                            <div class="template-features">
+                                                <span class="feature">Build</span>
+                                                <span class="feature">Tag</span>
+                                                <span class="feature">Push</span>
+                                                <span class="feature">ECR</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="template-category">
+                                <h4><i class="fas fa-cloud"></i> Deployment</h4>
+                                <div class="template-grid">
+                                    <div class="template-card" onclick="applyTemplate('k8s-deploy')">
+                                        <div class="template-icon">
+                                            <i class="fas fa-dharmachakra"></i>
+                                        </div>
+                                        <div class="template-info">
+                                            <h5>Kubernetes Deployment</h5>
+                                            <p>Deploy to Kubernetes with health checks</p>
+                                            <div class="template-features">
+                                                <span class="feature">kubectl</span>
+                                                <span class="feature">Health Check</span>
+                                                <span class="feature">Rollback</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Validator Modal -->
+            <div id="pipeline-validator-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-check-circle"></i> Pipeline Validator</h3>
+                        <button class="modal-close" onclick="closeModal('pipeline-validator-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="validation-results" id="validation-results">
+                            <div class="validation-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Validating pipeline...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('pipeline-validator-modal')">Close</button>
+                        <button class="btn btn-primary" onclick="runValidation()">Re-validate</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plugin Configuration Modal -->
+            <div id="plugin-config-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-cog"></i> Configure Plugin</h3>
+                        <button class="modal-close" onclick="closeModal('plugin-config-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="plugin-config-form">
+                            <!-- Plugin configuration form will be populated here -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('plugin-config-modal')">Cancel</button>
+                        <button class="btn btn-primary" onclick="savePluginConfig()">Save Configuration</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts Modal -->
+            <div id="shortcuts-modal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
+                        <button class="modal-close" onclick="closeModal('shortcuts-modal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="shortcuts-grid">
+                            <div class="shortcut-category">
+                                <h4>General</h4>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>S</kbd>
+                                    <span>Export YAML</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>N</kbd>
+                                    <span>Clear Pipeline</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>E</kbd>
+                                    <span>Load Example</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Delete</kbd>
+                                    <span>Remove Selected Step</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Escape</kbd>
+                                    <span>Deselect Step</span>
+                                </div>
+                            </div>
+
+                            <div class="shortcut-category">
+                                <h4>Advanced Features</h4>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>P</kbd>
+                                    <span>Plugin Catalog</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>M</kbd>
+                                    <span>Matrix Builder</span>
+                                </div>
+                                <div class="shortcut-item">
+                                    <kbd>Ctrl</kbd> + <kbd>T</kbd>
+                                    <span>Step Templates</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -351,244 +764,180 @@
     <script src="js/pipeline-builder.js"></script>
     <script src="js/app.js"></script>
 
+    <!-- Enhanced Modal and Template Functionality -->
     <script>
+        // Modal management functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Plugin catalog functionality
+        function populatePluginCatalog() {
+            const grid = document.getElementById('plugin-grid');
+            if (!window.pipelineBuilder || !window.pipelineBuilder.pluginCatalog) {
+                grid.innerHTML = '<p class="empty-state">Plugin catalog not available</p>';
+                return;
+            }
+            
+            const catalog = window.pipelineBuilder.pluginCatalog;
+            
+            grid.innerHTML = Object.entries(catalog).map(([key, plugin]) => `
+                <div class="plugin-card" onclick="selectPlugin('${key}')">
+                    <h5>${plugin.name}</h5>
+                    <p>${plugin.description}</p>
+                    <span class="plugin-version">${plugin.version}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectPlugin(pluginKey) {
+            console.log('Selected plugin:', pluginKey);
+            closeModal('plugin-catalog-modal');
+            // Plugin selection logic will be handled by enhanced pipeline builder
+        }
+
+        // Matrix builder functionality
+        function addMatrixDimension() {
+            const container = document.getElementById('matrix-dimensions-list');
+            const dimensionId = 'dim-' + Date.now();
+            
+            const dimensionHtml = `
+                <div class="matrix-dimension" id="${dimensionId}">
+                    <div class="matrix-dimension-header">
+                        <input type="text" placeholder="Dimension name (e.g., 'node')" onchange="updateMatrixPreview()" />
+                        <button onclick="removeMatrixDimension('${dimensionId}')" style="background: none; border: none; color: #e53e3e; cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <input type="text" placeholder="Values (comma-separated: 16,18,20)" onchange="updateMatrixPreview()" />
+                    <div class="matrix-values" id="${dimensionId}-values"></div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', dimensionHtml);
+        }
+
+        function removeMatrixDimension(dimensionId) {
+            document.getElementById(dimensionId).remove();
+            updateMatrixPreview();
+        }
+
+        function updateMatrixPreview() {
+            const preview = document.getElementById('matrix-combinations-preview');
+            preview.innerHTML = '<p>Matrix preview would show here</p>';
+        }
+
+        function applyMatrixPreset(presetKey) {
+            if (!window.pipelineBuilder || !window.pipelineBuilder.matrixPresets) {
+                console.warn('Matrix presets not available');
+                return;
+            }
+            
+            const presets = window.pipelineBuilder.matrixPresets;
+            const preset = presets[presetKey];
+            
+            if (preset) {
+                document.getElementById('matrix-dimensions-list').innerHTML = '';
+                
+                Object.entries(preset.matrix).forEach(([key, values]) => {
+                    addMatrixDimension();
+                    const lastDimension = document.querySelector('#matrix-dimensions-list .matrix-dimension:last-child');
+                    const nameInput = lastDimension.querySelector('input[placeholder*="Dimension name"]');
+                    const valuesInput = lastDimension.querySelector('input[placeholder*="Values"]');
+                    
+                    nameInput.value = key;
+                    valuesInput.value = Array.isArray(values) ? values.join(',') : values;
+                });
+                
+                updateMatrixPreview();
+            }
+        }
+
+        function applyMatrix() {
+            console.log('Applying matrix configuration');
+            closeModal('matrix-builder-modal');
+        }
+
+        // Template functionality
+        function applyTemplate(templateKey) {
+            if (!window.pipelineBuilder || !window.pipelineBuilder.stepTemplates) {
+                console.warn('Step templates not available');
+                return;
+            }
+            
+            const templates = window.pipelineBuilder.stepTemplates;
+            const template = templates[templateKey];
+            
+            if (template) {
+                const step = {
+                    id: `step-${++window.pipelineBuilder.stepCounter}`,
+                    ...template.template
+                };
+                
+                window.pipelineBuilder.steps.push(step);
+                window.pipelineBuilder.renderPipeline();
+                closeModal('step-templates-modal');
+            }
+        }
+
+        // Validation functionality
+        function runValidation() {
+            const results = document.getElementById('validation-results');
+            results.innerHTML = `
+                <div class="validation-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Validating pipeline...</p>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                if (!window.yamlGenerator || !window.pipelineBuilder) {
+                    results.innerHTML = `
+                        <div class="validation-errors">
+                            <h4><i class="fas fa-exclamation-circle"></i> Validation Error</h4>
+                            <p>Pipeline builder not initialized</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const errors = window.yamlGenerator.validatePipeline(window.pipelineBuilder.steps);
+                
+                if (errors.length === 0) {
+                    results.innerHTML = `
+                        <div class="validation-success">
+                            <h4><i class="fas fa-check-circle"></i> Pipeline Valid</h4>
+                            <p>Your pipeline configuration is valid and ready to use!</p>
+                        </div>
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="validation-errors">
+                            <h4><i class="fas fa-exclamation-circle"></i> Validation Errors</h4>
+                            <ul>
+                                ${errors.map(error => `<li>${error}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }, 1500);
+        }
+
+        function savePluginConfig() {
+            console.log('Saving plugin configuration');
+            closeModal('plugin-config-modal');
+        }
+
+        // Initialize modals when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for pipeline builder to initialize before populating catalog
+            setTimeout(() => {
+                populatePluginCatalog();
+            }, 1000);
+        });
+
         // AUTH TEMPORARILY DISABLED - BYPASS ALL AUTHENTICATION
         console.log('🚫 Authentication bypassed - loading app directly');
-        
-        // COMMENTED OUT FOR NOW - Third-party cookie mitigation and enhanced authentication initialization
-        /*
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔄 Initializing authentication interface with Firebase SDK v10.14.0...');
-            
-            // Third-party cookie detection and mitigation
-            const detectThirdPartyCookieSupport = () => {
-                try {
-                    // Test if third-party cookies are supported
-                    localStorage.setItem('3pc-test', 'test');
-                    localStorage.removeItem('3pc-test');
-                    return true;
-                } catch (error) {
-                    console.log('⚠️ Third-party cookies may be blocked, prioritizing popup method');
-                    return false;
-                }
-            };
-
-            const thirdPartyCookiesSupported = detectThirdPartyCookieSupport();
-            
-            // Set up Google Sign-In button (popup method - preferred for 2024-2025)
-            const googleBtn = document.getElementById('google-signin-btn');
-            if (googleBtn) {
-                googleBtn.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    console.log('🔐 Popup sign-in requested (primary method for cookie mitigation)');
-                    
-                    if (window.firebaseAuth) {
-                        // Try popup first - this handles third-party cookie issues automatically
-                        const result = await firebaseAuth.signInWithGoogle('popup');
-                        
-                        // If popup failed, show alternative sign-in method
-                        if (!result && !thirdPartyCookiesSupported) {
-                            showAlternativeSignIn();
-                            showThirdPartyCookieInfo();
-                        }
-                    } else {
-                        console.error('Firebase Auth not initialized');
-                        showError('Authentication service not ready. Please refresh the page.');
-                    }
-                });
-            }
-            
-            // Set up alternative redirect sign-in button
-            const redirectBtn = document.getElementById('google-redirect-btn');
-            if (redirectBtn) {
-                redirectBtn.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    console.log('🔐 Redirect sign-in requested (fallback method)');
-                    
-                    if (window.firebaseAuth) {
-                        await firebaseAuth.signInWithGoogle('redirect');
-                    } else {
-                        console.error('Firebase Auth not initialized');
-                        showError('Authentication service not ready. Please refresh the page.');
-                    }
-                });
-            }
-            
-            // Set up sign-out button
-            const signOutBtn = document.getElementById('sign-out-btn');
-            if (signOutBtn) {
-                signOutBtn.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    if (window.firebaseAuth) {
-                        await firebaseAuth.signOut();
-                    }
-                });
-            }
-            
-            // Function to show alternative sign-in method
-            function showAlternativeSignIn() {
-                const alternativeDiv = document.getElementById('alternative-signin');
-                if (alternativeDiv) {
-                    alternativeDiv.style.display = 'block';
-                    
-                    // Scroll into view if needed
-                    alternativeDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
-            }
-            
-            // Function to show third-party cookie information
-            function showThirdPartyCookieInfo() {
-                const methodInfo = document.querySelector('.auth-method-info small');
-                if (methodInfo && !thirdPartyCookiesSupported) {
-                    methodInfo.textContent = 'Third-party cookies detected as blocked - popup method recommended';
-                    methodInfo.style.color = '#f6ad55';
-                }
-            }
-            
-            // Function to show error messages
-            function showError(message) {
-                const errorEl = document.getElementById('auth-error');
-                if (errorEl) {
-                    errorEl.textContent = message;
-                    errorEl.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        errorEl.style.display = 'none';
-                    }, 10000);
-                }
-            }
-            
-            // Detect mobile devices and show appropriate guidance
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                console.log('📱 Mobile device detected');
-                
-                // Update the help text for mobile
-                const methodInfo = document.querySelector('.auth-method-info small');
-                if (methodInfo) {
-                    methodInfo.textContent = 'Both methods work on mobile - try popup first';
-                }
-                
-                // Show alternative method on mobile for better UX
-                setTimeout(() => {
-                    showAlternativeSignIn();
-                }, 2000);
-            }
-            
-            // Enhanced browser compatibility detection
-            const browserInfo = {
-                isChrome: /Chrome/.test(navigator.userAgent),
-                isFirefox: /Firefox/.test(navigator.userAgent),
-                isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
-                isEdge: /Edg/.test(navigator.userAgent)
-            };
-            
-            console.log('🌐 Browser detected:', Object.keys(browserInfo).find(key => browserInfo[key]) || 'Unknown');
-            
-            // Safari-specific optimizations
-            if (browserInfo.isSafari) {
-                console.log('🍎 Safari detected - using Safari-optimized authentication flow');
-                // Safari has stricter popup policies, so show redirect option
-                setTimeout(() => {
-                    showAlternativeSignIn();
-                }, 1000);
-            }
-            
-            // Auto-retry authentication if user was previously signed in
-            if (window.firebaseAuth && (localStorage.getItem('firebaseui::rememberedAccounts') || sessionStorage.getItem('firebase:authUser:'))) {
-                console.log('🔄 Previous sign-in detected, initializing...');
-            }
-            
-            // Enhanced debugging for authentication issues
-            window.debugAuth = () => {
-                console.log('🔬 Authentication Debug Info:');
-                console.log('- Firebase SDK version: 10.14.0');
-                console.log('- Third-party cookies supported:', thirdPartyCookiesSupported);
-                console.log('- Browser:', Object.keys(browserInfo).find(key => browserInfo[key]));
-                console.log('- Mobile device:', isMobile);
-                console.log('- Firebase Auth initialized:', !!window.firebaseAuth);
-                
-                // Test CSP and COOP headers
-                fetch('/api/debug/security-headers')
-                    .then(res => res.json())
-                    .then(data => {
-                        console.log('- Security headers:', data);
-                    })
-                    .catch(err => {
-                        console.log('- Security headers test failed:', err);
-                    });
-            };
-            
-            console.log('✅ Authentication interface initialized with third-party cookie mitigation');
-            console.log('💡 Run debugAuth() in console for detailed debugging info');
-        });
-        */
-        
-        // COMMENTED OUT FOR NOW - Handle authentication state changes globally
-        /*
-        window.addEventListener('load', function() {
-            // Check if we're returning from a redirect
-            if (window.location.hash.includes('firebase') || sessionStorage.getItem('firebase:authUser:')) {
-                console.log('🔄 Checking for redirect authentication result...');
-            }
-            
-            // Test modern browser features
-            const hasModernFeatures = {
-                crypto: !!window.crypto,
-                fetch: !!window.fetch,
-                promises: !!window.Promise,
-                localStorage: !!window.localStorage
-            };
-            
-            const missingFeatures = Object.keys(hasModernFeatures).filter(key => !hasModernFeatures[key]);
-            if (missingFeatures.length > 0) {
-                console.warn('⚠️ Missing modern browser features:', missingFeatures);
-            }
-        });
-        */
-        
-        // COMMENTED OUT FOR NOW - Handle errors gracefully with enhanced Firebase v10 error detection
-        /*
-        window.addEventListener('error', function(event) {
-            if (event.error && event.error.message) {
-                const errorMessage = event.error.message.toLowerCase();
-                
-                if (errorMessage.includes('firebase') || errorMessage.includes('auth')) {
-                    console.error('🚨 Firebase authentication error detected:', event.error);
-                    
-                    // Show user-friendly error message
-                    const errorEl = document.getElementById('auth-error');
-                    if (errorEl && !errorEl.textContent) {
-                        errorEl.innerHTML = `
-                            <strong>Authentication Error</strong><br>
-                            There was a problem with the sign-in process. 
-                            <a href="/debug-auth.html" target="_blank" style="color: #667eea;">Try the debug tool</a> 
-                            for more information.
-                        `;
-                        errorEl.style.display = 'block';
-                    }
-                }
-                
-                // CSP violation detection
-                if (errorMessage.includes('content security policy') || errorMessage.includes('csp')) {
-                    console.error('🚨 CSP violation detected - this should be fixed with updated server configuration');
-                }
-                
-                // COOP error detection
-                if (errorMessage.includes('cross-origin-opener-policy') || errorMessage.includes('window.closed')) {
-                    console.error('🚨 COOP error detected - this should be fixed with updated server headers');
-                }
-            }
-        });
-        */
-        
-        // Service worker registration for PWA features (optional)
-        if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
-            navigator.serviceWorker.register('/sw.js').catch(err => {
-                console.log('Service worker registration failed (optional):', err);
-            });
-        }
-        
         console.log('✅ App loaded without authentication requirement');
         console.log('💡 To re-enable auth: uncomment the auth initialization code in index.html');
     </script>
