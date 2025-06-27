@@ -7,38 +7,99 @@ const helmet = require('helmet');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Security middleware
+// Enhanced security middleware with Firebase-compatible CSP
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://cdnjs.cloudflare.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: ["'self'", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
-            frameSrc: ["'self'", "https://accounts.google.com"],
-            fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'", // Allow inline scripts for debug pages
+                "https://www.gstatic.com",
+                "https://cdnjs.cloudflare.com",
+                // Required for Firebase Google Auth
+                "https://apis.google.com",
+                "https://www.google.com",
+                "https://accounts.google.com"
+            ],
+            styleSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "https://cdnjs.cloudflare.com",
+                "https://accounts.google.com"
+            ],
+            imgSrc: [
+                "'self'", 
+                "data:", 
+                "https:", 
+                "blob:",
+                // Required for Google user avatars
+                "https://lh3.googleusercontent.com",
+                "https://www.google.com"
+            ],
+            connectSrc: [
+                "'self'", 
+                // Firebase services
+                "https://identitytoolkit.googleapis.com", 
+                "https://securetoken.googleapis.com",
+                "https://firebase.googleapis.com",
+                "https://www.googleapis.com",
+                // Google services for auth
+                "https://accounts.google.com",
+                "https://oauth2.googleapis.com"
+            ],
+            frameSrc: [
+                "'self'", 
+                "https://accounts.google.com",
+                "https://www.google.com"
+            ],
+            fontSrc: [
+                "'self'", 
+                "https://cdnjs.cloudflare.com",
+                "https://fonts.googleapis.com",
+                "https://fonts.gstatic.com"
+            ],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
-            childSrc: ["'self'", "https://accounts.google.com"]
+            childSrc: [
+                "'self'", 
+                "https://accounts.google.com"
+            ],
+            // Allow form submissions to Google
+            formAction: [
+                "'self'",
+                "https://accounts.google.com"
+            ]
         },
     },
+    crossOriginEmbedderPolicy: false, // Disable COEP for Firebase compatibility
 }));
 
 // Compression middleware
 app.use(compression());
 
-// Add request logging in development
-if (process.env.NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+// Enhanced CORS headers for Firebase
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
         next();
-    });
-}
+    }
+});
 
-// Firebase configuration endpoint
+// Add request logging for debugging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 100)}`);
+    next();
+});
+
+// Firebase configuration endpoint with enhanced debugging
 app.get('/api/firebase-config', (req, res) => {
-    console.log('🔧 Firebase config requested');
+    console.log('🔧 Firebase config requested from:', req.ip);
     
     const firebaseConfig = {
         apiKey: process.env.FIREBASE_API_KEY || '',
@@ -49,37 +110,60 @@ app.get('/api/firebase-config', (req, res) => {
         appId: process.env.FIREBASE_APP_ID || ''
     };
 
-    // Check which environment variables are set
+    // Enhanced environment variable checking
     const envVarStatus = {
-        FIREBASE_API_KEY: !!process.env.FIREBASE_API_KEY,
-        FIREBASE_AUTH_DOMAIN: !!process.env.FIREBASE_AUTH_DOMAIN,
-        FIREBASE_PROJECT_ID: !!process.env.FIREBASE_PROJECT_ID,
-        FIREBASE_STORAGE_BUCKET: !!process.env.FIREBASE_STORAGE_BUCKET,
-        FIREBASE_MESSAGING_SENDER_ID: !!process.env.FIREBASE_MESSAGING_SENDER_ID,
-        FIREBASE_APP_ID: !!process.env.FIREBASE_APP_ID
+        FIREBASE_API_KEY: {
+            set: !!process.env.FIREBASE_API_KEY,
+            length: process.env.FIREBASE_API_KEY ? process.env.FIREBASE_API_KEY.length : 0,
+            prefix: process.env.FIREBASE_API_KEY ? process.env.FIREBASE_API_KEY.substring(0, 6) + '...' : 'NOT_SET'
+        },
+        FIREBASE_AUTH_DOMAIN: {
+            set: !!process.env.FIREBASE_AUTH_DOMAIN,
+            value: process.env.FIREBASE_AUTH_DOMAIN || 'NOT_SET'
+        },
+        FIREBASE_PROJECT_ID: {
+            set: !!process.env.FIREBASE_PROJECT_ID,
+            value: process.env.FIREBASE_PROJECT_ID || 'NOT_SET'
+        },
+        FIREBASE_STORAGE_BUCKET: {
+            set: !!process.env.FIREBASE_STORAGE_BUCKET,
+            value: process.env.FIREBASE_STORAGE_BUCKET || 'NOT_SET'
+        },
+        FIREBASE_MESSAGING_SENDER_ID: {
+            set: !!process.env.FIREBASE_MESSAGING_SENDER_ID,
+            value: process.env.FIREBASE_MESSAGING_SENDER_ID || 'NOT_SET'
+        },
+        FIREBASE_APP_ID: {
+            set: !!process.env.FIREBASE_APP_ID,
+            length: process.env.FIREBASE_APP_ID ? process.env.FIREBASE_APP_ID.length : 0,
+            prefix: process.env.FIREBASE_APP_ID ? process.env.FIREBASE_APP_ID.substring(0, 10) + '...' : 'NOT_SET'
+        }
     };
 
     console.log('Environment variables status:', envVarStatus);
 
-    // Only send config if API key is present
-    if (firebaseConfig.apiKey) {
+    // Only send config if API key is present and valid
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('AIza')) {
         console.log('✅ Firebase config available, sending to client');
         res.json(firebaseConfig);
     } else {
-        console.log('❌ Firebase API key not found in environment variables');
+        console.log('❌ Firebase API key not found or invalid in environment variables');
         res.status(404).json({ 
             error: 'Firebase configuration not available',
-            message: 'Firebase API key not found in environment variables',
+            message: firebaseConfig.apiKey ? 
+                'Firebase API key format appears invalid (should start with AIza)' : 
+                'Firebase API key not found in environment variables',
             envVarStatus: envVarStatus,
             help: {
-                deployment: 'Set FIREBASE_API_KEY and other Firebase environment variables in your deployment settings',
-                local: 'Create a firebase-config.js file or set environment variables locally'
+                deployment: 'Set FIREBASE_API_KEY and other Firebase environment variables in your Cloud Run deployment settings',
+                local: 'Create a firebase-config.js file or set environment variables locally',
+                validation: 'API key should start with "AIza" and be about 39 characters long'
             }
         });
     }
 });
 
-// Debug endpoint for Firebase configuration status
+// Enhanced debug endpoint for Firebase configuration status
 app.get('/api/debug/firebase-status', (req, res) => {
     const envVars = [
         'FIREBASE_API_KEY',
@@ -96,106 +180,205 @@ app.get('/api/debug/firebase-status', (req, res) => {
         status[varName] = {
             set: !!value,
             length: value ? value.length : 0,
-            preview: value ? `${value.substring(0, 10)}...` : 'NOT_SET'
+            preview: value ? 
+                (varName.includes('API_KEY') || varName.includes('APP_ID') ? 
+                    `${value.substring(0, 10)}...` : value) : 'NOT_SET',
+            valid: varName === 'FIREBASE_API_KEY' ? 
+                (value && value.startsWith('AIza')) : !!value
         };
     });
+
+    const cloudRunMetadata = {
+        service: process.env.K_SERVICE || 'unknown',
+        revision: process.env.K_REVISION || 'unknown',
+        configuration: process.env.K_CONFIGURATION || 'unknown'
+    };
 
     res.json({
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
         port: PORT,
+        cloudRun: cloudRunMetadata,
         firebaseConfigStatus: status,
         totalEnvVars: Object.keys(process.env).length,
-        allConfigured: envVars.every(varName => !!process.env[varName])
+        allConfigured: envVars.every(varName => {
+            const value = process.env[varName];
+            if (varName === 'FIREBASE_API_KEY') {
+                return value && value.startsWith('AIza');
+            }
+            return !!value;
+        }),
+        requestInfo: {
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            headers: req.headers
+        }
     });
 });
 
-// Static file serving
+// Cloud Run specific endpoints
+app.get('/api/debug/cloud-run-info', (req, res) => {
+    res.json({
+        service: process.env.K_SERVICE || 'Not on Cloud Run',
+        revision: process.env.K_REVISION || 'Not on Cloud Run',
+        configuration: process.env.K_CONFIGURATION || 'Not on Cloud Run',
+        region: process.env.FUNCTION_REGION || 'Unknown',
+        memory: process.env.FUNCTION_MEMORY_MB || 'Unknown',
+        timeout: process.env.FUNCTION_TIMEOUT_SEC || 'Unknown',
+        allCloudRunVars: Object.keys(process.env).filter(key => 
+            key.startsWith('K_') || key.startsWith('FUNCTION_') || key.startsWith('GOOGLE_')
+        ).reduce((acc, key) => {
+            acc[key] = process.env[key];
+            return acc;
+        }, {})
+    });
+});
+
+// Static file serving with enhanced headers
 app.use(express.static(path.join(__dirname), {
-    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0', // Cache in production only
+    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
     etag: true,
     setHeaders: (res, filePath) => {
-        // Set proper MIME types for JavaScript files
+        // Set proper MIME types
         if (filePath.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript');
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        } else if (filePath.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        } else if (filePath.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css; charset=utf-8');
+        }
+        
+        // Add cache control for debug files
+        if (filePath.includes('debug-auth')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
     }
 }));
 
-// Health check endpoint for Cloud Run
+// Enhanced health check endpoint
 app.get('/health', (req, res) => {
     const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
         environment: process.env.NODE_ENV || 'development',
+        cloudRun: {
+            service: process.env.K_SERVICE || 'Not on Cloud Run',
+            revision: process.env.K_REVISION || 'Not on Cloud Run'
+        },
         firebase: {
-            configured: !!process.env.FIREBASE_API_KEY
-        }
+            configured: !!process.env.FIREBASE_API_KEY,
+            apiKeyValid: process.env.FIREBASE_API_KEY && process.env.FIREBASE_API_KEY.startsWith('AIza'),
+            allEnvVarsSet: !![
+                'FIREBASE_API_KEY',
+                'FIREBASE_AUTH_DOMAIN', 
+                'FIREBASE_PROJECT_ID'
+            ].every(key => !!process.env[key])
+        },
+        memory: process.memoryUsage(),
+        uptime: process.uptime()
     };
 
     res.status(200).json(health);
 });
 
-// API endpoint for pipeline validation (future enhancement)
-app.get('/api/validate', (req, res) => {
+// Test endpoint for debugging
+app.get('/api/test', (req, res) => {
     res.json({
-        message: 'Pipeline validation endpoint',
-        version: '1.0.0',
-        timestamp: new Date().toISOString()
+        message: 'API test endpoint working',
+        timestamp: new Date().toISOString(),
+        requestId: Math.random().toString(36).substring(7)
     });
 });
 
-// Development endpoints
-if (process.env.NODE_ENV !== 'production') {
-    // Show environment variables (excluding sensitive ones)
-    app.get('/api/debug/env', (req, res) => {
-        const safeEnvVars = {};
-        Object.keys(process.env).forEach(key => {
-            if (key.startsWith('FIREBASE_')) {
-                safeEnvVars[key] = process.env[key] ? `${process.env[key].substring(0, 10)}...` : 'NOT_SET';
-            } else if (!key.includes('SECRET') && !key.includes('PASSWORD') && !key.includes('TOKEN')) {
-                safeEnvVars[key] = process.env[key];
-            }
-        });
-
-        res.json({
-            environment: process.env.NODE_ENV || 'development',
-            variables: safeEnvVars,
-            count: Object.keys(safeEnvVars).length
-        });
+// CSP test endpoint to verify current policy
+app.get('/api/debug/csp-test', (req, res) => {
+    res.json({
+        message: 'CSP test endpoint',
+        timestamp: new Date().toISOString(),
+        cspDirectives: [
+            'script-src includes: self, unsafe-inline, www.gstatic.com, cdnjs.cloudflare.com, apis.google.com, www.google.com, accounts.google.com',
+            'connect-src includes: Firebase and Google OAuth endpoints',
+            'frame-src includes: accounts.google.com'
+        ],
+        note: 'If you can see this, basic CSP is working. Check browser console for script loading errors.'
     });
-}
+});
 
-// Serve index.html for all other routes (SPA support)
-app.get('*', (req, res) => {
+// Serve debug page with proper headers
+app.get('/debug-auth.html', (req, res) => {
+    res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Debug-Mode': 'enabled'
+    });
+    res.sendFile(path.join(__dirname, 'debug-auth.html'));
+});
+
+// Serve debug JavaScript with proper headers
+app.get('/debug-auth.js', (req, res) => {
+    res.set({
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'X-Debug-Mode': 'enabled'
+    });
+    res.sendFile(path.join(__dirname, 'debug-auth.js'));
+});
+
+// Enhanced error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Server Error:', err);
+    
+    const errorResponse = {
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        timestamp: new Date().toISOString(),
+        requestId: Math.random().toString(36).substring(7)
+    };
+    
+    if (process.env.NODE_ENV === 'development') {
+        errorResponse.stack = err.stack;
+    }
+    
+    res.status(500).json(errorResponse);
+});
+
+// Handle 404s
+app.use((req, res) => {
+    console.log(`404 - Not found: ${req.method} ${req.path}`);
+    
+    // For API routes, return JSON
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+            error: 'Not found',
+            path: req.path,
+            timestamp: new Date().toISOString()
+        });
+    }
+    
+    // For all other routes, serve index.html (SPA support)
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server Error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Graceful shutdown
+// Start server
 const server = app.listen(PORT, () => {
     console.log(`🚀 Buildkite Pipeline Builder running on port ${PORT}`);
-    console.log(`📱 Local: http://localhost:${PORT}`);
+    console.log(`📱 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔍 Debug tool: http://localhost:${PORT}/debug-auth.html`);
+    console.log(`🔧 CSP test: http://localhost:${PORT}/api/debug/csp-test`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Firebase configured: ${!!process.env.FIREBASE_API_KEY}`);
+    console.log(`☁️  Cloud Run service: ${process.env.K_SERVICE || 'Not on Cloud Run'}`);
     
     if (!process.env.FIREBASE_API_KEY) {
         console.log('⚠️  Firebase authentication not configured');
         console.log('   Set FIREBASE_API_KEY and other Firebase environment variables');
+    } else if (!process.env.FIREBASE_API_KEY.startsWith('AIza')) {
+        console.log('⚠️  Firebase API key format appears invalid (should start with AIza)');
     }
 });
 
-// Handle graceful shutdown
+// Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('📤 SIGTERM received, shutting down gracefully');
     server.close(() => {
