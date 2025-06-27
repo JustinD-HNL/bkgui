@@ -2,6 +2,8 @@
 /**
  * Visual Dependency Graph and Enhanced Conditional Logic Builder
  * Completes the remaining features from the enhancement plan
+ * 
+ * FIXED: Complete implementation with proper initialization
  */
 
 class DependencyGraphManager {
@@ -16,6 +18,7 @@ class DependencyGraphManager {
         this.panY = 0;
         this.isDragging = false;
         this.selectedNode = null;
+        this.currentStep = null;
         this.init();
     }
 
@@ -37,13 +40,13 @@ class DependencyGraphManager {
                         </div>
                         <div class="modal-body">
                             <div class="graph-controls">
-                                <button class="btn btn-secondary" onclick="dependencyGraph.resetView()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" onclick="dependencyGraph.autoLayout()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.autoLayout()">
                                     <i class="fas fa-magic"></i> Auto Layout
                                 </button>
-                                <button class="btn btn-secondary" onclick="dependencyGraph.exportGraph()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
                                     <i class="fas fa-download"></i> Export SVG
                                 </button>
                                 <div class="graph-legend">
@@ -91,7 +94,7 @@ class DependencyGraphManager {
                                     <div class="condition-group">
                                         <div class="condition-header">
                                             <h4>IF Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" onclick="dependencyGraph.addCondition('if')">
+                                            <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('if')">
                                                 <i class="fas fa-plus"></i> Add Condition
                                             </button>
                                         </div>
@@ -101,7 +104,7 @@ class DependencyGraphManager {
                                     <div class="condition-group">
                                         <div class="condition-header">
                                             <h4>UNLESS Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" onclick="dependencyGraph.addCondition('unless')">
+                                            <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('unless')">
                                                 <i class="fas fa-plus"></i> Add Condition
                                             </button>
                                         </div>
@@ -117,16 +120,16 @@ class DependencyGraphManager {
                                 <div class="condition-templates">
                                     <h4>Quick Templates</h4>
                                     <div class="template-buttons">
-                                        <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('main-branch')">
+                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('main-branch')">
                                             Main Branch Only
                                         </button>
-                                        <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('pull-request')">
+                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('pull-request')">
                                             Pull Request Only
                                         </button>
-                                        <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('file-changes')">
+                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('file-changes')">
                                             File Changes
                                         </button>
-                                        <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('env-var')">
+                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('env-var')">
                                             Environment Variable
                                         </button>
                                     </div>
@@ -135,7 +138,7 @@ class DependencyGraphManager {
                         </div>
                         <div class="modal-actions">
                             <button class="btn btn-secondary" onclick="closeModal('conditional-builder-modal')">Cancel</button>
-                            <button class="btn btn-primary" onclick="dependencyGraph.applyConditions()">Apply Conditions</button>
+                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyConditions()">Apply Conditions</button>
                         </div>
                     </div>
                 </div>
@@ -222,7 +225,7 @@ class DependencyGraphManager {
                         </div>
                         <div class="modal-actions">
                             <button class="btn btn-secondary" onclick="closeModal('dependency-manager-modal')">Cancel</button>
-                            <button class="btn btn-primary" onclick="dependencyGraph.applyDependencies()">Apply Dependencies</button>
+                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyDependencies()">Apply Dependencies</button>
                         </div>
                     </div>
                 </div>
@@ -233,21 +236,27 @@ class DependencyGraphManager {
 
     showDependencyGraph() {
         const modal = document.getElementById('dependency-graph-modal');
-        modal.classList.remove('hidden');
-        
-        // Initialize canvas
-        this.canvas = document.getElementById('dependency-canvas');
-        this.ctx = this.canvas.getContext('2d');
-        
-        // Setup canvas events
-        this.setupCanvasEvents();
-        
-        // Generate and render graph
-        this.generateGraph();
-        this.renderGraph();
+        if (modal) {
+            modal.classList.remove('hidden');
+            
+            // Initialize canvas
+            this.canvas = document.getElementById('dependency-canvas');
+            if (this.canvas) {
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Setup canvas events
+                this.setupCanvasEvents();
+                
+                // Generate and render graph
+                this.generateGraph();
+                this.renderGraph();
+            }
+        }
     }
 
     setupCanvasEvents() {
+        if (!this.canvas) return;
+        
         this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
@@ -404,6 +413,8 @@ class DependencyGraphManager {
     }
 
     renderGraph() {
+        if (!this.ctx || !this.canvas) return;
+        
         const ctx = this.ctx;
         const canvas = this.canvas;
         
@@ -608,17 +619,19 @@ class DependencyGraphManager {
 
     showNodeDetails(node) {
         const detailsContainer = document.getElementById('node-details');
+        if (!detailsContainer) return;
+        
         const step = node.step;
         
         detailsContainer.innerHTML = `
-            <h4>${step.properties.label}</h4>
+            <h4>${step.properties.label || step.type}</h4>
             <p><strong>Type:</strong> ${step.type}</p>
             <p><strong>ID:</strong> ${step.id}</p>
             ${step.properties.command ? `<p><strong>Command:</strong> <code>${step.properties.command}</code></p>` : ''}
             ${step.properties.agents ? `<p><strong>Agents:</strong> ${step.properties.agents}</p>` : ''}
             ${Object.keys(step.properties.plugins || {}).length > 0 ? 
                 `<p><strong>Plugins:</strong> ${Object.keys(step.properties.plugins).join(', ')}</p>` : ''}
-            <button class="btn btn-secondary btn-small" onclick="pipelineBuilder.selectStep('${step.id}'); closeModal('dependency-graph-modal')">
+            <button class="btn btn-secondary btn-small" onclick="window.pipelineBuilder && window.pipelineBuilder.selectStep('${step.id}'); closeModal('dependency-graph-modal')">
                 Edit Step
             </button>
         `;
@@ -669,7 +682,7 @@ class DependencyGraphManager {
             const color = colors[node.type] || '#a0aec0';
             
             svg += `<rect x="${node.x - node.width/2}" y="${node.y - node.height/2}" width="${node.width}" height="${node.height}" fill="${color}" stroke="#ffffff"/>`;
-            svg += `<text x="${node.x}" y="${node.y}" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${node.step.properties.label}</text>`;
+            svg += `<text x="${node.x}" y="${node.y}" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${node.step.properties.label || node.type}</text>`;
         });
         
         svg += '</svg>';
@@ -679,9 +692,11 @@ class DependencyGraphManager {
     // Conditional Logic Builder Methods
     showConditionalBuilder() {
         const modal = document.getElementById('conditional-builder-modal');
-        modal.classList.remove('hidden');
-        this.currentStep = this.pipelineBuilder.selectedStep;
-        this.loadExistingConditions();
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.currentStep = this.pipelineBuilder.selectedStep;
+            this.loadExistingConditions();
+        }
     }
 
     loadExistingConditions() {
@@ -690,8 +705,8 @@ class DependencyGraphManager {
         const ifConditions = document.getElementById('if-conditions');
         const unlessConditions = document.getElementById('unless-conditions');
         
-        ifConditions.innerHTML = '';
-        unlessConditions.innerHTML = '';
+        if (ifConditions) ifConditions.innerHTML = '';
+        if (unlessConditions) unlessConditions.innerHTML = '';
         
         // Load existing if condition
         if (this.currentStep.properties.if) {
@@ -708,12 +723,14 @@ class DependencyGraphManager {
 
     addCondition(type, existingValue = '') {
         const container = document.getElementById(`${type}-conditions`);
+        if (!container) return;
+        
         const conditionId = `condition-${Date.now()}`;
         
         const conditionHTML = `
             <div class="condition-item" id="${conditionId}">
                 <div class="condition-builder">
-                    <select class="condition-field" onchange="dependencyGraph.updateConditionPreview()">
+                    <select class="condition-field" onchange="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()">
                         <option value="build.branch">Branch</option>
                         <option value="build.pull_request">Pull Request</option>
                         <option value="build.env">Environment Variable</option>
@@ -722,7 +739,7 @@ class DependencyGraphManager {
                         <option value="build.tag">Tag</option>
                     </select>
                     
-                    <select class="condition-operator" onchange="dependencyGraph.updateConditionPreview()">
+                    <select class="condition-operator" onchange="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()">
                         <option value="==">equals</option>
                         <option value="!=">not equals</option>
                         <option value="=~">matches regex</option>
@@ -731,9 +748,9 @@ class DependencyGraphManager {
                         <option value="not in">not in list</option>
                     </select>
                     
-                    <input type="text" class="condition-value" placeholder="Value" value="${existingValue}" oninput="dependencyGraph.updateConditionPreview()" />
+                    <input type="text" class="condition-value" placeholder="Value" value="${existingValue}" oninput="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()" />
                     
-                    <button class="btn btn-outline btn-small" onclick="dependencyGraph.removeCondition('${conditionId}')">
+                    <button class="btn btn-outline btn-small" onclick="window.dependencyGraph && window.dependencyGraph.removeCondition('${conditionId}')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -749,8 +766,11 @@ class DependencyGraphManager {
     }
 
     removeCondition(conditionId) {
-        document.getElementById(conditionId).remove();
-        this.updateConditionPreview();
+        const element = document.getElementById(conditionId);
+        if (element) {
+            element.remove();
+            this.updateConditionPreview();
+        }
     }
 
     updateConditionPreview() {
@@ -768,11 +788,16 @@ class DependencyGraphManager {
             conditionText += '!(' + unlessConditions.join(' || ') + ')';
         }
         
-        document.getElementById('condition-output').textContent = conditionText || 'No conditions defined';
+        const output = document.getElementById('condition-output');
+        if (output) {
+            output.textContent = conditionText || 'No conditions defined';
+        }
     }
 
     collectConditions(type) {
         const container = document.getElementById(`${type}-conditions`);
+        if (!container) return [];
+        
         const conditions = [];
         
         container.querySelectorAll('.condition-item').forEach(item => {
@@ -832,11 +857,13 @@ class DependencyGraphManager {
             const container = document.getElementById(`${templateConfig.type}-conditions`);
             const lastCondition = container.lastElementChild;
             
-            lastCondition.querySelector('.condition-field').value = templateConfig.field;
-            lastCondition.querySelector('.condition-operator').value = templateConfig.operator;
-            lastCondition.querySelector('.condition-value').value = templateConfig.value;
-            
-            this.updateConditionPreview();
+            if (lastCondition) {
+                lastCondition.querySelector('.condition-field').value = templateConfig.field;
+                lastCondition.querySelector('.condition-operator').value = templateConfig.operator;
+                lastCondition.querySelector('.condition-value').value = templateConfig.value;
+                
+                this.updateConditionPreview();
+            }
         }
     }
 
@@ -866,9 +893,11 @@ class DependencyGraphManager {
     // Dependency Manager Methods
     showDependencyManager() {
         const modal = document.getElementById('dependency-manager-modal');
-        modal.classList.remove('hidden');
-        this.setupDependencyTabs();
-        this.loadStepDependencies();
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.setupDependencyTabs();
+            this.loadStepDependencies();
+        }
     }
 
     setupDependencyTabs() {
@@ -896,6 +925,8 @@ class DependencyGraphManager {
 
     loadStepDependencies() {
         const container = document.getElementById('step-dependency-list');
+        if (!container) return;
+        
         const steps = this.pipelineBuilder.steps;
         
         container.innerHTML = '';
@@ -904,19 +935,19 @@ class DependencyGraphManager {
             const dependencyHTML = `
                 <div class="step-dependency-item">
                     <div class="step-info">
-                        <span class="step-label">${step.properties.label}</span>
+                        <span class="step-label">${step.properties.label || step.type}</span>
                         <span class="step-type">(${step.type})</span>
                     </div>
                     <div class="dependency-controls">
                         <label>Key:</label>
                         <input type="text" class="dependency-key" value="${step.properties.key || ''}" 
                                placeholder="unique-key" data-step-id="${step.id}" 
-                               onchange="dependencyGraph.updateStepKey(this)" />
+                               onchange="window.dependencyGraph && window.dependencyGraph.updateStepKey(this)" />
                         
                         <label>Depends on:</label>
                         <input type="text" class="dependency-list" value="${(step.properties.depends_on || []).join(', ')}" 
                                placeholder="key1, key2" data-step-id="${step.id}"
-                               onchange="dependencyGraph.updateStepDependencies(this)" />
+                               onchange="window.dependencyGraph && window.dependencyGraph.updateStepDependencies(this)" />
                     </div>
                 </div>
             `;
@@ -1054,10 +1085,10 @@ class EnhancedPipelineBuilderWithDependencies extends EnhancedPipelineBuilder {
                 </div>
                 
                 <div class="property-group">
-                    <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.dependencyGraph.showConditionalBuilder()">
+                    <button type="button" class="btn btn-secondary" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showConditionalBuilder()">
                         <i class="fas fa-code-branch"></i> Advanced Conditions
                     </button>
-                    <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.dependencyGraph.showDependencyManager()">
+                    <button type="button" class="btn btn-secondary" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyManager()">
                         <i class="fas fa-sitemap"></i> Manage Dependencies
                     </button>
                 </div>
@@ -1082,23 +1113,6 @@ class EnhancedPipelineBuilderWithDependencies extends EnhancedPipelineBuilder {
     }
 }
 
-// Global dependency graph instance
-window.dependencyGraph = null;
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Replace the existing pipeline builder with enhanced version
-    if (window.pipelineBuilder) {
-        const enhancedBuilder = new EnhancedPipelineBuilderWithDependencies();
-        enhancedBuilder.steps = window.pipelineBuilder.steps;
-        enhancedBuilder.selectedStep = window.pipelineBuilder.selectedStep;
-        enhancedBuilder.stepCounter = window.pipelineBuilder.stepCounter;
-        
-        window.pipelineBuilder = enhancedBuilder;
-        window.dependencyGraph = enhancedBuilder.dependencyGraph;
-        
-        // Re-render with enhanced features
-        enhancedBuilder.renderPipeline();
-        enhancedBuilder.renderProperties();
-    }
-});
+// Export classes to global scope
+window.DependencyGraphManager = DependencyGraphManager;
+window.EnhancedPipelineBuilderWithDependencies = EnhancedPipelineBuilderWithDependencies;

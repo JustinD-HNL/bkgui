@@ -1,7 +1,12 @@
-// YAML Generator for Buildkite Pipelines
+// js/yaml-generator.js
+/**
+ * YAML Generator for Buildkite Pipelines
+ * Converts pipeline builder steps to valid Buildkite YAML
+ */
+
 class YAMLGenerator {
     constructor() {
-        this.indent = '  ';
+        this.indentSize = 2;
     }
 
     generateYAML(steps) {
@@ -12,267 +17,323 @@ class YAMLGenerator {
         let yaml = 'steps:\n';
         
         steps.forEach(step => {
-            yaml += this.generateStepYAML(step);
+            yaml += this.convertStepToYAML(step);
         });
 
         return yaml;
     }
 
-    generateStepYAML(step) {
-        const stepType = step.type;
-        const props = step.properties;
+    convertStepToYAML(step) {
+        let yaml = `  - `;
         
-        switch (stepType) {
+        switch (step.type) {
             case 'command':
-                return this.generateCommandStep(props);
+                yaml += this.generateCommandStep(step);
+                break;
             case 'wait':
-                return this.generateWaitStep(props);
+                yaml += this.generateWaitStep(step);
+                break;
             case 'block':
-                return this.generateBlockStep(props);
+                yaml += this.generateBlockStep(step);
+                break;
             case 'input':
-                return this.generateInputStep(props);
+                yaml += this.generateInputStep(step);
+                break;
             case 'trigger':
-                return this.generateTriggerStep(props);
+                yaml += this.generateTriggerStep(step);
+                break;
             case 'group':
-                return this.generateGroupStep(props);
+                yaml += this.generateGroupStep(step);
+                break;
+            case 'annotation':
+                yaml += this.generateAnnotationStep(step);
+                break;
+            case 'plugin':
+                yaml += this.generatePluginStep(step);
+                break;
             default:
-                return `${this.indent}# Unknown step type: ${stepType}\n`;
+                yaml += this.generateCommandStep(step);
         }
+
+        return yaml + '\n';
     }
 
-    generateCommandStep(props) {
-        let yaml = `${this.indent}- label: "${props.label || 'Command Step'}"\n`;
-        
-        if (props.command) {
-            if (props.command.includes('\n')) {
-                yaml += `${this.indent}${this.indent}command: |\n`;
-                props.command.split('\n').forEach(line => {
-                    yaml += `${this.indent}${this.indent}${this.indent}${line}\n`;
-                });
-            } else {
-                yaml += `${this.indent}${this.indent}command: "${props.command}"\n`;
-            }
+    generateCommandStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        // Basic properties
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
         }
 
+        if (props.command) {
+            yaml += `    command: "${this.escapeYAML(props.command)}"\n`;
+        }
+
+        // Key for dependencies
+        if (props.key) {
+            yaml += `    key: "${props.key}"\n`;
+        }
+
+        // Dependencies
+        if (props.depends_on && props.depends_on.length > 0) {
+            yaml += `    depends_on:\n`;
+            props.depends_on.forEach(dep => {
+                yaml += `      - "${dep}"\n`;
+            });
+        }
+
+        // Conditions
+        if (props.if) {
+            yaml += `    if: ${props.if}\n`;
+        }
+
+        if (props.unless) {
+            yaml += `    unless: ${props.unless}\n`;
+        }
+
+        // Agents
         if (props.agents) {
-            yaml += `${this.indent}${this.indent}agents:\n`;
-            // Parse agent query
-            const agentPairs = props.agents.split(',').map(pair => pair.trim());
-            agentPairs.forEach(pair => {
-                const [key, value] = pair.split('=').map(s => s.trim());
-                if (key && value) {
-                    yaml += `${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
+            yaml += `    agents:\n      queue: "${props.agents}"\n`;
+        }
+
+        // Environment variables
+        if (props.env && Object.keys(props.env).length > 0) {
+            yaml += `    env:\n`;
+            Object.entries(props.env).forEach(([key, value]) => {
+                yaml += `      ${key}: "${this.escapeYAML(value)}"\n`;
+            });
+        }
+
+        // Plugins
+        if (props.plugins && Object.keys(props.plugins).length > 0) {
+            yaml += `    plugins:\n`;
+            Object.entries(props.plugins).forEach(([pluginName, config]) => {
+                if (Object.keys(config).length === 0) {
+                    yaml += `      - ${pluginName}#v1.0.0\n`;
+                } else {
+                    yaml += `      - ${pluginName}#v1.0.0:\n`;
+                    Object.entries(config).forEach(([key, value]) => {
+                        yaml += `          ${key}: "${this.escapeYAML(value)}"\n`;
+                    });
                 }
             });
         }
 
-        if (props.env && Object.keys(props.env).length > 0) {
-            yaml += `${this.indent}${this.indent}env:\n`;
-            Object.entries(props.env).forEach(([key, value]) => {
-                yaml += `${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
+        // Matrix builds
+        if (props.matrix && props.matrix.setup) {
+            yaml += `    matrix:\n      setup:\n`;
+            Object.entries(props.matrix.setup).forEach(([key, values]) => {
+                yaml += `        ${key}:\n`;
+                values.forEach(value => {
+                    yaml += `          - "${value}"\n`;
+                });
             });
         }
 
-        if (props.timeout_in_minutes && props.timeout_in_minutes !== 10) {
-            yaml += `${this.indent}${this.indent}timeout_in_minutes: ${props.timeout_in_minutes}\n`;
+        // Additional properties
+        if (props.timeout_in_minutes) {
+            yaml += `    timeout_in_minutes: ${props.timeout_in_minutes}\n`;
         }
 
-        if (props.retry) {
-            yaml += `${this.indent}${this.indent}retry:\n`;
-            yaml += `${this.indent}${this.indent}${this.indent}automatic: true\n`;
+        if (props.retry && props.retry.automatic) {
+            yaml += `    retry:\n      automatic: ${props.retry.automatic}\n`;
         }
 
         if (props.soft_fail) {
-            yaml += `${this.indent}${this.indent}soft_fail: true\n`;
+            yaml += `    soft_fail: ${props.soft_fail}\n`;
         }
 
-        return yaml + '\n';
+        return yaml.slice(0, -1); // Remove last newline
     }
 
-    generateWaitStep(props) {
-        let yaml = `${this.indent}- wait\n`;
+    generateWaitStep(step) {
+        let yaml = 'wait';
         
-        if (props.continue_on_failure) {
-            yaml += `${this.indent}${this.indent}continue_on_failure: true\n`;
+        if (step.properties.continue_on_failure) {
+            yaml += '\n    continue_on_failure: true';
         }
 
-        return yaml + '\n';
-    }
-
-    generateBlockStep(props) {
-        let yaml = `${this.indent}- block: "${props.label || 'Block Step'}"\n`;
-        
-        if (props.prompt) {
-            yaml += `${this.indent}${this.indent}prompt: "${props.prompt}"\n`;
-        }
-
-        if (props.blocked_state && props.blocked_state !== 'running') {
-            yaml += `${this.indent}${this.indent}blocked_state: "${props.blocked_state}"\n`;
-        }
-
-        return yaml + '\n';
-    }
-
-    generateInputStep(props) {
-        let yaml = `${this.indent}- input: "${props.label || 'Input Step'}"\n`;
-        
-        if (props.prompt) {
-            yaml += `${this.indent}${this.indent}prompt: "${props.prompt}"\n`;
-        }
-
-        if (props.fields && props.fields.length > 0) {
-            yaml += `${this.indent}${this.indent}fields:\n`;
-            props.fields.forEach(field => {
-                yaml += `${this.indent}${this.indent}${this.indent}- key: "${field.key || ''}"\n`;
-                yaml += `${this.indent}${this.indent}${this.indent}${this.indent}text: "${field.text || ''}"\n`;
-                if (field.required) {
-                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}required: true\n`;
-                }
-                if (field.default) {
-                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}default: "${field.default}"\n`;
-                }
-                if (field.hint) {
-                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}hint: "${field.hint}"\n`;
-                }
-            });
-        }
-
-        return yaml + '\n';
-    }
-
-    generateTriggerStep(props) {
-        let yaml = `${this.indent}- label: "${props.label || 'Trigger Step'}"\n`;
-        yaml += `${this.indent}${this.indent}trigger: "${props.trigger || ''}"\n`;
-
-        if (props.build && Object.keys(props.build).length > 0) {
-            yaml += `${this.indent}${this.indent}build:\n`;
-            
-            if (props.build.branch) {
-                yaml += `${this.indent}${this.indent}${this.indent}branch: "${props.build.branch}"\n`;
-            }
-            
-            if (props.build.commit) {
-                yaml += `${this.indent}${this.indent}${this.indent}commit: "${props.build.commit}"\n`;
-            }
-            
-            if (props.build.message) {
-                yaml += `${this.indent}${this.indent}${this.indent}message: "${props.build.message}"\n`;
-            }
-            
-            if (props.build.env && Object.keys(props.build.env).length > 0) {
-                yaml += `${this.indent}${this.indent}${this.indent}env:\n`;
-                Object.entries(props.build.env).forEach(([key, value]) => {
-                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
-                });
-            }
-        }
-
-        if (props.async) {
-            yaml += `${this.indent}${this.indent}async: true\n`;
-        }
-
-        return yaml + '\n';
-    }
-
-    generateGroupStep(props) {
-        let yaml = `${this.indent}- group: "${props.label || 'Group Step'}"\n`;
-        
-        if (props.steps && props.steps.length > 0) {
-            yaml += `${this.indent}${this.indent}steps:\n`;
-            props.steps.forEach(step => {
-                if (typeof step === 'string') {
-                    yaml += `${this.indent}${this.indent}${this.indent}- command: "${step}"\n`;
-                } else if (step.command) {
-                    yaml += `${this.indent}${this.indent}${this.indent}- command: "${step.command}"\n`;
-                    if (step.label) {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}label: "${step.label}"\n`;
-                    }
-                }
-            });
-        }
-
-        return yaml + '\n';
-    }
-
-    // Helper method to escape YAML strings
-    escapeYAMLString(str) {
-        if (!str) return '';
-        
-        // If string contains special characters, wrap in quotes
-        if (/[:\{\}\[\],&*#?|\-<>=!%@`]/.test(str) || str.trim() !== str) {
-            return `"${str.replace(/"/g, '\\"')}"`;
-        }
-        
-        return str;
-    }
-
-    // Generate a complete pipeline with metadata
-    generateFullPipeline(steps, metadata = {}) {
-        let yaml = '';
-        
-        // Add pipeline metadata if provided
-        if (metadata.name) {
-            yaml += `# Pipeline: ${metadata.name}\n`;
-        }
-        
-        if (metadata.description) {
-            yaml += `# Description: ${metadata.description}\n`;
-        }
-        
-        if (metadata.env && Object.keys(metadata.env).length > 0) {
-            yaml += '\nenv:\n';
-            Object.entries(metadata.env).forEach(([key, value]) => {
-                yaml += `  ${key}: "${value}"\n`;
-            });
-        }
-        
-        yaml += '\n';
-        yaml += this.generateYAML(steps);
-        
         return yaml;
     }
 
-    // Validate pipeline structure
-    validatePipeline(steps) {
-        const errors = [];
-        
-        if (!Array.isArray(steps)) {
-            errors.push('Steps must be an array');
-            return errors;
+    generateBlockStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
+        }
+
+        yaml += `    block: "${this.escapeYAML(props.prompt || 'Continue?')}"\n`;
+
+        if (props.key) {
+            yaml += `    key: "${props.key}"\n`;
+        }
+
+        if (props.depends_on && props.depends_on.length > 0) {
+            yaml += `    depends_on:\n`;
+            props.depends_on.forEach(dep => {
+                yaml += `      - "${dep}"\n`;
+            });
+        }
+
+        return yaml.slice(0, -1);
+    }
+
+    generateInputStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
+        }
+
+        yaml += `    input: "${this.escapeYAML(props.prompt || 'Please provide input')}"\n`;
+
+        if (props.key) {
+            yaml += `    key: "${props.key}"\n`;
+        }
+
+        if (props.fields && props.fields.length > 0) {
+            yaml += `    fields:\n`;
+            props.fields.forEach(field => {
+                yaml += `      - text: "${field.key}"\n`;
+                yaml += `        hint: "${field.hint || ''}"\n`;
+            });
+        }
+
+        return yaml.slice(0, -1);
+    }
+
+    generateTriggerStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
+        }
+
+        yaml += `    trigger: "${props.trigger || 'downstream-pipeline'}"\n`;
+
+        if (props.build && Object.keys(props.build).length > 0) {
+            yaml += `    build:\n`;
+            Object.entries(props.build).forEach(([key, value]) => {
+                yaml += `      ${key}: "${this.escapeYAML(value)}"\n`;
+            });
+        }
+
+        return yaml.slice(0, -1);
+    }
+
+    generateGroupStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
+        }
+
+        yaml += `    group:\n`;
+
+        if (props.steps && props.steps.length > 0) {
+            yaml += `    steps:\n`;
+            props.steps.forEach(groupStep => {
+                const stepYaml = this.convertStepToYAML(groupStep);
+                // Indent group steps
+                yaml += stepYaml.replace(/^  /gm, '      ');
+            });
+        }
+
+        return yaml.slice(0, -1);
+    }
+
+    generateAnnotationStep(step) {
+        const props = step.properties;
+        let yaml = '';
+
+        if (props.label) {
+            yaml += `label: "${this.escapeYAML(props.label)}"\n`;
+        }
+
+        yaml += `    command: "buildkite-agent annotate`;
+
+        if (props.body) {
+            yaml += ` '${this.escapeYAML(props.body)}'`;
+        }
+
+        if (props.style && props.style !== 'info') {
+            yaml += ` --style ${props.style}`;
+        }
+
+        if (props.context) {
+            yaml += ` --context ${props.context}`;
+        }
+
+        yaml += `"\n`;
+
+        return yaml.slice(0, -1);
+    }
+
+    generatePluginStep(step) {
+        // Plugin steps are essentially command steps with plugins
+        return this.generateCommandStep(step);
+    }
+
+    escapeYAML(str) {
+        if (typeof str !== 'string') {
+            return str;
         }
         
-        steps.forEach((step, index) => {
-            if (!step.type) {
-                errors.push(`Step ${index + 1}: Missing step type`);
+        // Escape special YAML characters
+        return str
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r')
+            .replace(/\t/g, '\\t');
+    }
+
+    validateYAML(yamlString) {
+        try {
+            // Basic validation - check for common issues
+            const lines = yamlString.split('\n');
+            let errors = [];
+
+            // Check indentation
+            lines.forEach((line, index) => {
+                if (line.trim() && line.search(/\S/) % 2 !== 0 && line.search(/\S/) > 0) {
+                    errors.push(`Line ${index + 1}: Inconsistent indentation`);
+                }
+            });
+
+            // Check for required fields
+            if (!yamlString.includes('steps:')) {
+                errors.push('Missing required "steps:" field');
             }
-            
-            if (!step.properties) {
-                errors.push(`Step ${index + 1}: Missing properties`);
-            }
-            
-            // Type-specific validation
-            switch (step.type) {
-                case 'command':
-                    if (!step.properties.command) {
-                        errors.push(`Step ${index + 1}: Command step missing command`);
-                    }
-                    break;
-                case 'trigger':
-                    if (!step.properties.trigger) {
-                        errors.push(`Step ${index + 1}: Trigger step missing pipeline reference`);
-                    }
-                    break;
-                case 'input':
-                    if (!step.properties.fields || step.properties.fields.length === 0) {
-                        errors.push(`Step ${index + 1}: Input step should have at least one field`);
-                    }
-                    break;
-            }
-        });
-        
-        return errors;
+
+            return {
+                valid: errors.length === 0,
+                errors: errors
+            };
+        } catch (error) {
+            return {
+                valid: false,
+                errors: [error.message]
+            };
+        }
+    }
+
+    formatYAML(yamlString) {
+        // Basic YAML formatting
+        return yamlString
+            .split('\n')
+            .map(line => line.trimEnd())
+            .join('\n')
+            .replace(/\n\n\n+/g, '\n\n'); // Remove excessive blank lines
     }
 }
 
-// Make it globally available
+// Create global instance
 window.yamlGenerator = new YAMLGenerator();
