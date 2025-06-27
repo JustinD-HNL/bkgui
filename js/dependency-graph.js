@@ -3,7 +3,7 @@
  * Visual Dependency Graph and Enhanced Conditional Logic Builder
  * Completes the remaining features from the enhancement plan
  * 
- * FIXED: Complete implementation with proper initialization
+ * FIXED: Complete implementation with proper initialization and event handling
  */
 
 class DependencyGraphManager {
@@ -23,9 +23,11 @@ class DependencyGraphManager {
     }
 
     init() {
+        console.log('🔗 Initializing Dependency Graph Manager...');
         this.setupGraphModal();
         this.setupConditionalBuilder();
         this.setupDependencyManager();
+        console.log('✅ Dependency Graph Manager initialized');
     }
 
     setupGraphModal() {
@@ -36,17 +38,17 @@ class DependencyGraphManager {
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-project-diagram"></i> Pipeline Dependency Graph</h3>
-                            <button class="modal-close" onclick="closeModal('dependency-graph-modal')">&times;</button>
+                            <button class="modal-close">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="graph-controls">
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
+                                <button class="btn btn-secondary" data-action="reset-view">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.autoLayout()">
+                                <button class="btn btn-secondary" data-action="auto-layout">
                                     <i class="fas fa-magic"></i> Auto Layout
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
+                                <button class="btn btn-secondary" data-action="export-graph">
                                     <i class="fas fa-download"></i> Export SVG
                                 </button>
                                 <div class="graph-legend">
@@ -86,7 +88,7 @@ class DependencyGraphManager {
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-code-branch"></i> Conditional Logic Builder</h3>
-                            <button class="modal-close" onclick="closeModal('conditional-builder-modal')">&times;</button>
+                            <button class="modal-close">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="conditional-builder">
@@ -94,7 +96,7 @@ class DependencyGraphManager {
                                     <div class="condition-group">
                                         <div class="condition-header">
                                             <h4>IF Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('if')">
+                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="if">
                                                 <i class="fas fa-plus"></i> Add Condition
                                             </button>
                                         </div>
@@ -104,7 +106,7 @@ class DependencyGraphManager {
                                     <div class="condition-group">
                                         <div class="condition-header">
                                             <h4>UNLESS Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('unless')">
+                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="unless">
                                                 <i class="fas fa-plus"></i> Add Condition
                                             </button>
                                         </div>
@@ -120,16 +122,16 @@ class DependencyGraphManager {
                                 <div class="condition-templates">
                                     <h4>Quick Templates</h4>
                                     <div class="template-buttons">
-                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('main-branch')">
+                                        <button class="btn btn-outline" data-template="main-branch">
                                             Main Branch Only
                                         </button>
-                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('pull-request')">
+                                        <button class="btn btn-outline" data-template="pull-request">
                                             Pull Request Only
                                         </button>
-                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('file-changes')">
+                                        <button class="btn btn-outline" data-template="file-changes">
                                             File Changes
                                         </button>
-                                        <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('env-var')">
+                                        <button class="btn btn-outline" data-template="env-var">
                                             Environment Variable
                                         </button>
                                     </div>
@@ -137,8 +139,8 @@ class DependencyGraphManager {
                             </div>
                         </div>
                         <div class="modal-actions">
-                            <button class="btn btn-secondary" onclick="closeModal('conditional-builder-modal')">Cancel</button>
-                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyConditions()">Apply Conditions</button>
+                            <button class="btn btn-secondary modal-close">Cancel</button>
+                            <button class="btn btn-primary" data-action="apply-conditions">Apply Conditions</button>
                         </div>
                     </div>
                 </div>
@@ -155,7 +157,7 @@ class DependencyGraphManager {
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-sitemap"></i> Dependency Manager</h3>
-                            <button class="modal-close" onclick="closeModal('dependency-manager-modal')">&times;</button>
+                            <button class="modal-close">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="dependency-manager">
@@ -224,8 +226,8 @@ class DependencyGraphManager {
                             </div>
                         </div>
                         <div class="modal-actions">
-                            <button class="btn btn-secondary" onclick="closeModal('dependency-manager-modal')">Cancel</button>
-                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyDependencies()">Apply Dependencies</button>
+                            <button class="btn btn-secondary modal-close">Cancel</button>
+                            <button class="btn btn-primary" data-action="apply-dependencies">Apply Dependencies</button>
                         </div>
                     </div>
                 </div>
@@ -235,22 +237,31 @@ class DependencyGraphManager {
     }
 
     showDependencyGraph() {
+        console.log('🔗 Opening dependency graph...');
         const modal = document.getElementById('dependency-graph-modal');
         if (modal) {
             modal.classList.remove('hidden');
             
-            // Initialize canvas
-            this.canvas = document.getElementById('dependency-canvas');
-            if (this.canvas) {
-                this.ctx = this.canvas.getContext('2d');
-                
-                // Setup canvas events
-                this.setupCanvasEvents();
-                
-                // Generate and render graph
-                this.generateGraph();
-                this.renderGraph();
-            }
+            // Initialize canvas after modal is shown
+            setTimeout(() => {
+                this.canvas = document.getElementById('dependency-canvas');
+                if (this.canvas) {
+                    this.ctx = this.canvas.getContext('2d');
+                    
+                    // Setup canvas events
+                    this.setupCanvasEvents();
+                    
+                    // Generate and render graph
+                    this.generateGraph();
+                    this.renderGraph();
+                    
+                    console.log('✅ Dependency graph initialized');
+                } else {
+                    console.error('❌ Canvas element not found');
+                }
+            }, 100);
+        } else {
+            console.error('❌ Dependency graph modal not found');
         }
     }
 
@@ -268,7 +279,7 @@ class DependencyGraphManager {
         this.nodes = [];
         this.edges = [];
         
-        const steps = this.pipelineBuilder.steps;
+        const steps = this.pipelineBuilder.steps || [];
         const nodeSpacing = 150;
         const levelHeight = 120;
         
@@ -294,7 +305,7 @@ class DependencyGraphManager {
     }
 
     generateEdges() {
-        const steps = this.pipelineBuilder.steps;
+        const steps = this.pipelineBuilder.steps || [];
         
         steps.forEach((step, index) => {
             // Implicit dependencies (sequential flow)
@@ -331,13 +342,13 @@ class DependencyGraphManager {
             }
             
             // Explicit dependencies (if implemented)
-            if (step.properties.depends_on) {
+            if (step.properties && step.properties.depends_on) {
                 const dependencies = Array.isArray(step.properties.depends_on) 
                     ? step.properties.depends_on 
                     : [step.properties.depends_on];
                     
                 dependencies.forEach(depId => {
-                    const sourceNode = this.nodes.find(n => n.step.properties.key === depId);
+                    const sourceNode = this.nodes.find(n => n.step.properties && n.step.properties.key === depId);
                     const targetNode = this.nodes.find(n => n.id === step.id);
                     
                     if (sourceNode && targetNode) {
@@ -470,7 +481,7 @@ class DependencyGraphManager {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        const label = step.properties.label || step.type;
+        const label = (step.properties && step.properties.label) || step.type;
         const maxWidth = width - 10;
         const truncated = this.truncateText(label, maxWidth, ctx);
         
@@ -624,20 +635,21 @@ class DependencyGraphManager {
         const step = node.step;
         
         detailsContainer.innerHTML = `
-            <h4>${step.properties.label || step.type}</h4>
+            <h4>${(step.properties && step.properties.label) || step.type}</h4>
             <p><strong>Type:</strong> ${step.type}</p>
             <p><strong>ID:</strong> ${step.id}</p>
-            ${step.properties.command ? `<p><strong>Command:</strong> <code>${step.properties.command}</code></p>` : ''}
-            ${step.properties.agents ? `<p><strong>Agents:</strong> ${step.properties.agents}</p>` : ''}
-            ${Object.keys(step.properties.plugins || {}).length > 0 ? 
+            ${step.properties && step.properties.command ? `<p><strong>Command:</strong> <code>${step.properties.command}</code></p>` : ''}
+            ${step.properties && step.properties.agents ? `<p><strong>Agents:</strong> ${step.properties.agents}</p>` : ''}
+            ${step.properties && step.properties.plugins && Object.keys(step.properties.plugins).length > 0 ? 
                 `<p><strong>Plugins:</strong> ${Object.keys(step.properties.plugins).join(', ')}</p>` : ''}
-            <button class="btn btn-secondary btn-small" onclick="window.pipelineBuilder && window.pipelineBuilder.selectStep('${step.id}'); closeModal('dependency-graph-modal')">
+            <button class="btn btn-secondary btn-small" onclick="pipelineBuilder && pipelineBuilder.selectStep && pipelineBuilder.selectStep('${step.id}'); window.closeModal && window.closeModal('dependency-graph-modal')">
                 Edit Step
             </button>
         `;
     }
 
     resetView() {
+        console.log('🔄 Resetting graph view...');
         this.scale = 1;
         this.panX = 0;
         this.panY = 0;
@@ -645,6 +657,7 @@ class DependencyGraphManager {
     }
 
     exportGraph() {
+        console.log('📥 Exporting graph...');
         // Create SVG representation
         const svg = this.generateSVG();
         const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -682,7 +695,7 @@ class DependencyGraphManager {
             const color = colors[node.type] || '#a0aec0';
             
             svg += `<rect x="${node.x - node.width/2}" y="${node.y - node.height/2}" width="${node.width}" height="${node.height}" fill="${color}" stroke="#ffffff"/>`;
-            svg += `<text x="${node.x}" y="${node.y}" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${node.step.properties.label || node.type}</text>`;
+            svg += `<text x="${node.x}" y="${node.y}" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${(node.step.properties && node.step.properties.label) || node.type}</text>`;
         });
         
         svg += '</svg>';
@@ -691,11 +704,14 @@ class DependencyGraphManager {
 
     // Conditional Logic Builder Methods
     showConditionalBuilder() {
+        console.log('🔀 Opening conditional builder...');
         const modal = document.getElementById('conditional-builder-modal');
         if (modal) {
             modal.classList.remove('hidden');
             this.currentStep = this.pipelineBuilder.selectedStep;
             this.loadExistingConditions();
+        } else {
+            console.error('❌ Conditional builder modal not found');
         }
     }
 
@@ -709,12 +725,12 @@ class DependencyGraphManager {
         if (unlessConditions) unlessConditions.innerHTML = '';
         
         // Load existing if condition
-        if (this.currentStep.properties.if) {
+        if (this.currentStep.properties && this.currentStep.properties.if) {
             this.addCondition('if', this.currentStep.properties.if);
         }
         
         // Load existing unless condition
-        if (this.currentStep.properties.unless) {
+        if (this.currentStep.properties && this.currentStep.properties.unless) {
             this.addCondition('unless', this.currentStep.properties.unless);
         }
         
@@ -722,6 +738,7 @@ class DependencyGraphManager {
     }
 
     addCondition(type, existingValue = '') {
+        console.log(`➕ Adding ${type} condition...`);
         const container = document.getElementById(`${type}-conditions`);
         if (!container) return;
         
@@ -766,6 +783,7 @@ class DependencyGraphManager {
     }
 
     removeCondition(conditionId) {
+        console.log(`➖ Removing condition: ${conditionId}`);
         const element = document.getElementById(conditionId);
         if (element) {
             element.remove();
@@ -822,6 +840,7 @@ class DependencyGraphManager {
     }
 
     applyConditionTemplate(template) {
+        console.log(`📋 Applying condition template: ${template}`);
         const templates = {
             'main-branch': {
                 type: 'if',
@@ -868,10 +887,15 @@ class DependencyGraphManager {
     }
 
     applyConditions() {
+        console.log('✅ Applying conditions...');
         if (!this.currentStep) return;
         
         const ifConditions = this.collectConditions('if');
         const unlessConditions = this.collectConditions('unless');
+        
+        if (!this.currentStep.properties) {
+            this.currentStep.properties = {};
+        }
         
         if (ifConditions.length > 0) {
             this.currentStep.properties.if = ifConditions.join(' && ');
@@ -885,18 +909,28 @@ class DependencyGraphManager {
             delete this.currentStep.properties.unless;
         }
         
-        this.pipelineBuilder.renderPipeline();
-        this.pipelineBuilder.renderProperties();
-        closeModal('conditional-builder-modal');
+        if (this.pipelineBuilder.renderPipeline) {
+            this.pipelineBuilder.renderPipeline();
+        }
+        if (this.pipelineBuilder.renderProperties) {
+            this.pipelineBuilder.renderProperties();
+        }
+        
+        if (window.closeModal) {
+            window.closeModal('conditional-builder-modal');
+        }
     }
 
     // Dependency Manager Methods
     showDependencyManager() {
+        console.log('🔗 Opening dependency manager...');
         const modal = document.getElementById('dependency-manager-modal');
         if (modal) {
             modal.classList.remove('hidden');
             this.setupDependencyTabs();
             this.loadStepDependencies();
+        } else {
+            console.error('❌ Dependency manager modal not found');
         }
     }
 
@@ -927,7 +961,7 @@ class DependencyGraphManager {
         const container = document.getElementById('step-dependency-list');
         if (!container) return;
         
-        const steps = this.pipelineBuilder.steps;
+        const steps = this.pipelineBuilder.steps || [];
         
         container.innerHTML = '';
         
@@ -935,17 +969,17 @@ class DependencyGraphManager {
             const dependencyHTML = `
                 <div class="step-dependency-item">
                     <div class="step-info">
-                        <span class="step-label">${step.properties.label || step.type}</span>
+                        <span class="step-label">${(step.properties && step.properties.label) || step.type}</span>
                         <span class="step-type">(${step.type})</span>
                     </div>
                     <div class="dependency-controls">
                         <label>Key:</label>
-                        <input type="text" class="dependency-key" value="${step.properties.key || ''}" 
+                        <input type="text" class="dependency-key" value="${(step.properties && step.properties.key) || ''}" 
                                placeholder="unique-key" data-step-id="${step.id}" 
                                onchange="window.dependencyGraph && window.dependencyGraph.updateStepKey(this)" />
                         
                         <label>Depends on:</label>
-                        <input type="text" class="dependency-list" value="${(step.properties.depends_on || []).join(', ')}" 
+                        <input type="text" class="dependency-list" value="${(step.properties && step.properties.depends_on || []).join(', ')}" 
                                placeholder="key1, key2" data-step-id="${step.id}"
                                onchange="window.dependencyGraph && window.dependencyGraph.updateStepDependencies(this)" />
                     </div>
@@ -959,6 +993,7 @@ class DependencyGraphManager {
         const stepId = input.dataset.stepId;
         const step = this.pipelineBuilder.steps.find(s => s.id === stepId);
         if (step) {
+            if (!step.properties) step.properties = {};
             step.properties.key = input.value;
         }
     }
@@ -967,152 +1002,22 @@ class DependencyGraphManager {
         const stepId = input.dataset.stepId;
         const step = this.pipelineBuilder.steps.find(s => s.id === stepId);
         if (step) {
+            if (!step.properties) step.properties = {};
             const dependencies = input.value.split(',').map(dep => dep.trim()).filter(dep => dep);
             step.properties.depends_on = dependencies.length > 0 ? dependencies : undefined;
         }
     }
 
     applyDependencies() {
-        this.pipelineBuilder.renderPipeline();
-        closeModal('dependency-manager-modal');
-    }
-}
-
-// Enhanced Pipeline Builder Integration
-class EnhancedPipelineBuilderWithDependencies extends EnhancedPipelineBuilder {
-    constructor() {
-        super();
-        this.dependencyGraph = new DependencyGraphManager(this);
-        this.setupEnhancedFeatures();
-    }
-
-    setupEnhancedFeatures() {
-        // Add new buttons to the sidebar
-        this.addDependencyGraphButton();
-        this.addConditionalBuilderButton();
-        this.addDependencyManagerButton();
-    }
-
-    addDependencyGraphButton() {
-        const quickActions = document.querySelector('.quick-actions');
-        if (quickActions) {
-            const button = document.createElement('button');
-            button.className = 'action-btn';
-            button.title = 'Dependency Graph (Ctrl+G)';
-            button.onclick = () => this.dependencyGraph.showDependencyGraph();
-            button.innerHTML = `
-                <i class="fas fa-project-diagram"></i>
-                <span>Dependency Graph</span>
-            `;
-            quickActions.appendChild(button);
+        console.log('✅ Applying dependencies...');
+        if (this.pipelineBuilder.renderPipeline) {
+            this.pipelineBuilder.renderPipeline();
         }
-    }
-
-    addConditionalBuilderButton() {
-        const quickActions = document.querySelector('.quick-actions');
-        if (quickActions) {
-            const button = document.createElement('button');
-            button.className = 'action-btn';
-            button.title = 'Conditional Logic (Ctrl+L)';
-            button.onclick = () => this.dependencyGraph.showConditionalBuilder();
-            button.innerHTML = `
-                <i class="fas fa-code-branch"></i>
-                <span>Conditions</span>
-            `;
-            quickActions.appendChild(button);
-        }
-    }
-
-    addDependencyManagerButton() {
-        const quickActions = document.querySelector('.quick-actions');
-        if (quickActions) {
-            const button = document.createElement('button');
-            button.className = 'action-btn';
-            button.title = 'Dependency Manager (Ctrl+D)';
-            button.onclick = () => this.dependencyGraph.showDependencyManager();
-            button.innerHTML = `
-                <i class="fas fa-sitemap"></i>
-                <span>Dependencies</span>
-            `;
-            quickActions.appendChild(button);
-        }
-    }
-
-    setupEnhancedEventListeners() {
-        super.setupEnhancedEventListeners();
-        
-        // Add new keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch (e.key) {
-                    case 'g':
-                        e.preventDefault();
-                        this.dependencyGraph.showDependencyGraph();
-                        break;
-                    case 'l':
-                        e.preventDefault();
-                        this.dependencyGraph.showConditionalBuilder();
-                        break;
-                    case 'd':
-                        e.preventDefault();
-                        this.dependencyGraph.showDependencyManager();
-                        break;
-                }
-            }
-        });
-    }
-
-    generatePropertiesForm(step) {
-        const baseForm = super.generatePropertiesForm(step);
-        
-        // Add enhanced dependency and conditional controls
-        const enhancedSection = `
-            <div class="property-section">
-                <h4><i class="fas fa-code-branch"></i> Conditions & Dependencies</h4>
-                
-                <div class="property-group">
-                    <label>Step Key</label>
-                    <input type="text" name="key" value="${step.properties.key || ''}" 
-                           placeholder="unique-step-key" />
-                    <small>Unique identifier for this step (used in dependencies)</small>
-                </div>
-                
-                <div class="property-group">
-                    <label>Depends On</label>
-                    <input type="text" name="depends_on" value="${(step.properties.depends_on || []).join(', ')}" 
-                           placeholder="step-key-1, step-key-2" />
-                    <small>Comma-separated list of step keys this step depends on</small>
-                </div>
-                
-                <div class="property-group">
-                    <button type="button" class="btn btn-secondary" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showConditionalBuilder()">
-                        <i class="fas fa-code-branch"></i> Advanced Conditions
-                    </button>
-                    <button type="button" class="btn btn-secondary" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyManager()">
-                        <i class="fas fa-sitemap"></i> Manage Dependencies
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        return baseForm + enhancedSection;
-    }
-
-    updateStepProperty(e) {
-        super.updateStepProperty(e);
-        
-        // Handle new properties
-        if (!this.selectedStep) return;
-
-        const { name, value } = e.target;
-        
-        if (name === 'depends_on') {
-            const dependencies = value.split(',').map(dep => dep.trim()).filter(dep => dep);
-            this.selectedStep.properties.depends_on = dependencies.length > 0 ? dependencies : undefined;
+        if (window.closeModal) {
+            window.closeModal('dependency-manager-modal');
         }
     }
 }
 
 // Export classes to global scope
 window.DependencyGraphManager = DependencyGraphManager;
-window.EnhancedPipelineBuilderWithDependencies = EnhancedPipelineBuilderWithDependencies;
