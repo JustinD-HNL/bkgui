@@ -1,0 +1,339 @@
+<!-- simple-debug.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Firebase Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        .warn { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .auto-run { background: #ffeaa7; padding: 15px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Simple Firebase Debug Tool</h1>
+        <p><strong>URL:</strong> <span id="current-url"></span></p>
+        
+        <div class="auto-run">
+            <h3>🤖 Auto-Running Tests...</h3>
+            <div id="auto-status">Initializing...</div>
+        </div>
+        
+        <div id="results"></div>
+        
+        <h3>📋 Manual Tests</h3>
+        <button onclick="runServerTests()">Test Server Endpoints</button>
+        <button onclick="runFirebaseTest()">Test Firebase</button>
+        <button onclick="runAuthTest()">Test Authentication</button>
+        <button onclick="copyResults()">Copy Results</button>
+        
+        <h3>📊 Console Output</h3>
+        <pre id="console-output">Check browser console for detailed logs...</pre>
+        
+        <h3>🔧 Quick Fixes</h3>
+        <div id="quick-fixes">
+            <p>If you're seeing issues:</p>
+            <ol>
+                <li>Open browser console (F12) and copy-paste the console debug script</li>
+                <li>Check that Firebase environment variables are set in Cloud Run</li>
+                <li>Verify your domain is added to Firebase authorized domains</li>
+                <li>Ensure Google Sign-In is enabled in Firebase Console</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+    <script>
+        let testResults = {};
+        
+        // Show current URL
+        document.getElementById('current-url').textContent = window.location.href;
+        
+        // Auto-run basic tests
+        window.addEventListener('load', async function() {
+            const autoStatus = document.getElementById('auto-status');
+            autoStatus.textContent = 'Running automatic tests...';
+            
+            await runAllTests();
+            autoStatus.textContent = 'Automatic tests completed. Check results below.';
+        });
+        
+        async function runAllTests() {
+            console.log('🔬 Starting simple debug tests...');
+            
+            // Basic environment test
+            await testEnvironment();
+            await runServerTests();
+            await runFirebaseTest();
+            
+            updateResults();
+        }
+        
+        async function testEnvironment() {
+            console.log('🌐 Testing environment...');
+            
+            const env = {
+                url: window.location.href,
+                protocol: window.location.protocol,
+                secure: window.isSecureContext,
+                cookies: navigator.cookieEnabled,
+                online: navigator.onLine,
+                firebaseSDK: typeof firebase !== 'undefined',
+                firebaseAuth: typeof firebase !== 'undefined' && !!firebase.auth
+            };
+            
+            testResults.environment = env;
+            console.log('Environment:', env);
+        }
+        
+        async function runServerTests() {
+            console.log('🖥️ Testing server endpoints...');
+            
+            const endpoints = ['/health', '/api/firebase-config', '/api/debug/firebase-status'];
+            const serverResults = {};
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint);
+                    const data = await response.json();
+                    
+                    serverResults[endpoint] = {
+                        status: response.ok ? 'pass' : 'fail',
+                        code: response.status,
+                        data: response.ok ? data : data
+                    };
+                    
+                    console.log(`${endpoint}: ${response.ok ? '✅' : '❌'} (${response.status})`);
+                    
+                } catch (error) {
+                    serverResults[endpoint] = {
+                        status: 'error',
+                        error: error.message
+                    };
+                    console.log(`${endpoint}: ❌ ${error.message}`);
+                }
+            }
+            
+            testResults.server = serverResults;
+            updateResults();
+        }
+        
+        async function runFirebaseTest() {
+            console.log('🔥 Testing Firebase...');
+            
+            const firebaseResults = {};
+            
+            try {
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded');
+                }
+                
+                firebaseResults.sdkLoaded = true;
+                firebaseResults.version = firebase.SDK_VERSION || 'unknown';
+                
+                if (typeof firebase.auth === 'undefined') {
+                    throw new Error('Firebase Auth not available');
+                }
+                
+                firebaseResults.authAvailable = true;
+                
+                // Try to initialize if needed
+                if (firebase.apps.length === 0) {
+                    const configResponse = await fetch('/api/firebase-config');
+                    if (configResponse.ok) {
+                        const config = await configResponse.json();
+                        if (config.apiKey) {
+                            firebase.initializeApp(config);
+                            firebaseResults.initialized = true;
+                        } else {
+                            firebaseResults.configIncomplete = true;
+                        }
+                    } else {
+                        firebaseResults.configUnavailable = true;
+                    }
+                } else {
+                    firebaseResults.alreadyInitialized = true;
+                }
+                
+                // Test Google provider
+                try {
+                    const provider = new firebase.auth.GoogleAuthProvider();
+                    firebaseResults.googleProvider = true;
+                } catch (providerError) {
+                    firebaseResults.googleProviderError = providerError.message;
+                }
+                
+                console.log('Firebase test results:', firebaseResults);
+                
+            } catch (error) {
+                firebaseResults.error = error.message;
+                console.log('Firebase test failed:', error.message);
+            }
+            
+            testResults.firebase = firebaseResults;
+            updateResults();
+        }
+        
+        async function runAuthTest() {
+            console.log('🔐 Testing authentication...');
+            
+            try {
+                if (firebase.apps.length === 0) {
+                    throw new Error('Firebase not initialized');
+                }
+                
+                const auth = firebase.auth();
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                const result = await auth.signInWithPopup(provider);
+                
+                testResults.auth = {
+                    status: 'success',
+                    user: {
+                        email: result.user.email,
+                        uid: result.user.uid
+                    }
+                };
+                
+                console.log('✅ Authentication successful:', result.user.email);
+                
+                // Add sign out capability
+                window.signOut = () => {
+                    auth.signOut().then(() => {
+                        console.log('✅ Signed out');
+                        testResults.auth.signedOut = true;
+                        updateResults();
+                    });
+                };
+                
+            } catch (error) {
+                testResults.auth = {
+                    status: 'error',
+                    error: error.message,
+                    code: error.code
+                };
+                
+                console.log('❌ Authentication failed:', error.code, error.message);
+                
+                // Provide specific guidance
+                if (error.code === 'auth/internal-error') {
+                    console.log('💡 Internal error likely due to configuration issue');
+                }
+            }
+            
+            updateResults();
+        }
+        
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            const consoleDiv = document.getElementById('console-output');
+            
+            let html = '<h3>📊 Test Results</h3>';
+            
+            // Environment results
+            if (testResults.environment) {
+                const env = testResults.environment;
+                html += '<h4>🌐 Environment</h4>';
+                html += `<div class="result ${env.firebaseSDK && env.firebaseAuth ? 'pass' : 'fail'}">`;
+                html += `Firebase SDK: ${env.firebaseSDK ? '✅' : '❌'}<br>`;
+                html += `Firebase Auth: ${env.firebaseAuth ? '✅' : '❌'}<br>`;
+                html += `Secure Context: ${env.secure ? '✅' : '❌'}<br>`;
+                html += `Cookies: ${env.cookies ? '✅' : '❌'}`;
+                html += '</div>';
+            }
+            
+            // Server results
+            if (testResults.server) {
+                html += '<h4>🖥️ Server Endpoints</h4>';
+                Object.entries(testResults.server).forEach(([endpoint, result]) => {
+                    const cssClass = result.status === 'pass' ? 'pass' : 'fail';
+                    html += `<div class="result ${cssClass}">`;
+                    html += `${endpoint}: ${result.status === 'pass' ? '✅' : '❌'} `;
+                    if (result.code) html += `(${result.code})`;
+                    if (result.error) html += ` - ${result.error}`;
+                    html += '</div>';
+                });
+            }
+            
+            // Firebase results
+            if (testResults.firebase) {
+                const fb = testResults.firebase;
+                html += '<h4>🔥 Firebase</h4>';
+                const cssClass = fb.error ? 'fail' : 'pass';
+                html += `<div class="result ${cssClass}">`;
+                if (fb.error) {
+                    html += `❌ Error: ${fb.error}`;
+                } else {
+                    html += `✅ SDK Loaded (v${fb.version})<br>`;
+                    html += `✅ Auth Available<br>`;
+                    if (fb.initialized) html += '✅ Initialized<br>';
+                    if (fb.alreadyInitialized) html += '✅ Already Initialized<br>';
+                    if (fb.googleProvider) html += '✅ Google Provider OK';
+                    if (fb.configIncomplete) html += '❌ Config Incomplete<br>';
+                    if (fb.configUnavailable) html += '❌ Config Unavailable';
+                }
+                html += '</div>';
+            }
+            
+            // Auth results
+            if (testResults.auth) {
+                const auth = testResults.auth;
+                html += '<h4>🔐 Authentication</h4>';
+                const cssClass = auth.status === 'success' ? 'pass' : 'fail';
+                html += `<div class="result ${cssClass}">`;
+                if (auth.status === 'success') {
+                    html += `✅ Signed in as: ${auth.user.email}<br>`;
+                    html += `UID: ${auth.user.uid}`;
+                    if (!auth.signedOut) {
+                        html += '<br><button onclick="signOut()">Sign Out</button>';
+                    }
+                } else {
+                    html += `❌ Failed: ${auth.error}<br>`;
+                    if (auth.code) html += `Code: ${auth.code}`;
+                }
+                html += '</div>';
+            }
+            
+            resultsDiv.innerHTML = html;
+            
+            // Update console output
+            consoleDiv.textContent = JSON.stringify(testResults, null, 2);
+        }
+        
+        function copyResults() {
+            const results = JSON.stringify(testResults, null, 2);
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(results).then(() => {
+                    alert('Results copied to clipboard!');
+                });
+            } else {
+                alert('Copy the results from the Console Output section below');
+            }
+        }
+        
+        // Make functions available globally
+        window.runServerTests = runServerTests;
+        window.runFirebaseTest = runFirebaseTest;
+        window.runAuthTest = runAuthTest;
+        window.copyResults = copyResults;
+        
+        console.log('🔍 Simple Firebase Debug Tool loaded');
+        console.log('Available functions: runServerTests(), runFirebaseTest(), runAuthTest(), copyResults()');
+    </script>
+</body>
+</html>
