@@ -90,7 +90,13 @@ echo -e "${BLUE}🚀 Updating Cloud Run service with Firebase configuration...${
 # Update the service with environment variables
 gcloud run services update $SERVICE_NAME \
     --region=$REGION \
-    --set-env-vars "NODE_ENV=production,FIREBASE_API_KEY=$FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN,FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID,FIREBASE_APP_ID=$FIREBASE_APP_ID" \
+    --update-env-vars NODE_ENV=production \
+    --update-env-vars FIREBASE_API_KEY="$FIREBASE_API_KEY" \
+    --update-env-vars FIREBASE_AUTH_DOMAIN="$FIREBASE_AUTH_DOMAIN" \
+    --update-env-vars FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
+    --update-env-vars FIREBASE_STORAGE_BUCKET="$FIREBASE_STORAGE_BUCKET" \
+    --update-env-vars FIREBASE_MESSAGING_SENDER_ID="$FIREBASE_MESSAGING_SENDER_ID" \
+    --update-env-vars FIREBASE_APP_ID="$FIREBASE_APP_ID" \
     --quiet
 
 if [ $? -eq 0 ]; then
