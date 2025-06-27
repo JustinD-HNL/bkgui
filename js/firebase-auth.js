@@ -1,7 +1,6 @@
 // js/firebase-auth.js
 /**
- * Enhanced Firebase Authentication Service
- * Handles user authentication with specific focus on debugging auth/internal-error
+ * Enhanced Firebase Authentication Service with Popup and Redirect Support
  */
 class FirebaseAuthService {
     constructor() {
@@ -12,6 +11,7 @@ class FirebaseAuthService {
         this.debug = true;
         this.initializationAttempts = 0;
         this.maxInitializationAttempts = 3;
+        this.preferredAuthMethod = 'popup'; // Can be 'popup' or 'redirect'
         
         console.log('🔐 Enhanced Firebase Auth Service: Initializing...');
         
@@ -55,6 +55,9 @@ class FirebaseAuthService {
             
             // Initialize Auth with connection test
             await this.initializeFirebaseAuth();
+            
+            // Check for redirect result on page load
+            await this.checkRedirectResult();
             
             // Test Firebase connectivity
             await this.testFirebaseConnectivity();
@@ -167,24 +170,49 @@ class FirebaseAuthService {
     }
 
     /**
+     * Check for redirect authentication result
+     */
+    async checkRedirectResult() {
+        console.log('🔍 Checking for redirect authentication result...');
+        
+        try {
+            if (!this.auth) return;
+            
+            const result = await this.auth.getRedirectResult();
+            
+            if (result.user) {
+                console.log('✅ Redirect authentication successful:', result.user.email);
+                this.showSuccess(`Welcome back! Signed in via redirect as ${result.user.email}`);
+                return result.user;
+            } else {
+                console.log('ℹ️ No redirect result (normal page load)');
+            }
+            
+        } catch (error) {
+            console.error('❌ Redirect result error:', error);
+            if (error.code === 'auth/internal-error') {
+                this.handleSignInError(error);
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Test Firebase connectivity
      */
     async testFirebaseConnectivity() {
         console.log('🌐 Testing Firebase connectivity...');
         
         try {
-            // Try to access Firebase Auth service
             const currentUser = this.auth.currentUser;
             console.log('✅ Firebase Auth service accessible, current user:', currentUser ? currentUser.email : 'none');
             
-            // Test token endpoint (without triggering auth)
-            // This is a lightweight test to ensure Firebase services are reachable
             await new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error('Firebase connectivity test timeout'));
                 }, 5000);
                 
-                // Use a simple operation that doesn't require authentication
                 this.auth.onAuthStateChanged(() => {
                     clearTimeout(timeout);
                     resolve();
@@ -205,7 +233,6 @@ class FirebaseAuthService {
         console.log('🔧 Loading Firebase configuration...');
         
         try {
-            // First try to fetch from server API
             console.log('🔧 Attempting to load config from server...');
             const response = await fetch('/api/firebase-config', {
                 method: 'GET',
@@ -228,13 +255,11 @@ class FirebaseAuthService {
             console.log('⚠️ Could not fetch Firebase config from server:', error.message);
         }
 
-        // Fallback to window object (for local development)
         if (window.FIREBASE_CONFIG) {
             console.log('✅ Firebase config loaded from window object');
             return window.FIREBASE_CONFIG;
         }
 
-        // Final fallback - empty config (will show configuration warning)
         console.warn('⚠️ No Firebase configuration found');
         return {
             apiKey: "",
@@ -247,9 +272,9 @@ class FirebaseAuthService {
     }
 
     /**
-     * Enhanced Google Sign-In with specific internal-error handling
+     * Enhanced Google Sign-In with popup and redirect options
      */
-    async signInWithGoogle() {
+    async signInWithGoogle(method = null) {
         if (!this.initialized) {
             this.showError('Authentication service not initialized. Please wait and try again.');
             return null;
@@ -260,8 +285,10 @@ class FirebaseAuthService {
             return null;
         }
 
+        const authMethod = method || this.preferredAuthMethod;
+        console.log(`🔐 Starting Google sign-in using ${authMethod} method...`);
+
         try {
-            console.log('🔐 Starting Google sign-in...');
             this.showLoading(true);
             
             // Pre-flight checks
@@ -270,14 +297,21 @@ class FirebaseAuthService {
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
             provider.addScope('profile');
-            
-            // Set custom parameters to help with debugging
             provider.setCustomParameters({
                 prompt: 'select_account'
             });
             
-            console.log('🔐 Opening Google sign-in popup...');
-            const result = await this.auth.signInWithPopup(provider);
+            let result;
+            
+            if (authMethod === 'redirect') {
+                console.log('🔄 Starting redirect-based authentication...');
+                await this.auth.signInWithRedirect(provider);
+                // Redirect happens here, function doesn't return
+                return null;
+            } else {
+                console.log('🔐 Opening Google sign-in popup...');
+                result = await this.auth.signInWithPopup(provider);
+            }
             
             console.log('✅ Google sign-in successful:', result.user.email);
             this.showSuccess('Welcome! Signed in successfully.');
@@ -285,10 +319,40 @@ class FirebaseAuthService {
             
         } catch (error) {
             console.error('❌ Google sign-in error:', error);
-            await this.handleSignInError(error);
+            await this.handleSignInError(error, authMethod);
             return null;
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    /**
+     * Try popup first, fallback to redirect on failure
+     */
+    async signInWithGoogleFallback() {
+        console.log('🔄 Trying popup authentication with redirect fallback...');
+        
+        try {
+            // First try popup
+            const result = await this.signInWithGoogle('popup');
+            return result;
+        } catch (popupError) {
+            console.log('⚠️ Popup authentication failed, trying redirect...');
+            
+            if (popupError.code === 'auth/popup-blocked' || 
+                popupError.code === 'auth/popup-closed-by-user' ||
+                popupError.code === 'auth/internal-error') {
+                
+                this.showError('Popup blocked or failed. Redirecting to Google Sign-In...');
+                
+                setTimeout(() => {
+                    this.signInWithGoogle('redirect');
+                }, 2000);
+                
+                return null;
+            }
+            
+            throw popupError;
         }
     }
 
@@ -297,13 +361,6 @@ class FirebaseAuthService {
      */
     async preflightSignInChecks() {
         console.log('🔍 Performing pre-flight sign-in checks...');
-        
-        // Check if popup will be blocked
-        const popup = window.open('', '', 'width=1,height=1');
-        if (!popup) {
-            throw new Error('Popup blocked. Please allow popups for this site.');
-        }
-        popup.close();
         
         // Check network connectivity
         if (!navigator.onLine) {
@@ -324,25 +381,22 @@ class FirebaseAuthService {
     }
 
     /**
-     * Enhanced sign-in error handling with specific focus on internal-error
+     * Enhanced sign-in error handling
      */
-    async handleSignInError(error) {
+    async handleSignInError(error, authMethod = 'popup') {
         console.error('🚨 Handling sign-in error:', error);
         
         if (error.code === 'auth/internal-error') {
             console.error('🚨 INTERNAL ERROR DETECTED - Running diagnostics...');
-            
-            // Run diagnostic checks
             const diagnostics = await this.runInternalErrorDiagnostics();
-            
             this.showInternalErrorDetails(error, diagnostics);
             return;
         }
         
-        // Handle other specific error cases
+        // Handle specific error cases with method-specific advice
         const errorMessages = {
-            'auth/popup-blocked': 'Pop-up blocked by browser. Please allow pop-ups for this site and try again.',
-            'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
+            'auth/popup-blocked': 'Pop-up blocked by browser. Please allow pop-ups for this site or try the redirect option.',
+            'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again or use the redirect option.',
             'auth/unauthorized-domain': 'This domain is not authorized for Firebase authentication. Please check your Firebase configuration.',
             'auth/operation-not-allowed': 'Google sign-in is not enabled. Please check your Firebase Console settings.',
             'auth/network-request-failed': 'Network error. Please check your internet connection and try again.',
@@ -352,7 +406,13 @@ class FirebaseAuthService {
         };
         
         const message = errorMessages[error.code] || error.message || 'An authentication error occurred.';
-        this.showError(message);
+        
+        // Show fallback option for popup issues
+        if ((error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') && authMethod === 'popup') {
+            this.showError(message + ' <br><button onclick="firebaseAuth.signInWithGoogle(\'redirect\')" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Try Redirect Sign-In Instead</button>');
+        } else {
+            this.showError(message);
+        }
         
         if (error.code === 'auth/unauthorized-domain') {
             this.showDebugInfo({
@@ -393,7 +453,6 @@ class FirebaseAuthService {
             }
         };
         
-        // Test server connectivity
         try {
             const healthResponse = await fetch('/health', { method: 'HEAD' });
             diagnostics.server = {
@@ -407,7 +466,6 @@ class FirebaseAuthService {
             };
         }
         
-        // Test Firebase config
         try {
             const configResponse = await fetch('/api/firebase-config');
             diagnostics.config = {
@@ -452,11 +510,13 @@ class FirebaseAuthService {
                     This is a generic Firebase error that can have several causes.
                 </div>
                 <div style="margin-bottom: 1rem;">
-                    <strong>Immediate Actions:</strong><br>
-                    1. Try refreshing the page and signing in again<br>
-                    2. Check your internet connection<br>
-                    3. Try in incognito/private browsing mode<br>
-                    4. Use the debug tool for detailed analysis
+                    <strong>Try Different Methods:</strong><br>
+                    <button onclick="firebaseAuth.signInWithGoogle('redirect')" style="margin: 5px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Try Redirect Sign-In
+                    </button>
+                    <button onclick="firebaseAuth.signInWithGoogleFallback()" style="margin: 5px; padding: 8px 16px; background: #38a169; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Auto Fallback Method
+                    </button>
                 </div>
                 <details style="margin-top: 1rem;">
                     <summary style="cursor: pointer; font-weight: bold;">📊 View Diagnostic Data</summary>
@@ -468,11 +528,6 @@ class FirebaseAuthService {
                         diagnostics: diagnostics
                     }, null, 2)}</pre>
                 </details>
-                <div style="margin-top: 1rem;">
-                    <a href="/debug-auth.html" target="_blank" style="color: #667eea; text-decoration: none; font-weight: bold;">
-                        🔧 Open Advanced Debug Tool →
-                    </a>
-                </div>
             `;
             errorEl.style.display = 'block';
         }
@@ -559,11 +614,9 @@ class FirebaseAuthService {
         if (this.isAuthenticated()) {
             console.log('🎨 Updating UI for authenticated user');
             
-            // Show main app, hide auth
             if (authContainer) authContainer.style.display = 'none';
             if (mainApp) mainApp.style.display = 'block';
 
-            // Update user info
             if (userEmail) userEmail.textContent = this.user.email;
             if (userAvatar && this.user.photoURL) {
                 userAvatar.src = this.user.photoURL;
@@ -574,7 +627,6 @@ class FirebaseAuthService {
         } else {
             console.log('🎨 Updating UI for unauthenticated state');
             
-            // Show auth, hide main app
             if (authContainer) authContainer.style.display = 'flex';
             if (mainApp) mainApp.style.display = 'none';
             if (userInfo) userInfo.style.display = 'none';
@@ -609,12 +661,11 @@ class FirebaseAuthService {
             errorEl.innerHTML = message;
             errorEl.style.display = 'block';
             
-            // Auto-hide after 15 seconds for better debugging
             setTimeout(() => {
                 if (errorEl.style.display === 'block') {
                     errorEl.style.display = 'none';
                 }
-            }, 15000);
+            }, 20000); // Longer timeout for better UX
         }
     }
 
@@ -629,7 +680,6 @@ class FirebaseAuthService {
             successEl.textContent = message;
             successEl.style.display = 'block';
             
-            // Auto-hide after 3 seconds
             setTimeout(() => {
                 successEl.style.display = 'none';
             }, 3000);
@@ -663,11 +713,6 @@ class FirebaseAuthService {
                         <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
                             <i class="fas fa-refresh"></i> Retry
                         </button>
-                        <div style="margin-top: 1rem;">
-                            <a href="/debug-auth.html" target="_blank" style="color: #667eea; text-decoration: none; font-weight: bold;">
-                                🔧 Open Debug Tool →
-                            </a>
-                        </div>
                         <details style="margin-top: 1rem;">
                             <summary>Debug Information</summary>
                             <pre style="background: #f5f5f5; padding: 1rem; margin-top: 0.5rem; border-radius: 4px; font-size: 0.8rem;">${JSON.stringify(config, null, 2)}</pre>
@@ -693,12 +738,10 @@ class FirebaseAuthService {
                     <strong>Error Details:</strong><br>
                     ${JSON.stringify(errorInfo, null, 2)}
                     <br><br>
-                    <strong>Troubleshooting:</strong><br>
-                    1. Check that Firebase project is properly configured<br>
-                    2. Verify domain is added to authorized domains<br>
-                    3. Ensure environment variables are set correctly<br>
-                    4. Check browser console for additional errors<br>
-                    5. Try the enhanced debug tool: <a href="/debug-auth.html" target="_blank">/debug-auth.html</a>
+                    <strong>Authentication Options:</strong><br>
+                    • <button onclick="firebaseAuth.signInWithGoogle('popup')" style="background: #667eea; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer;">Try Popup</button><br>
+                    • <button onclick="firebaseAuth.signInWithGoogle('redirect')" style="background: #38a169; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; margin-top: 4px;">Try Redirect</button><br>
+                    • <button onclick="firebaseAuth.signInWithGoogleFallback()" style="background: #f6ad55; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; margin-top: 4px;">Auto Fallback</button>
                 </div>
             `;
             debugEl.style.display = 'block';
