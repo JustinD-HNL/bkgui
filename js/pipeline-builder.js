@@ -202,16 +202,22 @@ class PipelineBuilder {
 
         // Setup drop zones
         const pipelineSteps = document.getElementById('pipeline-steps');
-        pipelineSteps.addEventListener('dragover', this.handleDragOver.bind(this));
-        pipelineSteps.addEventListener('drop', this.handleDrop.bind(this));
-        pipelineSteps.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        if (pipelineSteps) {
+            pipelineSteps.addEventListener('dragover', this.handleDragOver.bind(this));
+            pipelineSteps.addEventListener('drop', this.handleDrop.bind(this));
+            pipelineSteps.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        }
     }
 
     setupEventListeners() {
         // Header actions
-        document.getElementById('clear-pipeline').addEventListener('click', this.clearPipeline.bind(this));
-        document.getElementById('load-example').addEventListener('click', this.loadExample.bind(this));
-        document.getElementById('export-yaml').addEventListener('click', this.exportYAML.bind(this));
+        const clearBtn = document.getElementById('clear-pipeline');
+        const loadBtn = document.getElementById('load-example');
+        const exportBtn = document.getElementById('export-yaml');
+        
+        if (clearBtn) clearBtn.addEventListener('click', this.clearPipeline.bind(this));
+        if (loadBtn) loadBtn.addEventListener('click', this.loadExample.bind(this));
+        if (exportBtn) exportBtn.addEventListener('click', this.exportYAML.bind(this));
 
         // Modal events for YAML export
         const yamlModalClose = document.querySelector('#yaml-modal .modal-close');
@@ -465,6 +471,8 @@ class PipelineBuilder {
 
     renderPipeline() {
         const container = document.getElementById('pipeline-steps');
+        if (!container) return;
+        
         container.innerHTML = '';
 
         // Add initial drop zone
@@ -478,10 +486,12 @@ class PipelineBuilder {
         // If no steps, show empty state
         if (this.steps.length === 0) {
             const emptyState = container.querySelector('.drop-zone');
-            emptyState.innerHTML = `
-                <i class="fas fa-plus-circle"></i>
-                <span>Drop steps here to start building your pipeline</span>
-            `;
+            if (emptyState) {
+                emptyState.innerHTML = `
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Drop steps here to start building your pipeline</span>
+                `;
+            }
         }
     }
 
@@ -580,6 +590,7 @@ class PipelineBuilder {
 
     renderProperties() {
         const propertiesContainer = document.getElementById('step-properties');
+        if (!propertiesContainer) return;
         
         if (!this.selectedStep) {
             propertiesContainer.innerHTML = `
@@ -709,7 +720,7 @@ class PipelineBuilder {
                 </div>
                 <div class="property-group">
                     <label>Steps (JSON)</label>
-                    <textarea name="steps" placeholder='[{"command": "echo 'step 1'"}, {"command": "echo 'step 2'"}]'>${JSON.stringify(step.properties.steps, null, 2)}</textarea>
+                    <textarea name="steps" placeholder='[{"command": "echo \'step 1\'"}, {"command": "echo \'step 2\'"}]'>${JSON.stringify(step.properties.steps, null, 2)}</textarea>
                 </div>
             `,
             annotation: `
@@ -892,30 +903,43 @@ class PipelineBuilder {
 
     exportYAML() {
         const yamlContent = window.yamlGenerator.generateYAML(this.steps);
-        document.getElementById('yaml-output').value = yamlContent;
-        document.getElementById('yaml-modal').classList.remove('hidden');
+        const yamlOutput = document.getElementById('yaml-output');
+        if (yamlOutput) {
+            yamlOutput.value = yamlContent;
+        }
+        const yamlModal = document.getElementById('yaml-modal');
+        if (yamlModal) {
+            yamlModal.classList.remove('hidden');
+        }
     }
 
     copyYAML() {
         const yamlOutput = document.getElementById('yaml-output');
+        if (!yamlOutput) return;
+        
         yamlOutput.select();
         yamlOutput.setSelectionRange(0, 99999);
         
         try {
             document.execCommand('copy');
             const btn = document.getElementById('copy-yaml');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }
         } catch (err) {
             console.error('Failed to copy:', err);
         }
     }
 
     downloadYAML() {
-        const yamlContent = document.getElementById('yaml-output').value;
+        const yamlOutput = document.getElementById('yaml-output');
+        if (!yamlOutput) return;
+        
+        const yamlContent = yamlOutput.value;
         const blob = new Blob([yamlContent], { type: 'text/yaml' });
         const url = URL.createObjectURL(blob);
         
@@ -929,11 +953,15 @@ class PipelineBuilder {
     }
 
     closeModal() {
-        document.getElementById('yaml-modal').classList.add('hidden');
+        const yamlModal = document.getElementById('yaml-modal');
+        if (yamlModal) {
+            yamlModal.classList.add('hidden');
+        }
     }
 
     // Enhanced methods for new features
     addTemplate(templateKey) {
+        console.log('Adding template:', templateKey);
         const template = this.stepTemplates[templateKey];
         if (!template) {
             console.warn('Template not found:', templateKey);
@@ -953,7 +981,8 @@ class PipelineBuilder {
     }
 
     addPattern(patternKey) {
-        // This would integrate with pipeline patterns if they're available
+        console.log('Adding pattern:', patternKey);
+        // This integrates with pipeline patterns if they're available
         if (window.pipelinePatterns) {
             window.pipelinePatterns.applyPattern(patternKey);
         } else {
@@ -962,42 +991,47 @@ class PipelineBuilder {
     }
 
     showPluginCatalog() {
+        console.log('Showing plugin catalog');
         const modal = document.getElementById('plugin-catalog-modal');
         if (modal) {
             modal.classList.remove('hidden');
-            // Trigger population of plugin catalog
-            if (typeof populatePluginCatalog === 'function') {
-                populatePluginCatalog();
-            }
+        } else {
+            alert('Plugin catalog coming soon!');
         }
     }
 
     showMatrixTemplates() {
+        console.log('Showing matrix templates');
         const modal = document.getElementById('matrix-builder-modal');
         if (modal) {
             modal.classList.remove('hidden');
+        } else {
+            alert('Matrix builder coming soon!');
         }
     }
 
     showStepTemplates() {
+        console.log('Showing step templates');
         const modal = document.getElementById('step-templates-modal');
         if (modal) {
             modal.classList.remove('hidden');
+        } else {
+            alert('Step templates modal coming soon!');
         }
     }
 
     openPipelineValidator() {
+        console.log('Opening pipeline validator');
         const modal = document.getElementById('pipeline-validator-modal');
         if (modal) {
             modal.classList.remove('hidden');
-            // Trigger validation
-            if (typeof runValidation === 'function') {
-                runValidation();
-            }
+        } else {
+            alert('Pipeline validator coming soon!');
         }
     }
 
     showKeyboardShortcuts() {
+        console.log('Showing keyboard shortcuts');
         const modal = document.getElementById('shortcuts-modal');
         if (modal) {
             modal.classList.remove('hidden');
@@ -1005,6 +1039,7 @@ class PipelineBuilder {
     }
 
     addPluginStep(pluginKey) {
+        console.log('Adding plugin step:', pluginKey);
         const plugin = this.pluginCatalog[pluginKey];
         if (!plugin) {
             console.warn('Plugin not found:', pluginKey);
@@ -1025,8 +1060,4 @@ class PipelineBuilder {
     }
 }
 
-// Initialize pipeline builder when DOM is ready
-let pipelineBuilder;
-document.addEventListener('DOMContentLoaded', () => {
-    pipelineBuilder = new PipelineBuilder();
-});
+// DO NOT initialize here - wait for main initialization script

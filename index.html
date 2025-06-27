@@ -529,17 +529,17 @@
                     <div class="step-category">
                         <h4><i class="fas fa-clipboard-list"></i> Quick Templates</h4>
                         <div class="template-palette">
-                            <div class="template-item" onclick="pipelineBuilder.addTemplate('node-test')">
+                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('node-test')">
                                 <i class="fab fa-node-js"></i>
                                 <span>Node.js Tests</span>
                                 <small>Test with coverage</small>
                             </div>
-                            <div class="template-item" onclick="pipelineBuilder.addTemplate('docker-build')">
+                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('docker-build')">
                                 <i class="fab fa-docker"></i>
                                 <span>Docker Build</span>
                                 <small>Build & push image</small>
                             </div>
-                            <div class="template-item" onclick="pipelineBuilder.addTemplate('parallel-tests')">
+                            <div class="template-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addTemplate('parallel-tests')">
                                 <i class="fas fa-th"></i>
                                 <span>Parallel Tests</span>
                                 <small>Matrix test execution</small>
@@ -551,22 +551,22 @@
                     <div class="step-category">
                         <h4><i class="fas fa-sitemap"></i> Pipeline Patterns</h4>
                         <div class="pattern-palette">
-                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('ci-cd')">
+                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('ci-cd')">
                                 <i class="fas fa-infinity"></i>
                                 <span>CI/CD Pipeline</span>
                                 <small>Test → Build → Deploy</small>
                             </div>
-                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('monorepo')">
+                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('monorepo')">
                                 <i class="fas fa-folder-tree"></i>
                                 <span>Monorepo Pipeline</span>
                                 <small>Conditional builds</small>
                             </div>
-                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('matrix-testing')">
+                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('matrix-testing')">
                                 <i class="fas fa-th-large"></i>
                                 <span>Matrix Testing</span>
                                 <small>Multi-environment tests</small>
                             </div>
-                            <div class="pattern-item" onclick="pipelineBuilder.addPattern('staged-deployment')">
+                            <div class="pattern-item" onclick="window.pipelineBuilder && window.pipelineBuilder.addPattern('staged-deployment')">
                                 <i class="fas fa-stairs"></i>
                                 <span>Staged Deployment</span>
                                 <small>Multi-stage with approvals</small>
@@ -578,32 +578,32 @@
                     <div class="step-category">
                         <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
                         <div class="quick-actions">
-                            <button class="action-btn" onclick="pipelineBuilder.showPluginCatalog()" title="Browse Plugins (Ctrl+P)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showPluginCatalog()" title="Browse Plugins (Ctrl+P)">
                                 <i class="fas fa-plug"></i>
                                 <span>Plugin Catalog</span>
                             </button>
-                            <button class="action-btn" onclick="pipelineBuilder.showMatrixTemplates()" title="Matrix Builder (Ctrl+M)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showMatrixTemplates()" title="Matrix Builder (Ctrl+M)">
                                 <i class="fas fa-th"></i>
                                 <span>Matrix Builder</span>
                             </button>
-                            <button class="action-btn" onclick="pipelineBuilder.showStepTemplates()" title="Step Templates (Ctrl+T)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.showStepTemplates()" title="Step Templates (Ctrl+T)">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Templates</span>
                             </button>
-                            <button class="action-btn" onclick="pipelineBuilder.openPipelineValidator()">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.openPipelineValidator()">
                                 <i class="fas fa-check-circle"></i>
                                 <span>Validate Pipeline</span>
                             </button>
                             <!-- NEW ENHANCED FEATURES -->
-                            <button class="action-btn" onclick="pipelineBuilder.dependencyGraph.showDependencyGraph()" title="Dependency Graph (Ctrl+G)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyGraph()" title="Dependency Graph (Ctrl+G)">
                                 <i class="fas fa-project-diagram"></i>
                                 <span>Dependency Graph</span>
                             </button>
-                            <button class="action-btn" onclick="pipelineBuilder.dependencyGraph.showConditionalBuilder()" title="Conditional Logic (Ctrl+L)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showConditionalBuilder()" title="Conditional Logic (Ctrl+L)">
                                 <i class="fas fa-code-branch"></i>
                                 <span>Conditions</span>
                             </button>
-                            <button class="action-btn" onclick="pipelineBuilder.dependencyGraph.showDependencyManager()" title="Dependency Manager (Ctrl+D)">
+                            <button class="action-btn" onclick="window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && window.pipelineBuilder.dependencyGraph.showDependencyManager()" title="Dependency Manager (Ctrl+D)">
                                 <i class="fas fa-sitemap"></i>
                                 <span>Dependencies</span>
                             </button>
@@ -614,19 +614,19 @@
                     <div class="step-category">
                         <h4><i class="fas fa-rocket"></i> Popular Plugins</h4>
                         <div class="plugin-quickstart">
-                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('docker')">
+                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('docker')">
                                 <i class="fab fa-docker"></i>
                                 <span>Docker</span>
                             </div>
-                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('junit-annotate')">
+                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('junit-annotate')">
                                 <i class="fas fa-file-alt"></i>
                                 <span>JUnit</span>
                             </div>
-                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('ecr')">
+                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('ecr')">
                                 <i class="fab fa-aws"></i>
                                 <span>AWS ECR</span>
                             </div>
-                            <div class="plugin-quick" onclick="pipelineBuilder.addPluginStep('artifacts')">
+                            <div class="plugin-quick" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginStep('artifacts')">
                                 <i class="fas fa-archive"></i>
                                 <span>Artifacts</span>
                             </div>
@@ -645,7 +645,7 @@
                                 <i class="fas fa-list"></i>
                                 <span>Step Reference</span>
                             </a>
-                            <a href="#" onclick="pipelineBuilder.showKeyboardShortcuts()" class="help-link">
+                            <a href="#" onclick="window.pipelineBuilder && window.pipelineBuilder.showKeyboardShortcuts()" class="help-link">
                                 <i class="fas fa-keyboard"></i>
                                 <span>Shortcuts</span>
                             </a>
@@ -713,13 +713,13 @@
                     <div class="modal-body">
                         <div class="graph-controls">
                             <div>
-                                <button class="btn btn-secondary" onclick="dependencyGraph.resetView()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" onclick="dependencyGraph.autoLayout()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.autoLayout()">
                                     <i class="fas fa-magic"></i> Auto Layout
                                 </button>
-                                <button class="btn btn-secondary" onclick="dependencyGraph.exportGraph()">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
                                     <i class="fas fa-download"></i> Export SVG
                                 </button>
                             </div>
@@ -761,7 +761,7 @@
                                 <div class="condition-group">
                                     <div class="condition-header">
                                         <h4>IF Conditions</h4>
-                                        <button class="btn btn-secondary btn-small" onclick="dependencyGraph.addCondition('if')">
+                                        <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('if')">
                                             <i class="fas fa-plus"></i> Add Condition
                                         </button>
                                     </div>
@@ -771,7 +771,7 @@
                                 <div class="condition-group">
                                     <div class="condition-header">
                                         <h4>UNLESS Conditions</h4>
-                                        <button class="btn btn-secondary btn-small" onclick="dependencyGraph.addCondition('unless')">
+                                        <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('unless')">
                                             <i class="fas fa-plus"></i> Add Condition
                                         </button>
                                     </div>
@@ -787,16 +787,16 @@
                             <div class="condition-templates">
                                 <h4>Quick Templates</h4>
                                 <div class="template-buttons">
-                                    <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('main-branch')">
+                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('main-branch')">
                                         Main Branch Only
                                     </button>
-                                    <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('pull-request')">
+                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('pull-request')">
                                         Pull Request Only
                                     </button>
-                                    <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('file-changes')">
+                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('file-changes')">
                                         File Changes
                                     </button>
-                                    <button class="btn btn-outline" onclick="dependencyGraph.applyConditionTemplate('env-var')">
+                                    <button class="btn btn-outline" onclick="window.dependencyGraph && window.dependencyGraph.applyConditionTemplate('env-var')">
                                         Environment Variable
                                     </button>
                                 </div>
@@ -805,7 +805,7 @@
                     </div>
                     <div class="modal-actions">
                         <button class="btn btn-secondary" onclick="closeModal('conditional-builder-modal')">Cancel</button>
-                        <button class="btn btn-primary" onclick="dependencyGraph.applyConditions()">Apply Conditions</button>
+                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyConditions()">Apply Conditions</button>
                     </div>
                 </div>
             </div>
@@ -885,30 +885,9 @@
                     </div>
                     <div class="modal-actions">
                         <button class="btn btn-secondary" onclick="closeModal('dependency-manager-modal')">Cancel</button>
-                        <button class="btn btn-primary" onclick="dependencyGraph.applyDependencies()">Apply Dependencies</button>
+                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyDependencies()">Apply Dependencies</button>
                     </div>
                 </div>
-            </div>
-
-            <!-- EXISTING MODALS (plugin-catalog, matrix-builder, etc.) - keeping them as they are -->
-            <!-- Plugin Catalog Modal -->
-            <div id="plugin-catalog-modal" class="modal hidden">
-                <!-- existing content -->
-            </div>
-
-            <!-- Matrix Builder Modal -->
-            <div id="matrix-builder-modal" class="modal hidden">
-                <!-- existing content -->
-            </div>
-
-            <!-- Step Templates Modal -->
-            <div id="step-templates-modal" class="modal hidden">
-                <!-- existing content -->
-            </div>
-
-            <!-- Pipeline Validator Modal -->
-            <div id="pipeline-validator-modal" class="modal hidden">
-                <!-- existing content -->
             </div>
 
             <!-- Keyboard Shortcuts Modal -->
@@ -978,47 +957,56 @@
         </div>
     </div>
 
-    <!-- Scripts - Load in correct order -->
+    <!-- Scripts - Load in correct order with NEW initialization system -->
     <script src="js/firebase-auth.js"></script>
     <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
     <script src="js/enhanced-pipeline-builder.js"></script>
     <script src="js/pipeline-patterns.js"></script>
-    
-    <!-- NEW ENHANCED FEATURES SCRIPT -->
     <script src="js/dependency-graph.js"></script>
-    
     <script src="js/app.js"></script>
+    
+    <!-- NEW: Main initialization script that coordinates everything -->
+    <script src="js/main-init.js"></script>
 
-    <!-- Enhanced Modal and Template Functionality -->
+    <!-- Enhanced initialization with debugging -->
     <script>
-        // Modal management functions
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
-
-        // Enhanced initialization
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Enhanced Buildkite Pipeline Builder loaded');
-            console.log('✨ New features: Dependency Graph, Conditional Logic Builder, Dependency Manager');
-            
-            // Wait for all components to initialize
-            setTimeout(() => {
-                if (window.pipelineBuilder && window.pipelineBuilder.dependencyGraph) {
-                    console.log('🔗 Dependency graph system ready');
-                    console.log('📊 Visual dependency graph available (Ctrl+G)');
-                    console.log('🔀 Conditional logic builder available (Ctrl+L)');
-                    console.log('🏗️ Dependency manager available (Ctrl+D)');
-                } else {
-                    console.warn('⚠️ Enhanced features may not be fully loaded');
-                }
-            }, 1000);
-        });
-
         // AUTH TEMPORARILY DISABLED - BYPASS ALL AUTHENTICATION
         console.log('🚫 Authentication bypassed - loading app directly');
         console.log('✅ App loaded without authentication requirement');
-        console.log('💡 To re-enable auth: uncomment the auth initialization code in index.html');
+        console.log('💡 To re-enable auth: uncomment the auth initialization code in firebase-auth.js');
+        
+        // Debug info for troubleshooting
+        console.log('📁 Script loading order:');
+        console.log('   1. firebase-auth.js (disabled)');
+        console.log('   2. yaml-generator.js');
+        console.log('   3. pipeline-builder.js');
+        console.log('   4. enhanced-pipeline-builder.js');
+        console.log('   5. pipeline-patterns.js');
+        console.log('   6. dependency-graph.js');
+        console.log('   7. app.js');
+        console.log('   8. main-init.js (NEW - coordinates everything)');
+        
+        // Wait a moment, then check if everything loaded properly
+        setTimeout(() => {
+            if (window.pipelineBuilder) {
+                console.log('✅ Pipeline Builder successfully initialized');
+                console.log('🔧 Available methods:');
+                console.log('   - addTemplate(templateKey)');
+                console.log('   - addPattern(patternKey)');
+                console.log('   - addPluginStep(pluginKey)');
+                console.log('   - showPluginCatalog()');
+                console.log('   - showMatrixTemplates()');
+                console.log('   - showStepTemplates()');
+                
+                if (window.pipelineBuilder.dependencyGraph) {
+                    console.log('🔗 Dependency graph features available');
+                }
+            } else {
+                console.error('❌ Pipeline Builder failed to initialize');
+                console.log('🔧 Troubleshooting: Check browser console for errors');
+            }
+        }, 2000);
     </script>
 </body>
 </html>
