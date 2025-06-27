@@ -1,7 +1,7 @@
 // js/firebase-auth.js
 /**
- * Firebase Authentication Service
- * Handles user authentication, state management, and UI updates
+ * Enhanced Firebase Authentication Service
+ * Handles user authentication with specific focus on debugging auth/internal-error
  */
 class FirebaseAuthService {
     constructor() {
@@ -9,9 +9,11 @@ class FirebaseAuthService {
         this.initialized = false;
         this.onAuthStateChangedCallbacks = [];
         this.auth = null;
-        this.debug = true; // Enable debug mode
+        this.debug = true;
+        this.initializationAttempts = 0;
+        this.maxInitializationAttempts = 3;
         
-        console.log('🔐 Firebase Auth Service: Initializing...');
+        console.log('🔐 Enhanced Firebase Auth Service: Initializing...');
         
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
@@ -22,19 +24,16 @@ class FirebaseAuthService {
     }
 
     /**
-     * Initialize Firebase Authentication
+     * Initialize Firebase Authentication with enhanced error handling
      */
     async init() {
-        console.log('🔐 Firebase Auth Service: Starting initialization...');
+        this.initializationAttempts++;
+        console.log(`🔐 Firebase Auth Service: Starting initialization (attempt ${this.initializationAttempts}/${this.maxInitializationAttempts})...`);
         
         try {
-            // Check if Firebase is loaded
-            if (typeof firebase === 'undefined') {
-                throw new Error('Firebase SDK not loaded. Please ensure Firebase scripts are included.');
-            }
-
-            console.log('✅ Firebase SDK loaded successfully');
-
+            // Pre-initialization checks
+            await this.performPreInitChecks();
+            
             // Get Firebase configuration
             const firebaseConfig = await this.getFirebaseConfig();
             
@@ -47,40 +46,160 @@ class FirebaseAuthService {
             console.log('✅ Firebase configuration loaded:', {
                 projectId: firebaseConfig.projectId,
                 authDomain: firebaseConfig.authDomain,
-                hasApiKey: !!firebaseConfig.apiKey
+                hasApiKey: !!firebaseConfig.apiKey,
+                apiKeyPrefix: firebaseConfig.apiKey ? firebaseConfig.apiKey.substring(0, 10) + '...' : 'none'
             });
 
-            // Initialize Firebase
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log('✅ Firebase app initialized');
-            } else {
-                console.log('✅ Firebase app already initialized');
-            }
-
-            // Initialize Auth
-            this.auth = firebase.auth();
+            // Initialize Firebase with enhanced error handling
+            await this.initializeFirebaseApp(firebaseConfig);
             
-            // Set up auth state listener
-            this.auth.onAuthStateChanged((user) => {
-                console.log('🔐 Auth state changed:', user ? `User: ${user.email}` : 'No user');
-                this.user = user;
-                this.handleAuthStateChange(user);
-                this.updateUI();
-            });
+            // Initialize Auth with connection test
+            await this.initializeFirebaseAuth();
+            
+            // Test Firebase connectivity
+            await this.testFirebaseConnectivity();
 
             this.initialized = true;
             console.log('✅ Firebase Auth Service: Initialization complete');
 
         } catch (error) {
             console.error('❌ Firebase Auth Service: Initialization failed:', error);
-            this.showError(`Failed to initialize authentication: ${error.message}`);
-            this.showDebugInfo(error);
+            
+            if (this.initializationAttempts < this.maxInitializationAttempts) {
+                console.log(`🔄 Retrying initialization in 2 seconds... (${this.initializationAttempts}/${this.maxInitializationAttempts})`);
+                setTimeout(() => this.init(), 2000);
+                return;
+            }
+            
+            this.showError(`Failed to initialize authentication after ${this.maxInitializationAttempts} attempts: ${error.message}`);
+            this.showDebugInfo({
+                error: error,
+                initializationAttempts: this.initializationAttempts,
+                troubleshooting: [
+                    'Check your internet connection',
+                    'Verify Firebase configuration is correct',
+                    'Ensure your domain is authorized in Firebase Console',
+                    'Try refreshing the page',
+                    'Check browser console for additional errors'
+                ]
+            });
         }
     }
 
     /**
-     * Get Firebase configuration from environment or fallback
+     * Perform pre-initialization checks
+     */
+    async performPreInitChecks() {
+        console.log('🔍 Performing pre-initialization checks...');
+        
+        // Check if Firebase SDK is loaded
+        if (typeof firebase === 'undefined') {
+            throw new Error('Firebase SDK not loaded. Please ensure Firebase scripts are included.');
+        }
+
+        // Check if we're in a secure context for production
+        if (!window.isSecureContext && window.location.protocol === 'http:' && !window.location.hostname.includes('localhost')) {
+            console.warn('⚠️ Not in secure context. Firebase Auth requires HTTPS in production.');
+        }
+
+        // Check network connectivity
+        if (!navigator.onLine) {
+            throw new Error('No internet connection detected');
+        }
+
+        console.log('✅ Pre-initialization checks passed');
+    }
+
+    /**
+     * Initialize Firebase app with error handling
+     */
+    async initializeFirebaseApp(config) {
+        console.log('🔥 Initializing Firebase app...');
+        
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(config);
+                console.log('✅ Firebase app initialized successfully');
+            } else {
+                console.log('✅ Firebase app already initialized');
+            }
+        } catch (error) {
+            if (error.code === 'app/duplicate-app') {
+                console.log('✅ Firebase app already exists');
+            } else {
+                throw new Error(`Firebase app initialization failed: ${error.message}`);
+            }
+        }
+    }
+
+    /**
+     * Initialize Firebase Auth with connection testing
+     */
+    async initializeFirebaseAuth() {
+        console.log('🔐 Initializing Firebase Auth...');
+        
+        try {
+            this.auth = firebase.auth();
+            
+            if (!this.auth) {
+                throw new Error('Firebase Auth instance not created');
+            }
+            
+            // Set up auth state listener with enhanced error handling
+            this.auth.onAuthStateChanged(
+                (user) => {
+                    console.log('🔐 Auth state changed:', user ? `User: ${user.email}` : 'No user');
+                    this.user = user;
+                    this.handleAuthStateChange(user);
+                    this.updateUI();
+                },
+                (error) => {
+                    console.error('❌ Auth state change error:', error);
+                    this.handleAuthStateError(error);
+                }
+            );
+            
+            console.log('✅ Firebase Auth initialized successfully');
+            
+        } catch (error) {
+            throw new Error(`Firebase Auth initialization failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Test Firebase connectivity
+     */
+    async testFirebaseConnectivity() {
+        console.log('🌐 Testing Firebase connectivity...');
+        
+        try {
+            // Try to access Firebase Auth service
+            const currentUser = this.auth.currentUser;
+            console.log('✅ Firebase Auth service accessible, current user:', currentUser ? currentUser.email : 'none');
+            
+            // Test token endpoint (without triggering auth)
+            // This is a lightweight test to ensure Firebase services are reachable
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Firebase connectivity test timeout'));
+                }, 5000);
+                
+                // Use a simple operation that doesn't require authentication
+                this.auth.onAuthStateChanged(() => {
+                    clearTimeout(timeout);
+                    resolve();
+                }, reject);
+            });
+            
+            console.log('✅ Firebase connectivity test passed');
+            
+        } catch (error) {
+            throw new Error(`Firebase connectivity test failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Enhanced Firebase configuration loading
      */
     async getFirebaseConfig() {
         console.log('🔧 Loading Firebase configuration...');
@@ -88,7 +207,13 @@ class FirebaseAuthService {
         try {
             // First try to fetch from server API
             console.log('🔧 Attempting to load config from server...');
-            const response = await fetch('/api/firebase-config');
+            const response = await fetch('/api/firebase-config', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
             
             if (response.ok) {
                 const config = await response.json();
@@ -122,7 +247,7 @@ class FirebaseAuthService {
     }
 
     /**
-     * Sign in with Google using popup
+     * Enhanced Google Sign-In with specific internal-error handling
      */
     async signInWithGoogle() {
         if (!this.initialized) {
@@ -139,9 +264,17 @@ class FirebaseAuthService {
             console.log('🔐 Starting Google sign-in...');
             this.showLoading(true);
             
+            // Pre-flight checks
+            await this.preflightSignInChecks();
+            
             const provider = new firebase.auth.GoogleAuthProvider();
             provider.addScope('email');
             provider.addScope('profile');
+            
+            // Set custom parameters to help with debugging
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
             
             console.log('🔐 Opening Google sign-in popup...');
             const result = await this.auth.signInWithPopup(provider);
@@ -152,26 +285,209 @@ class FirebaseAuthService {
             
         } catch (error) {
             console.error('❌ Google sign-in error:', error);
-            
-            // Handle specific error cases
-            if (error.code === 'auth/popup-blocked') {
-                this.showError('Pop-up blocked by browser. Please allow pop-ups for this site and try again.');
-            } else if (error.code === 'auth/popup-closed-by-user') {
-                this.showError('Sign-in cancelled. Please try again.');
-            } else if (error.code === 'auth/unauthorized-domain') {
-                this.showError('This domain is not authorized for Firebase authentication. Please check your Firebase configuration.');
-                this.showDebugInfo({
-                    error: error,
-                    suggestion: 'Add your domain to Firebase Console > Authentication > Sign-in method > Authorized domains'
-                });
-            } else {
-                this.showError(this.getErrorMessage(error));
-                this.showDebugInfo(error);
-            }
-            
+            await this.handleSignInError(error);
             return null;
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    /**
+     * Pre-flight checks before sign-in
+     */
+    async preflightSignInChecks() {
+        console.log('🔍 Performing pre-flight sign-in checks...');
+        
+        // Check if popup will be blocked
+        const popup = window.open('', '', 'width=1,height=1');
+        if (!popup) {
+            throw new Error('Popup blocked. Please allow popups for this site.');
+        }
+        popup.close();
+        
+        // Check network connectivity
+        if (!navigator.onLine) {
+            throw new Error('No internet connection');
+        }
+        
+        // Test Firebase Auth availability
+        try {
+            const test = new firebase.auth.GoogleAuthProvider();
+            if (!test) {
+                throw new Error('Google Auth provider not available');
+            }
+        } catch (error) {
+            throw new Error(`Google Auth provider test failed: ${error.message}`);
+        }
+        
+        console.log('✅ Pre-flight checks passed');
+    }
+
+    /**
+     * Enhanced sign-in error handling with specific focus on internal-error
+     */
+    async handleSignInError(error) {
+        console.error('🚨 Handling sign-in error:', error);
+        
+        if (error.code === 'auth/internal-error') {
+            console.error('🚨 INTERNAL ERROR DETECTED - Running diagnostics...');
+            
+            // Run diagnostic checks
+            const diagnostics = await this.runInternalErrorDiagnostics();
+            
+            this.showInternalErrorDetails(error, diagnostics);
+            return;
+        }
+        
+        // Handle other specific error cases
+        const errorMessages = {
+            'auth/popup-blocked': 'Pop-up blocked by browser. Please allow pop-ups for this site and try again.',
+            'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
+            'auth/unauthorized-domain': 'This domain is not authorized for Firebase authentication. Please check your Firebase configuration.',
+            'auth/operation-not-allowed': 'Google sign-in is not enabled. Please check your Firebase Console settings.',
+            'auth/network-request-failed': 'Network error. Please check your internet connection and try again.',
+            'auth/too-many-requests': 'Too many failed attempts. Please wait a moment and try again.',
+            'auth/user-disabled': 'This user account has been disabled.',
+            'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.'
+        };
+        
+        const message = errorMessages[error.code] || error.message || 'An authentication error occurred.';
+        this.showError(message);
+        
+        if (error.code === 'auth/unauthorized-domain') {
+            this.showDebugInfo({
+                error: error,
+                suggestion: 'Add your domain to Firebase Console > Authentication > Sign-in method > Authorized domains',
+                currentDomain: window.location.hostname
+            });
+        }
+    }
+
+    /**
+     * Run diagnostics for internal-error
+     */
+    async runInternalErrorDiagnostics() {
+        console.log('🔬 Running internal error diagnostics...');
+        
+        const diagnostics = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            firebase: {
+                version: firebase.SDK_VERSION || 'unknown',
+                apps: firebase.apps.length,
+                initialized: this.initialized
+            },
+            network: {
+                online: navigator.onLine,
+                connection: navigator.connection ? {
+                    effectiveType: navigator.connection.effectiveType,
+                    downlink: navigator.connection.downlink
+                } : 'unknown'
+            },
+            browser: {
+                cookiesEnabled: navigator.cookieEnabled,
+                localStorage: typeof localStorage !== 'undefined',
+                secureContext: window.isSecureContext,
+                thirdPartyCookies: await this.testThirdPartyCookies()
+            }
+        };
+        
+        // Test server connectivity
+        try {
+            const healthResponse = await fetch('/health', { method: 'HEAD' });
+            diagnostics.server = {
+                reachable: healthResponse.ok,
+                status: healthResponse.status
+            };
+        } catch (error) {
+            diagnostics.server = {
+                reachable: false,
+                error: error.message
+            };
+        }
+        
+        // Test Firebase config
+        try {
+            const configResponse = await fetch('/api/firebase-config');
+            diagnostics.config = {
+                available: configResponse.ok,
+                status: configResponse.status
+            };
+        } catch (error) {
+            diagnostics.config = {
+                available: false,
+                error: error.message
+            };
+        }
+        
+        console.log('🔬 Diagnostics complete:', diagnostics);
+        return diagnostics;
+    }
+
+    /**
+     * Test third-party cookies availability
+     */
+    async testThirdPartyCookies() {
+        try {
+            localStorage.setItem('test-cookie', 'test');
+            localStorage.removeItem('test-cookie');
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
+     * Show detailed internal error information
+     */
+    showInternalErrorDetails(error, diagnostics) {
+        console.error('🚨 Showing internal error details');
+        
+        const errorEl = document.getElementById('auth-error');
+        if (errorEl) {
+            errorEl.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <strong>🚨 Internal Authentication Error</strong><br>
+                    This is a generic Firebase error that can have several causes.
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong>Immediate Actions:</strong><br>
+                    1. Try refreshing the page and signing in again<br>
+                    2. Check your internet connection<br>
+                    3. Try in incognito/private browsing mode<br>
+                    4. Use the debug tool for detailed analysis
+                </div>
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; font-weight: bold;">📊 View Diagnostic Data</summary>
+                    <pre style="background: #f5f5f5; padding: 1rem; margin-top: 0.5rem; border-radius: 4px; font-size: 12px; overflow-x: auto;">${JSON.stringify({
+                        error: {
+                            code: error.code,
+                            message: error.message
+                        },
+                        diagnostics: diagnostics
+                    }, null, 2)}</pre>
+                </details>
+                <div style="margin-top: 1rem;">
+                    <a href="/debug-auth.html" target="_blank" style="color: #667eea; text-decoration: none; font-weight: bold;">
+                        🔧 Open Advanced Debug Tool →
+                    </a>
+                </div>
+            `;
+            errorEl.style.display = 'block';
+        }
+    }
+
+    /**
+     * Handle auth state errors
+     */
+    handleAuthStateError(error) {
+        console.error('🚨 Auth state error:', error);
+        
+        if (error.code === 'auth/internal-error') {
+            this.handleSignInError(error);
+        } else {
+            this.showError(`Authentication state error: ${error.message}`);
         }
     }
 
@@ -290,13 +606,15 @@ class FirebaseAuthService {
         
         const errorEl = document.getElementById('auth-error');
         if (errorEl) {
-            errorEl.textContent = message;
+            errorEl.innerHTML = message;
             errorEl.style.display = 'block';
             
-            // Auto-hide after 10 seconds
+            // Auto-hide after 15 seconds for better debugging
             setTimeout(() => {
-                errorEl.style.display = 'none';
-            }, 10000);
+                if (errorEl.style.display === 'block') {
+                    errorEl.style.display = 'none';
+                }
+            }, 15000);
         }
     }
 
@@ -345,6 +663,11 @@ class FirebaseAuthService {
                         <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
                             <i class="fas fa-refresh"></i> Retry
                         </button>
+                        <div style="margin-top: 1rem;">
+                            <a href="/debug-auth.html" target="_blank" style="color: #667eea; text-decoration: none; font-weight: bold;">
+                                🔧 Open Debug Tool →
+                            </a>
+                        </div>
                         <details style="margin-top: 1rem;">
                             <summary>Debug Information</summary>
                             <pre style="background: #f5f5f5; padding: 1rem; margin-top: 0.5rem; border-radius: 4px; font-size: 0.8rem;">${JSON.stringify(config, null, 2)}</pre>
@@ -374,37 +697,17 @@ class FirebaseAuthService {
                     1. Check that Firebase project is properly configured<br>
                     2. Verify domain is added to authorized domains<br>
                     3. Ensure environment variables are set correctly<br>
-                    4. Check browser console for additional errors
+                    4. Check browser console for additional errors<br>
+                    5. Try the enhanced debug tool: <a href="/debug-auth.html" target="_blank">/debug-auth.html</a>
                 </div>
             `;
             debugEl.style.display = 'block';
         }
     }
-
-    /**
-     * Get user-friendly error message
-     */
-    getErrorMessage(error) {
-        const errorMessages = {
-            'auth/popup-closed-by-user': 'Sign-in was cancelled.',
-            'auth/popup-blocked': 'Pop-up blocked. Please allow pop-ups for this site.',
-            'auth/unauthorized-domain': 'This domain is not authorized. Please check Firebase configuration.',
-            'auth/operation-not-allowed': 'Google sign-in is not enabled. Please check Firebase configuration.',
-            'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
-            'auth/auth-domain-config-required': 'Firebase Auth domain configuration is required.',
-            'auth/cancelled-popup-request': 'Another sign-in attempt is in progress.',
-            'auth/operation-not-supported-in-this-environment': 'This operation is not supported in this environment.',
-            'auth/timeout': 'The operation timed out. Please try again.',
-            'auth/user-disabled': 'This user account has been disabled.',
-            'auth/too-many-requests': 'Too many unsuccessful attempts. Please try again later.'
-        };
-
-        return errorMessages[error.code] || error.message || 'An authentication error occurred.';
-    }
 }
 
 // Initialize Firebase Auth Service
-console.log('🔐 Creating Firebase Auth Service instance...');
+console.log('🔐 Creating Enhanced Firebase Auth Service instance...');
 const firebaseAuth = new FirebaseAuthService();
 
 // Expose to global scope for use in HTML onclick handlers
