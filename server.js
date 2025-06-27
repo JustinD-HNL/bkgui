@@ -7,85 +7,12 @@ const helmet = require('helmet');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Enhanced security middleware with Firebase-compatible CSP
+// Critical: Get Firebase project ID for domain-specific CSP
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'buildkite-pipeline-builder';
+
+// Enhanced security middleware with FIXED CSP for Firebase Auth 2024-2025
 app.use(helmet({
     contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: [
-                "'self'", 
-                "'unsafe-inline'", // Allow inline scripts for Firebase and debug functionality
-                "'unsafe-eval'", // Sometimes needed for Firebase dynamic imports
-                "https://www.gstatic.com",
-                "https://cdnjs.cloudflare.com",
-                // Required for Firebase Google Auth
-                "https://apis.google.com",
-                "https://www.google.com",
-                "https://accounts.google.com"
-            ],
-            // Allow inline event handlers for Firebase auth popups and dynamic content
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: [
-                "'self'", 
-                "'unsafe-inline'", 
-                "https://cdnjs.cloudflare.com",
-                "https://accounts.google.com",
-                "https://fonts.googleapis.com"
-            ],
-            imgSrc: [
-                "'self'", 
-                "data:", 
-                "https:", 
-                "blob:",
-                // Required for Google user avatars
-                "https://lh3.googleusercontent.com",
-                "https://www.google.com",
-                "https://ssl.gstatic.com"
-            ],
-            connectSrc: [
-                "'self'", 
-                // Firebase services
-                "https://identitytoolkit.googleapis.com", 
-                "https://securetoken.googleapis.com",
-                "https://firebase.googleapis.com",
-                "https://www.googleapis.com",
-                // Google services for auth
-                "https://accounts.google.com",
-                "https://oauth2.googleapis.com",
-                "https://firebaseinstallations.googleapis.com"
-            ],
-            frameSrc: [
-                "'self'", 
-                "https://accounts.google.com",
-                "https://www.google.com"
-            ],
-            fontSrc: [
-                "'self'", 
-                "https://cdnjs.cloudflare.com",
-                "https://fonts.googleapis.com",
-                "https://fonts.gstatic.com"
-            ],
-            objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            childSrc: [
-                "'self'", 
-                "https://accounts.google.com"
-            ],
-            // Allow form submissions to Google
-            formAction: [
-                "'self'",
-                "https://accounts.google.com"
-            ],
-            // Allow workers for Firebase
-            workerSrc: ["'self'", "blob:"],
-            // Manifest for PWA if needed
-            manifestSrc: ["'self'"]
-        },
-    },
-    crossOriginEmbedderPolicy: false, // Disable COEP for Firebase compatibility
-    // Allow iframes for Google auth
-    contentSecurityPolicy: {
-        useDefaults: false,
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: [
@@ -112,22 +39,30 @@ app.use(helmet({
                 "blob:",
                 "https://lh3.googleusercontent.com",
                 "https://www.google.com",
-                "https://ssl.gstatic.com"
+                "https://ssl.gstatic.com",
+                "https://www.gstatic.com"
             ],
             connectSrc: [
                 "'self'", 
+                // Firebase services - UPDATED for 2024-2025
                 "https://identitytoolkit.googleapis.com", 
                 "https://securetoken.googleapis.com",
                 "https://firebase.googleapis.com",
                 "https://www.googleapis.com",
+                "https://firebaseinstallations.googleapis.com",
+                `https://${FIREBASE_PROJECT_ID}.firebaseio.com`,
+                `https://${FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`,
                 "https://accounts.google.com",
-                "https://oauth2.googleapis.com",
-                "https://firebaseinstallations.googleapis.com"
+                "https://oauth2.googleapis.com"
             ],
             frameSrc: [
                 "'self'", 
                 "https://accounts.google.com",
-                "https://www.google.com"
+                "https://www.google.com",
+                // CRITICAL FIX: Add Firebase project domains
+                "https://*.firebaseapp.com",
+                `https://${FIREBASE_PROJECT_ID}.firebaseapp.com`,
+                `https://${FIREBASE_PROJECT_ID}.web.app`
             ],
             fontSrc: [
                 "'self'", 
@@ -139,7 +74,8 @@ app.use(helmet({
             mediaSrc: ["'self'"],
             childSrc: [
                 "'self'", 
-                "https://accounts.google.com"
+                "https://accounts.google.com",
+                "https://*.firebaseapp.com"
             ],
             formAction: [
                 "'self'",
@@ -148,20 +84,20 @@ app.use(helmet({
             workerSrc: ["'self'", "blob:"],
             manifestSrc: ["'self'"]
         },
-    }
+    },
+    crossOriginEmbedderPolicy: false, // Disable COEP for Firebase compatibility
 }));
 
-// Compression middleware
-app.use(compression());
-
-// Enhanced CORS headers for Firebase
+// CRITICAL: Add COOP header for Firebase popup authentication
 app.use((req, res, next) => {
+    // Fix for Cross-Origin-Opener-Policy errors
+    res.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.header('Cross-Origin-Embedder-Policy', 'credentialless');
+    
+    // Enhanced CORS headers for Firebase
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    
-    // Add additional headers for Firebase compatibility
-    res.header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.header('Cross-Origin-Resource-Policy', 'cross-origin');
     
     if (req.method === 'OPTIONS') {
@@ -170,6 +106,9 @@ app.use((req, res, next) => {
         next();
     }
 });
+
+// Compression middleware
+app.use(compression());
 
 // Add request logging for debugging
 app.use((req, res, next) => {
@@ -280,6 +219,17 @@ app.get('/api/debug/firebase-status', (req, res) => {
         port: PORT,
         cloudRun: cloudRunMetadata,
         firebaseConfigStatus: status,
+        cspConfiguration: {
+            frameSrc: [
+                "'self'",
+                "https://accounts.google.com",
+                "https://www.google.com", 
+                "https://*.firebaseapp.com",
+                `https://${FIREBASE_PROJECT_ID}.firebaseapp.com`,
+                `https://${FIREBASE_PROJECT_ID}.web.app`
+            ],
+            coopHeader: 'same-origin-allow-popups'
+        },
         totalEnvVars: Object.keys(process.env).length,
         allConfigured: envVars.every(varName => {
             const value = process.env[varName];
@@ -296,22 +246,27 @@ app.get('/api/debug/firebase-status', (req, res) => {
     });
 });
 
-// New endpoint to test authentication flows
-app.get('/api/debug/auth-test', (req, res) => {
+// New endpoint to test CSP and COOP headers
+app.get('/api/debug/security-headers', (req, res) => {
     res.json({
-        message: 'Auth test endpoint',
+        message: 'Security headers test endpoint',
         timestamp: new Date().toISOString(),
-        cspHeaders: {
-            scriptSrc: 'self, unsafe-inline, unsafe-eval, Firebase domains',
-            connectSrc: 'Firebase and Google OAuth endpoints',
-            frameSrc: 'Google OAuth domains'
+        appliedHeaders: {
+            'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+            'Cross-Origin-Embedder-Policy': 'credentialless',
+            'Content-Security-Policy': 'Enhanced for Firebase Auth 2024-2025'
         },
-        supportedAuthMethods: ['popup', 'redirect'],
-        recommendations: [
-            'Use redirect method if popups are blocked',
+        firebaseSupport: {
+            popupAuth: 'enabled with COOP header',
+            redirectAuth: 'enabled',
+            frameSrc: 'includes *.firebaseapp.com wildcard',
+            connectSrc: 'includes all Firebase services'
+        },
+        troubleshooting: [
             'Check browser console for CSP violations',
-            'Ensure all Firebase domains are whitelisted',
-            'Test in incognito mode to isolate extension issues'
+            'Verify Firebase project ID matches environment variable',
+            'Ensure domains are added to Firebase authorized domains',
+            'Test popup authentication with dev tools Network tab'
         ]
     });
 });
@@ -366,7 +321,7 @@ app.get('/health', (req, res) => {
     const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: '1.0.0',
+        version: '1.0.1',
         environment: process.env.NODE_ENV || 'development',
         cloudRun: {
             service: process.env.K_SERVICE || 'Not on Cloud Run',
@@ -382,14 +337,14 @@ app.get('/health', (req, res) => {
             ].every(key => !!process.env[key])
         },
         authMethods: {
-            popup: 'supported',
+            popup: 'supported with COOP header',
             redirect: 'supported',
-            recommended: 'redirect for mobile, popup for desktop'
+            recommended: 'popup preferred for 2024-2025'
         },
         security: {
-            csp: 'Firebase-optimized',
-            cors: 'enabled',
-            popup_policy: 'permissive'
+            csp: 'Firebase-optimized with *.firebaseapp.com',
+            coop: 'same-origin-allow-popups',
+            coep: 'credentialless'
         },
         memory: process.memoryUsage(),
         uptime: process.uptime()
@@ -410,21 +365,26 @@ app.get('/api/test', (req, res) => {
 // CSP test endpoint to verify current policy
 app.get('/api/debug/csp-test', (req, res) => {
     res.json({
-        message: 'CSP test endpoint - Enhanced for Firebase Auth',
+        message: 'CSP test endpoint - Enhanced for Firebase Auth 2024-2025',
         timestamp: new Date().toISOString(),
         cspDirectives: [
             'script-src: self, unsafe-inline, unsafe-eval, Firebase domains, Google domains',
-            'connect-src: Firebase and Google OAuth endpoints',
-            'frame-src: Google OAuth domains',
+            'connect-src: Firebase and Google OAuth endpoints, project-specific Firebase domains',
+            'frame-src: Google OAuth domains AND *.firebaseapp.com wildcard',
             'img-src: Google user avatars and Firebase assets',
             'style-src: Google Fonts and inline styles'
         ],
-        authSupport: {
-            popupAuth: 'enabled',
-            redirectAuth: 'enabled',
-            inlineHandlers: 'allowed for Firebase compatibility'
+        criticalFixes: {
+            frameSrc: `Added https://*.firebaseapp.com and https://${FIREBASE_PROJECT_ID}.firebaseapp.com`,
+            coop: 'Added Cross-Origin-Opener-Policy: same-origin-allow-popups',
+            coep: 'Set Cross-Origin-Embedder-Policy: credentialless'
         },
-        note: 'CSP optimized for Firebase Auth with both popup and redirect methods'
+        authSupport: {
+            popupAuth: 'enabled with COOP header',
+            redirectAuth: 'enabled',
+            thirdPartyCookies: 'popup-first mitigation implemented'
+        },
+        note: 'CSP and COOP optimized for Firebase Auth v10+ with 2024-2025 browser requirements'
     });
 });
 
@@ -436,16 +396,6 @@ app.get('/debug-auth.html', (req, res) => {
         'X-Debug-Mode': 'enabled'
     });
     res.sendFile(path.join(__dirname, 'debug-auth.html'));
-});
-
-// Serve debug JavaScript with proper headers
-app.get('/debug-auth.js', (req, res) => {
-    res.set({
-        'Content-Type': 'application/javascript; charset=utf-8',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'X-Debug-Mode': 'enabled'
-    });
-    res.sendFile(path.join(__dirname, 'debug-auth.js'));
 });
 
 // Enhanced error handling middleware
@@ -489,11 +439,11 @@ const server = app.listen(PORT, () => {
     console.log(`📱 Health check: http://localhost:${PORT}/health`);
     console.log(`🔍 Debug tool: http://localhost:${PORT}/debug-auth.html`);
     console.log(`🔧 CSP test: http://localhost:${PORT}/api/debug/csp-test`);
-    console.log(`🔐 Auth test: http://localhost:${PORT}/api/debug/auth-test`);
+    console.log(`🔒 Security headers: http://localhost:${PORT}/api/debug/security-headers`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Firebase configured: ${!!process.env.FIREBASE_API_KEY}`);
     console.log(`☁️  Cloud Run service: ${process.env.K_SERVICE || 'Not on Cloud Run'}`);
-    console.log(`🔒 Security: CSP optimized for Firebase Auth (popup + redirect)`);
+    console.log(`🛡️  Security: CSP with *.firebaseapp.com + COOP same-origin-allow-popups`);
     
     if (!process.env.FIREBASE_API_KEY) {
         console.log('⚠️  Firebase authentication not configured');
@@ -502,6 +452,7 @@ const server = app.listen(PORT, () => {
         console.log('⚠️  Firebase API key format appears invalid (should start with AIza)');
     } else {
         console.log('✅ Firebase authentication properly configured');
+        console.log(`✅ CSP configured for Firebase project: ${FIREBASE_PROJECT_ID}`);
     }
 });
 

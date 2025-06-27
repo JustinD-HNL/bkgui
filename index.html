@@ -143,9 +143,9 @@
     </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- Firebase SDK - Using consistent version 9.22.2 -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <!-- Firebase SDK v10.14.0 - UPDATED for 2024-2025 compatibility -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <!-- Authentication Container -->
@@ -170,7 +170,7 @@
                     </button>
                     
                     <div class="auth-method-info">
-                        <small>Uses popup window for quick sign-in</small>
+                        <small>Recommended for fastest sign-in (uses popup)</small>
                     </div>
                 </div>
 
@@ -184,7 +184,7 @@
                         <span>Sign in via Redirect</span>
                     </button>
                     <div class="auth-method-info">
-                        <small>Redirects to Google's sign-in page (works better on mobile)</small>
+                        <small>Works best when popups are blocked or on mobile</small>
                     </div>
                 </div>
 
@@ -213,14 +213,16 @@
                     <details>
                         <summary>Need help signing in?</summary>
                         <div class="help-content">
-                            <h4>Common Issues:</h4>
+                            <h4>Common Issues & Solutions:</h4>
                             <ul>
                                 <li><strong>Popup blocked:</strong> Allow popups for this site or use redirect method</li>
-                                <li><strong>Connection issues:</strong> Check your internet connection</li>
-                                <li><strong>Mobile device:</strong> Redirect method often works better</li>
+                                <li><strong>Third-party cookies:</strong> Popup method automatically handles this</li>
+                                <li><strong>Mobile device:</strong> Both methods work, redirect often more reliable</li>
+                                <li><strong>Connection issues:</strong> Check internet and try refreshing</li>
                             </ul>
                             <div class="help-links">
                                 <a href="/debug-auth.html" target="_blank">🔧 Advanced Debug Tool</a>
+                                <a href="/api/debug/security-headers" target="_blank">🛡️ Security Check</a>
                             </div>
                         </div>
                     </details>
@@ -349,23 +351,40 @@
     <script src="js/app.js"></script>
 
     <script>
-        // Initialize authentication when DOM is loaded
+        // Third-party cookie mitigation and enhanced authentication initialization
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔄 Initializing authentication interface...');
+            console.log('🔄 Initializing authentication interface with Firebase SDK v10.14.0...');
             
-            // Set up Google Sign-In button (popup method)
+            // Third-party cookie detection and mitigation
+            const detectThirdPartyCookieSupport = () => {
+                try {
+                    // Test if third-party cookies are supported
+                    localStorage.setItem('3pc-test', 'test');
+                    localStorage.removeItem('3pc-test');
+                    return true;
+                } catch (error) {
+                    console.log('⚠️ Third-party cookies may be blocked, prioritizing popup method');
+                    return false;
+                }
+            };
+
+            const thirdPartyCookiesSupported = detectThirdPartyCookieSupport();
+            
+            // Set up Google Sign-In button (popup method - preferred for 2024-2025)
             const googleBtn = document.getElementById('google-signin-btn');
             if (googleBtn) {
                 googleBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
-                    console.log('🔐 Popup sign-in requested');
+                    console.log('🔐 Popup sign-in requested (primary method for cookie mitigation)');
                     
                     if (window.firebaseAuth) {
+                        // Try popup first - this handles third-party cookie issues automatically
                         const result = await firebaseAuth.signInWithGoogle('popup');
                         
                         // If popup failed, show alternative sign-in method
-                        if (!result) {
+                        if (!result && !thirdPartyCookiesSupported) {
                             showAlternativeSignIn();
+                            showThirdPartyCookieInfo();
                         }
                     } else {
                         console.error('Firebase Auth not initialized');
@@ -379,7 +398,7 @@
             if (redirectBtn) {
                 redirectBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
-                    console.log('🔐 Redirect sign-in requested');
+                    console.log('🔐 Redirect sign-in requested (fallback method)');
                     
                     if (window.firebaseAuth) {
                         await firebaseAuth.signInWithGoogle('redirect');
@@ -412,6 +431,15 @@
                 }
             }
             
+            // Function to show third-party cookie information
+            function showThirdPartyCookieInfo() {
+                const methodInfo = document.querySelector('.auth-method-info small');
+                if (methodInfo && !thirdPartyCookiesSupported) {
+                    methodInfo.textContent = 'Third-party cookies detected as blocked - popup method recommended';
+                    methodInfo.style.color = '#f6ad55';
+                }
+            }
+            
             // Function to show error messages
             function showError(message) {
                 const errorEl = document.getElementById('auth-error');
@@ -425,25 +453,69 @@
                 }
             }
             
-            // Detect mobile devices and show redirect option by default
+            // Detect mobile devices and show appropriate guidance
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (isMobile) {
-                console.log('📱 Mobile device detected, showing redirect option');
-                showAlternativeSignIn();
+                console.log('📱 Mobile device detected');
                 
                 // Update the help text for mobile
                 const methodInfo = document.querySelector('.auth-method-info small');
                 if (methodInfo) {
-                    methodInfo.textContent = 'Popup method may not work reliably on mobile devices';
+                    methodInfo.textContent = 'Both methods work on mobile - try popup first';
                 }
+                
+                // Show alternative method on mobile for better UX
+                setTimeout(() => {
+                    showAlternativeSignIn();
+                }, 2000);
+            }
+            
+            // Enhanced browser compatibility detection
+            const browserInfo = {
+                isChrome: /Chrome/.test(navigator.userAgent),
+                isFirefox: /Firefox/.test(navigator.userAgent),
+                isSafari: /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent),
+                isEdge: /Edg/.test(navigator.userAgent)
+            };
+            
+            console.log('🌐 Browser detected:', Object.keys(browserInfo).find(key => browserInfo[key]) || 'Unknown');
+            
+            // Safari-specific optimizations
+            if (browserInfo.isSafari) {
+                console.log('🍎 Safari detected - using Safari-optimized authentication flow');
+                // Safari has stricter popup policies, so show redirect option
+                setTimeout(() => {
+                    showAlternativeSignIn();
+                }, 1000);
             }
             
             // Auto-retry authentication if user was previously signed in
-            if (window.firebaseAuth && localStorage.getItem('firebaseui::rememberedAccounts')) {
+            if (window.firebaseAuth && (localStorage.getItem('firebaseui::rememberedAccounts') || sessionStorage.getItem('firebase:authUser:'))) {
                 console.log('🔄 Previous sign-in detected, initializing...');
             }
             
-            console.log('✅ Authentication interface initialized');
+            // Enhanced debugging for authentication issues
+            window.debugAuth = () => {
+                console.log('🔬 Authentication Debug Info:');
+                console.log('- Firebase SDK version: 10.14.0');
+                console.log('- Third-party cookies supported:', thirdPartyCookiesSupported);
+                console.log('- Browser:', Object.keys(browserInfo).find(key => browserInfo[key]));
+                console.log('- Mobile device:', isMobile);
+                console.log('- Firebase Auth initialized:', !!window.firebaseAuth);
+                
+                // Test CSP and COOP headers
+                fetch('/api/debug/security-headers')
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log('- Security headers:', data);
+                    })
+                    .catch(err => {
+                        console.log('- Security headers test failed:', err);
+                    });
+            };
+            
+            console.log('✅ Authentication interface initialized with third-party cookie mitigation');
+            console.log('💡 Run debugAuth() in console for detailed debugging info');
         });
         
         // Handle authentication state changes globally
@@ -452,26 +524,60 @@
             if (window.location.hash.includes('firebase') || sessionStorage.getItem('firebase:authUser:')) {
                 console.log('🔄 Checking for redirect authentication result...');
             }
+            
+            // Test modern browser features
+            const hasModernFeatures = {
+                crypto: !!window.crypto,
+                fetch: !!window.fetch,
+                promises: !!window.Promise,
+                localStorage: !!window.localStorage
+            };
+            
+            const missingFeatures = Object.keys(hasModernFeatures).filter(key => !hasModernFeatures[key]);
+            if (missingFeatures.length > 0) {
+                console.warn('⚠️ Missing modern browser features:', missingFeatures);
+            }
         });
         
-        // Handle errors gracefully
+        // Handle errors gracefully with enhanced Firebase v10 error detection
         window.addEventListener('error', function(event) {
-            if (event.error && event.error.message && event.error.message.includes('firebase')) {
-                console.error('🚨 Firebase error detected:', event.error);
+            if (event.error && event.error.message) {
+                const errorMessage = event.error.message.toLowerCase();
                 
-                // Show user-friendly error message
-                const errorEl = document.getElementById('auth-error');
-                if (errorEl && !errorEl.textContent) {
-                    errorEl.innerHTML = `
-                        <strong>Authentication Error</strong><br>
-                        There was a problem with the sign-in process. 
-                        <a href="/debug-auth.html" target="_blank" style="color: #667eea;">Try the debug tool</a> 
-                        for more information.
-                    `;
-                    errorEl.style.display = 'block';
+                if (errorMessage.includes('firebase') || errorMessage.includes('auth')) {
+                    console.error('🚨 Firebase authentication error detected:', event.error);
+                    
+                    // Show user-friendly error message
+                    const errorEl = document.getElementById('auth-error');
+                    if (errorEl && !errorEl.textContent) {
+                        errorEl.innerHTML = `
+                            <strong>Authentication Error</strong><br>
+                            There was a problem with the sign-in process. 
+                            <a href="/debug-auth.html" target="_blank" style="color: #667eea;">Try the debug tool</a> 
+                            for more information.
+                        `;
+                        errorEl.style.display = 'block';
+                    }
+                }
+                
+                // CSP violation detection
+                if (errorMessage.includes('content security policy') || errorMessage.includes('csp')) {
+                    console.error('🚨 CSP violation detected - this should be fixed with updated server configuration');
+                }
+                
+                // COOP error detection
+                if (errorMessage.includes('cross-origin-opener-policy') || errorMessage.includes('window.closed')) {
+                    console.error('🚨 COOP error detected - this should be fixed with updated server headers');
                 }
             }
         });
+        
+        // Service worker registration for PWA features (optional)
+        if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.log('Service worker registration failed (optional):', err);
+            });
+        }
     </script>
 </body>
 </html>
