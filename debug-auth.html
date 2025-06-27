@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-box { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; border-left: 4px solid #ff0000; }
+        .success { background: #e6ffe6; border-left: 4px solid #00ff00; }
+        .info { background: #e6f3ff; border-left: 4px solid #0066cc; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Firebase Authentication Debug</h1>
+    
+    <div class="debug-box info">
+        <h3>Debug Information</h3>
+        <div id="debug-info"></div>
+    </div>
+
+    <div class="debug-box">
+        <h3>Firebase Config Test</h3>
+        <button onclick="testFirebaseConfig()">Test Firebase Config</button>
+        <div id="config-result"></div>
+    </div>
+
+    <div class="debug-box">
+        <h3>Authentication Test</h3>
+        <button onclick="testGoogleSignIn()">Test Google Sign-In</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="debug-box">
+        <h3>Console Logs</h3>
+        <div id="console-logs"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const logs = [];
+
+        function addLog(type, ...args) {
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            logs.push(`[${type.toUpperCase()}] ${new Date().toISOString()}: ${message}`);
+            updateConsoleLogs();
+        }
+
+        console.log = (...args) => { originalLog(...args); addLog('log', ...args); };
+        console.error = (...args) => { originalError(...args); addLog('error', ...args); };
+        console.warn = (...args) => { originalWarn(...args); addLog('warn', ...args); };
+
+        function updateConsoleLogs() {
+            document.getElementById('console-logs').innerHTML = 
+                '<pre>' + logs.slice(-10).join('\n') + '</pre>';
+        }
+
+        // Debug info
+        function updateDebugInfo() {
+            const info = {
+                'User Agent': navigator.userAgent,
+                'URL': window.location.href,
+                'Firebase Available': typeof firebase !== 'undefined',
+                'Firebase Auth Available': typeof firebase !== 'undefined' && !!firebase.auth,
+                'Local Storage Available': typeof localStorage !== 'undefined',
+                'Cookies Enabled': navigator.cookieEnabled,
+                'Is Secure Context': window.isSecureContext
+            };
+
+            document.getElementById('debug-info').innerHTML = Object.entries(info)
+                .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+                .join('');
+        }
+
+        // Test Firebase config
+        async function testFirebaseConfig() {
+            const resultDiv = document.getElementById('config-result');
+            try {
+                console.log('Testing Firebase config...');
+                const response = await fetch('/api/firebase-config');
+                
+                if (response.ok) {
+                    const config = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Config loaded successfully</h4>
+                            <pre>${JSON.stringify(config, null, 2)}</pre>
+                        </div>
+                    `;
+                    
+                    // Try to initialize Firebase
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(config);
+                        console.log('Firebase initialized successfully');
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+            } catch (error) {
+                console.error('Config test failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Config test failed</h4>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Test Google sign-in
+        async function testGoogleSignIn() {
+            const resultDiv = document.getElementById('auth-result');
+            try {
+                console.log('Testing Google sign-in...');
+                
+                if (!firebase.apps.length) {
+                    resultDiv.innerHTML = '<div class="error">❌ Firebase not initialized. Run config test first.</div>';
+                    return;
+                }
+
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                console.log('Opening Google sign-in popup...');
+                const result = await firebase.auth().signInWithPopup(provider);
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Sign-in successful!</h4>
+                        <div><strong>User:</strong> ${result.user.email}</div>
+                        <div><strong>Display Name:</strong> ${result.user.displayName}</div>
+                        <div><strong>UID:</strong> ${result.user.uid}</div>
+                    </div>
+                `;
+                console.log('Sign-in successful:', result.user.email);
+                
+            } catch (error) {
+                console.error('Sign-in failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Sign-in failed</h4>
+                        <div><strong>Code:</strong> ${error.code}</div>
+                        <div><strong>Message:</strong> ${error.message}</div>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize debug info on load
+        window.addEventListener('load', updateDebugInfo);
+    </script>
+</body>
+</html>

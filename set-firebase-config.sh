@@ -104,7 +104,7 @@ if [ $? -eq 0 ]; then
     echo ""
     
     # Get the service URL
-    SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
+    SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='get(status.url)')
     
     echo -e "${GREEN}🌐 Your app is now available at: $SERVICE_URL${NC}"
     echo ""
@@ -113,6 +113,7 @@ if [ $? -eq 0 ]; then
     echo -e "2. Add your Cloud Run domain to Authorized domains:"
     echo -e "   ${SERVICE_URL#https://}"
     echo -e "3. Test your authentication by visiting: $SERVICE_URL"
+    echo -e "4. Debug authentication issues: $SERVICE_URL/debug-auth.html"
     echo ""
     echo -e "${GREEN}🎉 Firebase Authentication is now configured!${NC}"
 else
