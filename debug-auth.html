@@ -1,167 +1,474 @@
+<!-- debug-auth.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Auth Debug</title>
+    <title>Firebase Auth Debug Tool</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .debug-box { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .error { background: #ffe6e6; border-left: 4px solid #ff0000; }
-        .success { background: #e6ffe6; border-left: 4px solid #00ff00; }
-        .info { background: #e6f3ff; border-left: 4px solid #0066cc; }
-        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
-        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .debug-box { 
+            background: #f8f9fa; 
+            padding: 1.5rem; 
+            margin: 1rem 0; 
+            border-radius: 8px; 
+            border-left: 4px solid #667eea;
+        }
+        .error { 
+            background: #ffe6e6; 
+            border-left-color: #e53e3e; 
+        }
+        .success { 
+            background: #e6ffe6; 
+            border-left-color: #38a169; 
+        }
+        .warning { 
+            background: #fff3cd; 
+            border-left-color: #f6ad55; 
+        }
+        .info { 
+            background: #e3f2fd; 
+            border-left-color: #3182ce; 
+        }
+        button { 
+            padding: 12px 24px; 
+            margin: 8px; 
+            font-size: 16px; 
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #667eea;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        pre { 
+            background: #2d3748; 
+            color: #e2e8f0;
+            padding: 1rem; 
+            overflow-x: auto; 
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .status-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-ok { background: #38a169; }
+        .status-error { background: #e53e3e; }
+        .status-warning { background: #f6ad55; }
+        h1 { color: #2d3748; }
+        h3 { color: #4a5568; margin-top: 1.5rem; }
+        .log-entry {
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .log-info { background: #e3f2fd; }
+        .log-error { background: #ffebee; }
+        .log-success { background: #e8f5e8; }
+        .log-warning { background: #fff3cd; }
     </style>
 </head>
 <body>
-    <h1>🔍 Firebase Authentication Debug</h1>
-    
-    <div class="debug-box info">
-        <h3>Debug Information</h3>
-        <div id="debug-info"></div>
-    </div>
+    <div class="container">
+        <h1>🔍 Firebase Authentication Debug Tool</h1>
+        <p>This tool helps diagnose Firebase authentication configuration and connection issues.</p>
+        
+        <div class="debug-box info">
+            <h3>🌐 Environment Information</h3>
+            <div id="env-info"></div>
+        </div>
 
-    <div class="debug-box">
-        <h3>Firebase Config Test</h3>
-        <button onclick="testFirebaseConfig()">Test Firebase Config</button>
-        <div id="config-result"></div>
-    </div>
+        <div class="debug-box">
+            <h3>🔧 Server Configuration Test</h3>
+            <button onclick="testServerConfig()">Test Server Configuration</button>
+            <div id="server-config-result"></div>
+        </div>
 
-    <div class="debug-box">
-        <h3>Authentication Test</h3>
-        <button onclick="testGoogleSignIn()">Test Google Sign-In</button>
-        <div id="auth-result"></div>
-    </div>
+        <div class="debug-box">
+            <h3>🔥 Firebase SDK Test</h3>
+            <button onclick="testFirebaseSDK()">Test Firebase SDK</button>
+            <div id="sdk-result"></div>
+        </div>
 
-    <div class="debug-box">
-        <h3>Console Logs</h3>
-        <div id="console-logs"></div>
+        <div class="debug-box">
+            <h3>🔑 Firebase Configuration Test</h3>
+            <button onclick="testFirebaseConfig()">Load & Test Firebase Config</button>
+            <div id="config-result"></div>
+        </div>
+
+        <div class="debug-box">
+            <h3>🔐 Authentication Test</h3>
+            <button id="auth-test-btn" onclick="testAuthentication()" disabled>Test Google Sign-In</button>
+            <div id="auth-result"></div>
+        </div>
+
+        <div class="debug-box">
+            <h3>📋 Console Logs</h3>
+            <button onclick="clearLogs()">Clear Logs</button>
+            <div id="console-logs"></div>
+        </div>
+
+        <div class="debug-box">
+            <h3>🛠️ Troubleshooting Guide</h3>
+            <div id="troubleshooting-guide">
+                <h4>Common Issues & Solutions:</h4>
+                <ul>
+                    <li><strong>Config not found:</strong> Set environment variables or create firebase-config.js</li>
+                    <li><strong>Unauthorized domain:</strong> Add your domain to Firebase Console → Authentication → Sign-in method → Authorized domains</li>
+                    <li><strong>Popup blocked:</strong> Allow popups for this domain in browser settings</li>
+                    <li><strong>SDK errors:</strong> Ensure Firebase scripts are loaded correctly</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 
     <script>
-        // Capture console logs
-        const originalLog = console.log;
-        const originalError = console.error;
-        const originalWarn = console.warn;
+        // Console log capture
         const logs = [];
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
 
         function addLog(type, ...args) {
             const message = args.map(arg => 
                 typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
             ).join(' ');
-            logs.push(`[${type.toUpperCase()}] ${new Date().toISOString()}: ${message}`);
+            
+            logs.push({
+                type,
+                message,
+                timestamp: new Date().toISOString()
+            });
+            
+            updateConsoleLogs();
+            originalConsole[type](...args);
+        }
+
+        console.log = (...args) => addLog('info', ...args);
+        console.error = (...args) => addLog('error', ...args);
+        console.warn = (...args) => addLog('warning', ...args);
+        console.info = (...args) => addLog('info', ...args);
+
+        function updateConsoleLogs() {
+            const container = document.getElementById('console-logs');
+            const recentLogs = logs.slice(-20);
+            
+            container.innerHTML = recentLogs.map(log => `
+                <div class="log-entry log-${log.type}">
+                    <small>${log.timestamp}</small><br>
+                    <strong>[${log.type.toUpperCase()}]</strong> ${log.message}
+                </div>
+            `).join('');
+        }
+
+        function clearLogs() {
+            logs.length = 0;
             updateConsoleLogs();
         }
 
-        console.log = (...args) => { originalLog(...args); addLog('log', ...args); };
-        console.error = (...args) => { originalError(...args); addLog('error', ...args); };
-        console.warn = (...args) => { originalWarn(...args); addLog('warn', ...args); };
-
-        function updateConsoleLogs() {
-            document.getElementById('console-logs').innerHTML = 
-                '<pre>' + logs.slice(-10).join('\n') + '</pre>';
-        }
-
-        // Debug info
-        function updateDebugInfo() {
+        // Environment info
+        function updateEnvInfo() {
             const info = {
                 'User Agent': navigator.userAgent,
                 'URL': window.location.href,
-                'Firebase Available': typeof firebase !== 'undefined',
-                'Firebase Auth Available': typeof firebase !== 'undefined' && !!firebase.auth,
+                'Protocol': window.location.protocol,
+                'Host': window.location.host,
+                'Is Secure Context': window.isSecureContext,
                 'Local Storage Available': typeof localStorage !== 'undefined',
+                'Session Storage Available': typeof sessionStorage !== 'undefined',
                 'Cookies Enabled': navigator.cookieEnabled,
-                'Is Secure Context': window.isSecureContext
+                'Firebase SDK Loaded': typeof firebase !== 'undefined',
+                'Firebase Auth Available': typeof firebase !== 'undefined' && !!firebase.auth
             };
 
-            document.getElementById('debug-info').innerHTML = Object.entries(info)
-                .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+            document.getElementById('env-info').innerHTML = Object.entries(info)
+                .map(([key, value]) => {
+                    const indicator = value === true || value === 'https:' || value.includes('available') ? 'ok' : 
+                                    value === false ? 'error' : 'warning';
+                    return `<div><span class="status-indicator status-${indicator}"></span><strong>${key}:</strong> ${value}</div>`;
+                })
                 .join('');
         }
 
-        // Test Firebase config
-        async function testFirebaseConfig() {
-            const resultDiv = document.getElementById('config-result');
+        // Test server configuration
+        async function testServerConfig() {
+            const resultDiv = document.getElementById('server-config-result');
+            resultDiv.innerHTML = '<p>Testing server configuration...</p>';
+            
             try {
-                console.log('Testing Firebase config...');
-                const response = await fetch('/api/firebase-config');
+                // Test basic health endpoint
+                const healthResponse = await fetch('/health');
+                const healthData = await healthResponse.json();
                 
-                if (response.ok) {
-                    const config = await response.json();
-                    resultDiv.innerHTML = `
-                        <div class="success">
-                            <h4>✅ Config loaded successfully</h4>
-                            <pre>${JSON.stringify(config, null, 2)}</pre>
-                        </div>
-                    `;
-                    
-                    // Try to initialize Firebase
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(config);
-                        console.log('Firebase initialized successfully');
-                    }
-                } else {
-                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-                }
+                // Test Firebase config endpoint
+                const configResponse = await fetch('/api/firebase-config');
+                const configData = await configResponse.json();
+                
+                // Test debug endpoint
+                const debugResponse = await fetch('/api/debug/firebase-status');
+                const debugData = await debugResponse.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Server Tests Passed</h4>
+                        <p><strong>Health Check:</strong> ${healthData.status}</p>
+                        <p><strong>Firebase Config Status:</strong> ${configResponse.ok ? 'Available' : 'Not Available'}</p>
+                        <p><strong>All Firebase Env Vars Set:</strong> ${debugData.allConfigured ? 'Yes' : 'No'}</p>
+                        <details>
+                            <summary>View Details</summary>
+                            <pre>${JSON.stringify({healthData, configData, debugData}, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+                
             } catch (error) {
-                console.error('Config test failed:', error);
+                console.error('Server config test failed:', error);
                 resultDiv.innerHTML = `
                     <div class="error">
-                        <h4>❌ Config test failed</h4>
-                        <pre>${error.message}</pre>
+                        <h4>❌ Server Test Failed</h4>
+                        <p>${error.message}</p>
+                        <p>This usually means the server is not running or there's a network issue.</p>
                     </div>
                 `;
             }
         }
 
-        // Test Google sign-in
-        async function testGoogleSignIn() {
-            const resultDiv = document.getElementById('auth-result');
+        // Test Firebase SDK
+        function testFirebaseSDK() {
+            const resultDiv = document.getElementById('sdk-result');
+            
             try {
-                console.log('Testing Google sign-in...');
-                
-                if (!firebase.apps.length) {
-                    resultDiv.innerHTML = '<div class="error">❌ Firebase not initialized. Run config test first.</div>';
-                    return;
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded');
                 }
+                
+                if (!firebase.auth) {
+                    throw new Error('Firebase Auth module not available');
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Firebase SDK Test Passed</h4>
+                        <p><strong>Firebase Version:</strong> ${firebase.SDK_VERSION || 'Unknown'}</p>
+                        <p><strong>Auth Available:</strong> Yes</p>
+                        <p><strong>Apps Initialized:</strong> ${firebase.apps.length}</p>
+                    </div>
+                `;
+                
+                // Enable next test
+                document.querySelector('button[onclick="testFirebaseConfig()"]').disabled = false;
+                
+            } catch (error) {
+                console.error('Firebase SDK test failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Firebase SDK Test Failed</h4>
+                        <p>${error.message}</p>
+                        <p>Make sure Firebase scripts are loaded before this script.</p>
+                    </div>
+                `;
+            }
+        }
 
+        // Test Firebase configuration
+        async function testFirebaseConfig() {
+            const resultDiv = document.getElementById('config-result');
+            resultDiv.innerHTML = '<p>Loading Firebase configuration...</p>';
+            
+            try {
+                const response = await fetch('/api/firebase-config');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Server returned ${response.status}: ${errorData.message || 'Configuration not available'}`);
+                }
+                
+                const config = await response.json();
+                
+                // Validate config
+                const requiredFields = ['apiKey', 'authDomain', 'projectId'];
+                const missingFields = requiredFields.filter(field => !config[field]);
+                
+                if (missingFields.length > 0) {
+                    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+                }
+                
+                // Try to initialize Firebase
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(config);
+                    console.log('Firebase initialized successfully');
+                } else {
+                    console.log('Firebase already initialized');
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Firebase Configuration Test Passed</h4>
+                        <p><strong>Project ID:</strong> ${config.projectId}</p>
+                        <p><strong>Auth Domain:</strong> ${config.authDomain}</p>
+                        <p><strong>API Key:</strong> ${config.apiKey ? config.apiKey.substring(0, 10) + '...' : 'Missing'}</p>
+                        <details>
+                            <summary>Full Configuration</summary>
+                            <pre>${JSON.stringify(config, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+                
+                // Enable authentication test
+                document.getElementById('auth-test-btn').disabled = false;
+                
+            } catch (error) {
+                console.error('Config test failed:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Firebase Configuration Test Failed</h4>
+                        <p>${error.message}</p>
+                        <p><strong>Solution:</strong> Set Firebase environment variables in your deployment or create a local firebase-config.js file.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Test authentication
+        async function testAuthentication() {
+            const resultDiv = document.getElementById('auth-result');
+            const button = document.getElementById('auth-test-btn');
+            
+            button.disabled = true;
+            button.textContent = 'Testing...';
+            resultDiv.innerHTML = '<p>Starting Google Sign-In test...</p>';
+            
+            try {
+                if (!firebase.apps.length) {
+                    throw new Error('Firebase not initialized. Run configuration test first.');
+                }
+                
+                const auth = firebase.auth();
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.addScope('email');
                 provider.addScope('profile');
                 
                 console.log('Opening Google sign-in popup...');
-                const result = await firebase.auth().signInWithPopup(provider);
+                const result = await auth.signInWithPopup(provider);
                 
                 resultDiv.innerHTML = `
                     <div class="success">
-                        <h4>✅ Sign-in successful!</h4>
-                        <div><strong>User:</strong> ${result.user.email}</div>
-                        <div><strong>Display Name:</strong> ${result.user.displayName}</div>
-                        <div><strong>UID:</strong> ${result.user.uid}</div>
+                        <h4>✅ Authentication Test Passed!</h4>
+                        <p><strong>User:</strong> ${result.user.email}</p>
+                        <p><strong>Display Name:</strong> ${result.user.displayName}</p>
+                        <p><strong>UID:</strong> ${result.user.uid}</p>
+                        <p><strong>Provider:</strong> ${result.credential?.providerId || 'google.com'}</p>
+                        <button onclick="signOutUser()">Sign Out</button>
                     </div>
                 `;
-                console.log('Sign-in successful:', result.user.email);
+                
+                console.log('Authentication successful:', result.user.email);
                 
             } catch (error) {
-                console.error('Sign-in failed:', error);
+                console.error('Authentication test failed:', error);
+                
+                let errorMessage = error.message;
+                let solution = '';
+                
+                switch (error.code) {
+                    case 'auth/popup-blocked':
+                        solution = 'Allow popups for this domain in your browser settings.';
+                        break;
+                    case 'auth/popup-closed-by-user':
+                        solution = 'Complete the sign-in process in the popup window.';
+                        break;
+                    case 'auth/unauthorized-domain':
+                        solution = 'Add your domain to Firebase Console → Authentication → Sign-in method → Authorized domains.';
+                        break;
+                    case 'auth/operation-not-allowed':
+                        solution = 'Enable Google sign-in in Firebase Console → Authentication → Sign-in method.';
+                        break;
+                    default:
+                        solution = 'Check the console logs and Firebase configuration.';
+                }
+                
                 resultDiv.innerHTML = `
                     <div class="error">
-                        <h4>❌ Sign-in failed</h4>
-                        <div><strong>Code:</strong> ${error.code}</div>
-                        <div><strong>Message:</strong> ${error.message}</div>
-                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                        <h4>❌ Authentication Test Failed</h4>
+                        <p><strong>Error Code:</strong> ${error.code || 'Unknown'}</p>
+                        <p><strong>Message:</strong> ${errorMessage}</p>
+                        <p><strong>Solution:</strong> ${solution}</p>
+                        <details>
+                            <summary>Full Error Details</summary>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </details>
                     </div>
                 `;
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Test Google Sign-In';
             }
         }
 
-        // Initialize debug info on load
-        window.addEventListener('load', updateDebugInfo);
+        // Sign out user
+        async function signOutUser() {
+            try {
+                await firebase.auth().signOut();
+                console.log('User signed out successfully');
+                document.getElementById('auth-result').innerHTML = '<p>User signed out. You can test authentication again.</p>';
+            } catch (error) {
+                console.error('Sign out failed:', error);
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            updateEnvInfo();
+            console.log('Debug tool loaded successfully');
+        });
     </script>
 </body>
 </html>

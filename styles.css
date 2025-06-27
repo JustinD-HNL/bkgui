@@ -1,3 +1,4 @@
+/* styles.css */
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -555,9 +556,11 @@ body {
     border-radius: 20px;
     padding: 3rem;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    max-width: 400px;
+    max-width: 500px;
     width: 90%;
     text-align: center;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .auth-header h1 {
@@ -596,7 +599,7 @@ body {
     width: 100%;
 }
 
-.google-btn:hover {
+.google-btn:hover:not(:disabled) {
     border-color: #cbd5e0;
     background: #f7fafc;
     transform: translateY(-1px);
@@ -605,6 +608,11 @@ body {
 
 .google-btn:active {
     transform: translateY(0);
+}
+
+.google-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .google-icon {
@@ -645,6 +653,8 @@ body {
     border-radius: 8px;
     border-left: 4px solid #e53e3e;
     text-align: left;
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
 .success-message {
@@ -654,6 +664,53 @@ body {
     border-radius: 8px;
     border-left: 4px solid #38a169;
     text-align: left;
+    font-size: 0.9rem;
+}
+
+/* Debug Info Styles */
+.debug-info {
+    background: #edf2f7;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: left;
+    margin-top: 1rem;
+}
+
+.debug-info details {
+    margin: 0;
+}
+
+.debug-info summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #4a5568;
+    padding: 0.5rem 0;
+    user-select: none;
+}
+
+.debug-info summary:hover {
+    color: #667eea;
+}
+
+.debug-info pre {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin: 0.5rem 0 0 0;
+    font-size: 0.75rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.debug-info code {
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
 }
 
 /* User Info Styles */

@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,22 +8,9 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    
-    <!-- Local Firebase Config (for development only) -->
-    <script>
-        // Try to load local Firebase config if available
-        try {
-            const script = document.createElement('script');
-            script.src = 'firebase-config.js';
-            script.onerror = () => console.log('Local Firebase config not found - using server config');
-            document.head.appendChild(script);
-        } catch (e) {
-            console.log('Local Firebase config not available');
-        }
-    </script>
+    <!-- Firebase SDK - Using consistent version 9.22.2 -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 </head>
 <body>
     <!-- Authentication Container -->
@@ -56,6 +44,14 @@
 
                 <!-- Success Message -->
                 <div id="auth-success" class="success-message" style="display: none;"></div>
+
+                <!-- Debug Info (only shown when there are config issues) -->
+                <div id="auth-debug" class="debug-info" style="display: none;">
+                    <details>
+                        <summary>Debug Information</summary>
+                        <div id="debug-details"></div>
+                    </details>
+                </div>
             </div>
         </div>
     </div>
@@ -173,19 +169,28 @@
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts - Load in correct order -->
     <script src="js/firebase-auth.js"></script>
     <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
     <script src="js/app.js"></script>
 
     <script>
-        // Authentication form handlers
-        async function handleGoogleSignIn() {
-            await firebaseAuth.signInWithGoogle();
-        }
-
-        document.getElementById('google-signin-btn').addEventListener('click', handleGoogleSignIn);
+        // Initialize authentication when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up Google Sign-In button
+            const googleBtn = document.getElementById('google-signin-btn');
+            if (googleBtn) {
+                googleBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    if (window.firebaseAuth) {
+                        await firebaseAuth.signInWithGoogle();
+                    } else {
+                        console.error('Firebase Auth not initialized');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>

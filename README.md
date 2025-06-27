@@ -36,23 +36,44 @@ A visual GUI application for creating and editing Buildkite CI/CD pipelines thro
 - For authentication: Firebase project (see [FIREBASE_SETUP.md](FIREBASE_SETUP.md))
 
 ### Local Development
-1. Clone or download this repository
-2. Install dependencies: `npm install`
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd buildkite-pipeline-builder
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
 3. **Set up Firebase Authentication**:
    - Follow the guide in [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
    - Copy `firebase-config.template.js` to `firebase-config.js`
    - Update the configuration with your Firebase project settings
-4. Start local server: `npm start`
-5. Open `http://localhost:8080` in your browser
+
+4. **Start local server**
+   ```bash
+   npm start
+   ```
+
+5. **Open in browser**
+   ```
+   http://localhost:8080
+   ```
 
 ### Cloud Deployment (Google Cloud Run)
-1. **Quick Deploy**: Edit `deploy.sh` with your GCP Project ID and run `./deploy.sh`
-   - The script will prompt you for Firebase configuration during deployment
-2. **Manual Deploy**: Follow the detailed steps in [DEPLOYMENT.md](DEPLOYMENT.md)
-3. **CI/CD**: Connect your repository to Google Cloud Build for automatic deployments
 
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
-For Firebase setup instructions, see [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
+#### Quick Deploy
+1. **Edit deployment script**: Update `PROJECT_ID` in `deploy.sh`
+2. **Run deployment**: `./deploy.sh`
+   - The script will prompt you for Firebase configuration during deployment
+
+#### Manual Deploy
+Follow the detailed steps in [DEPLOYMENT.md](DEPLOYMENT.md)
+
+#### CI/CD Setup
+Connect your repository to Google Cloud Build for automatic deployments using the included `cloudbuild.yaml`
 
 ## 🔐 Authentication
 
@@ -64,18 +85,87 @@ The application uses Firebase Authentication with Google Sign-In to secure acces
 - **Secure Configuration**: Firebase config is handled securely via environment variables
 - **Clean Interface**: Simple, modern authentication with minimal friction
 
-### User Experience
-- **One-Click Sign-In**: Single Google button for authentication
-- **Automatic Redirect**: Seamless transition to the main app after login
-- **User Profile Display**: Shows user avatar and email in the header
-- **Responsive Design**: Works perfectly on all device sizes
-- **Loading States**: Clear visual feedback during authentication
+### Setup Requirements
+1. **Firebase Project**: Create a project at [Firebase Console](https://console.firebase.google.com/)
+2. **Enable Google Auth**: Enable Google sign-in in Authentication settings
+3. **Configure Domains**: Add your domain(s) to authorized domains
+4. **Set Environment Variables**: Configure Firebase credentials for deployment
 
-### Security
-- **Google OAuth 2.0**: Leverages Google's secure authentication infrastructure
-- **No Password Storage**: No sensitive credentials stored in the application
-- **Domain Restrictions**: API keys are restricted to specific authorized domains
-- **Environment Variables**: Firebase configuration protected in production
+For detailed setup instructions, see [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
+
+## Troubleshooting
+
+### Authentication Issues
+
+If Firebase authentication is not working, use the built-in debug tool:
+
+1. **Visit the debug page**: `http://your-domain/debug-auth.html`
+2. **Run diagnostic tests**: The page will guide you through testing each component
+3. **Check the issues below** for common problems
+
+#### Common Issues & Solutions
+
+**🚨 "Firebase configuration not available"**
+- **Cause**: Missing environment variables or firebase-config.js
+- **Solution**: 
+  - For deployment: Set `FIREBASE_API_KEY` and other env vars in Cloud Run
+  - For local: Create `firebase-config.js` with your Firebase project settings
+
+**🚨 "This domain is not authorized"**
+- **Cause**: Domain not added to Firebase authorized domains
+- **Solution**: 
+  1. Go to [Firebase Console](https://console.firebase.google.com/)
+  2. Select your project → Authentication → Sign-in method
+  3. Scroll to "Authorized domains" and add your domain
+
+**🚨 "Pop-up blocked by browser"**
+- **Cause**: Browser blocking the Google sign-in popup
+- **Solution**: Allow popups for your domain in browser settings
+
+**🚨 "Firebase SDK not loaded"**
+- **Cause**: Network issues or CDN problems
+- **Solution**: Check browser console for script loading errors
+
+#### Debug Tools
+
+1. **Built-in Debug Page**: Visit `/debug-auth.html` for comprehensive testing
+2. **Browser Console**: Check for JavaScript errors and Firebase logs
+3. **Server Debug**: Visit `/api/debug/firebase-status` for server-side status
+4. **Health Check**: Visit `/health` to verify server is running
+
+### Server Issues
+
+**🚨 Server not starting**
+```bash
+# Check if port is in use
+lsof -i :8080
+
+# Start with debug logging
+NODE_ENV=development npm start
+```
+
+**🚨 Environment variables not loading**
+```bash
+# Check current environment
+curl http://localhost:8080/api/debug/firebase-status
+
+# For Cloud Run deployment
+gcloud run services describe buildkite-pipeline-builder \
+  --region=us-central1 \
+  --format="value(spec.template.spec.containers[0].env[].name,spec.template.spec.containers[0].env[].value)"
+```
+
+### Development Environment
+
+**🚨 Local Firebase config not loading**
+1. Ensure `firebase-config.js` exists and is properly formatted
+2. Check that the file is not in `.gitignore`
+3. Verify the config object is assigned to `window.FIREBASE_CONFIG`
+
+**🚨 CORS errors in development**
+- The server is configured to allow Firebase domains
+- Check browser console for specific CORS errors
+- Ensure you're accessing via `http://localhost:8080` (not file://)
 
 ## Usage
 
@@ -152,19 +242,20 @@ steps:
 ## File Structure
 
 ```
-bkgui/
+buildkite-pipeline-builder/
 ├── index.html              # Main application HTML
 ├── styles.css              # Application styles and themes
 ├── js/
+│   ├── firebase-auth.js    # Firebase authentication service
 │   ├── pipeline-builder.js # Core pipeline building logic
 │   ├── yaml-generator.js   # YAML generation and validation
 │   └── app.js              # Application utilities and features
 ├── server.js               # Express server for production
+├── debug-auth.html         # Authentication debugging tool
 ├── package.json            # Node.js dependencies
 ├── Dockerfile              # Container configuration
 ├── deploy.sh               # Quick deployment script
 ├── cloudbuild.yaml         # Google Cloud Build configuration
-├── app.yaml                # Cloud Run service configuration
 ├── DEPLOYMENT.md           # Detailed deployment guide
 ├── FIREBASE_SETUP.md       # Firebase setup instructions
 └── README.md               # This documentation
@@ -184,13 +275,14 @@ This is an open-source project! Contributions are welcome:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly (including authentication)
 5. Submit a pull request
 
 ### Development
 
 The application is built with vanilla JavaScript and requires no build process:
 
+- `firebase-auth.js` - Firebase authentication handling with comprehensive error handling
 - `pipeline-builder.js` - Core drag & drop and step management
 - `yaml-generator.js` - Buildkite YAML generation
 - `app.js` - Application features and utilities
@@ -213,6 +305,31 @@ You can also upload pipelines directly using the Buildkite CLI:
 buildkite-agent pipeline upload .buildkite/pipeline.yml
 ```
 
+## Support & Debugging
+
+### Getting Help
+
+1. **Check the troubleshooting section** above for common issues
+2. **Use the debug tool** at `/debug-auth.html` for authentication issues
+3. **Check browser console** for JavaScript errors
+4. **Review server logs** for backend issues
+
+### Useful Debug URLs
+
+- `/health` - Server health check
+- `/debug-auth.html` - Authentication diagnostic tool
+- `/api/debug/firebase-status` - Firebase configuration status
+- `/api/firebase-config` - Firebase configuration endpoint
+
+### Reporting Issues
+
+When reporting issues, please include:
+
+1. **Environment details** (browser, OS, deployment type)
+2. **Error messages** from browser console
+3. **Steps to reproduce** the issue
+4. **Output from debug tools** if authentication-related
+
 ## Roadmap
 
 🎯 **Planned Features**
@@ -228,7 +345,8 @@ buildkite-agent pipeline upload .buildkite/pipeline.yml
 
 - [Buildkite Documentation](https://buildkite.com/docs)
 - [Buildkite Step Reference](https://buildkite.com/docs/pipelines/step-reference)
-- [Buildkite GitHub Repository](https://github.com/buildkite)
+- [Firebase Auth Documentation](https://firebase.google.com/docs/auth)
+- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
 
 ## License
 
