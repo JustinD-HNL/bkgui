@@ -1460,3 +1460,577 @@ kbd {
         display: none;
     }
 }
+/* Enhanced CSS for Dependency Graph and New Features */
+
+/* Dependency Graph Styles */
+.graph-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.graph-legend {
+    display: flex;
+    gap: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+#dependency-canvas {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: grab;
+    background: #fafafa;
+    display: block;
+    margin: 0 auto;
+}
+
+#dependency-canvas:active {
+    cursor: grabbing;
+}
+
+.graph-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.node-details {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.node-details h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2d3748;
+    font-size: 1.1rem;
+}
+
+.node-details p {
+    margin: 0.25rem 0;
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+.node-details code {
+    background: #edf2f7;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: #2d3748;
+}
+
+.btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+/* Conditional Builder Styles */
+.conditional-builder {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.condition-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.condition-group {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.condition-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.condition-header h4 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.conditions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.condition-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.condition-builder {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.condition-field,
+.condition-operator,
+.condition-value {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.condition-examples {
+    color: #718096;
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+.condition-preview {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.condition-preview h4 {
+    margin: 0 0 1rem 0;
+    color: #2d3748;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.condition-preview pre {
+    background: #2d3748;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.condition-templates {
+    grid-column: 1 / -1;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.condition-templates h4 {
+    margin: 0 0 1rem 0;
+    color: #2d3748;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.template-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #cbd5e0;
+    color: #4a5568;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.btn-outline:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+/* Dependency Manager Styles */
+.dependency-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.dependency-types {
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 1rem;
+}
+
+.dependency-types h4 {
+    margin: 0 0 1rem 0;
+    color: #2d3748;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.dependency-type-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.dependency-type-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #cbd5e0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.dependency-type-btn:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.dependency-type-btn.active {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+}
+
+.dependency-type-btn i {
+    font-size: 1rem;
+}
+
+.dependency-content {
+    min-height: 300px;
+}
+
+.dependency-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.dependency-section h5 {
+    margin: 0 0 1rem 0;
+    color: #2d3748;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.step-dependencies {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.step-dependency-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.step-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-label {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.step-type {
+    color: #718096;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.dependency-controls {
+    display: grid;
+    grid-template-columns: auto 1fr auto 2fr;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.dependency-controls label {
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+.dependency-key,
+.dependency-list {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.file-dependency-builder,
+.conditional-dependency-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.file-patterns,
+.conditional-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.file-patterns textarea,
+.conditional-rules input,
+.conditional-rules select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.conditional-rules {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.condition-type {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Enhanced Property Section Styles */
+.property-section .property-group button {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive Design for New Features */
+@media (max-width: 1200px) {
+    .conditional-builder {
+        grid-template-columns: 1fr;
+    }
+    
+    .condition-builder {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    
+    .condition-builder .condition-value {
+        grid-column: 1 / -1;
+    }
+    
+    .dependency-controls {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .template-buttons {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .graph-controls {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .graph-legend {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    #dependency-canvas {
+        width: 100%;
+        max-width: 600px;
+        height: 400px;
+    }
+    
+    .dependency-type-buttons {
+        flex-direction: column;
+    }
+    
+    .condition-builder {
+        grid-template-columns: 1fr;
+    }
+    
+    .template-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .conditional-rules {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Enhanced Modal Styles for New Features */
+.modal-content.large {
+    max-width: 1000px;
+    max-height: 90vh;
+}
+
+.modal-body {
+    max-height: calc(90vh - 160px);
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* Animation for new elements */
+.condition-item,
+.step-dependency-item {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Graph canvas loading state */
+.graph-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    color: #718096;
+    font-size: 1rem;
+}
+
+.graph-loading i {
+    margin-right: 0.5rem;
+    animation: spin 1s linear infinite;
+}
+
+/* Enhanced quick actions grid for new buttons */
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+    .quick-actions {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Step key and dependency indicators */
+.pipeline-step[data-has-dependencies="true"] {
+    border-left: 4px solid #667eea;
+}
+
+.pipeline-step[data-has-conditions="true"] {
+    border-right: 4px solid #f6ad55;
+}
+
+.pipeline-step .step-indicators {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.step-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    background: #edf2f7;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: #4a5568;
+}
+
+.step-indicator.dependency {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.step-indicator.condition {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.step-indicator i {
+    font-size: 0.7rem;
+}
+
+/* Enhanced scrollbars for new modals */
+.dependency-section::-webkit-scrollbar,
+.conditions-list::-webkit-scrollbar,
+.node-details::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dependency-section::-webkit-scrollbar-track,
+.conditions-list::-webkit-scrollbar-track,
+.node-details::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.dependency-section::-webkit-scrollbar-thumb,
+.conditions-list::-webkit-scrollbar-thumb,
+.node-details::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+}
+
+.dependency-section::-webkit-scrollbar-thumb:hover,
+.conditions-list::-webkit-scrollbar-thumb:hover,
+.node-details::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
