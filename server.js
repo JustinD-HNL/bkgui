@@ -51,7 +51,9 @@ app.use(helmet({
             frameSrc: [
                 "'self'", 
                 "https://accounts.google.com",
-                "https://www.google.com"
+                "https://www.google.com",
+                // Firebase auth domain - CRITICAL for popup auth
+                "https://buildkite-pipeline-builder.firebaseapp.com"
             ],
             fontSrc: [
                 "'self'", 
