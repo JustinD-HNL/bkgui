@@ -629,6 +629,89 @@
                 </div>
             </div>
 
+            <!-- Plugin Catalog Modal -->
+            <div id="plugin-catalog-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-plug"></i> Plugin Catalog</h3>
+                        <button class="modal-close" data-modal="plugin-catalog-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="plugin-catalog">
+                            <!-- Search and Filters -->
+                            <div class="plugin-search">
+                                <div class="search-container">
+                                    <input type="text" id="plugin-search-input" placeholder="Search plugins..." class="plugin-search-input">
+                                    <i class="fas fa-search search-icon"></i>
+                                </div>
+                                <div class="plugin-categories">
+                                    <button class="category-btn active" data-category="all">
+                                        <i class="fas fa-th"></i> All
+                                    </button>
+                                    <button class="category-btn" data-category="docker">
+                                        <i class="fab fa-docker"></i> Docker
+                                    </button>
+                                    <button class="category-btn" data-category="testing">
+                                        <i class="fas fa-vial"></i> Testing
+                                    </button>
+                                    <button class="category-btn" data-category="deployment">
+                                        <i class="fas fa-rocket"></i> Deployment
+                                    </button>
+                                    <button class="category-btn" data-category="notifications">
+                                        <i class="fas fa-bell"></i> Notifications
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Plugin Grid -->
+                            <div class="plugin-grid" id="plugin-grid">
+                                <!-- Plugin cards will be populated by JavaScript -->
+                            </div>
+
+                            <!-- Empty State -->
+                            <div class="plugin-empty-state" id="plugin-empty-state" style="display: none;">
+                                <i class="fas fa-search"></i>
+                                <h4>No plugins found</h4>
+                                <p>Try adjusting your search terms or category filter.</p>
+                            </div>
+
+                            <!-- Plugin Details Preview -->
+                            <div class="plugin-details-preview" id="plugin-details-preview" style="display: none;">
+                                <div class="plugin-details-header">
+                                    <h4 id="plugin-details-name">Plugin Name</h4>
+                                    <button class="btn btn-secondary btn-small" onclick="window.pipelineBuilder && window.pipelineBuilder.hidePluginDetails()">
+                                        <i class="fas fa-times"></i> Close Preview
+                                    </button>
+                                </div>
+                                <div class="plugin-details-content">
+                                    <div class="plugin-details-info">
+                                        <p id="plugin-details-description">Plugin description</p>
+                                        <div class="plugin-details-meta">
+                                            <span class="plugin-version" id="plugin-details-version">v1.0.0</span>
+                                            <span class="plugin-category" id="plugin-details-category">category</span>
+                                        </div>
+                                    </div>
+                                    <div class="plugin-configuration">
+                                        <h5>Configuration Options</h5>
+                                        <div id="plugin-details-fields">
+                                            <!-- Configuration fields will be populated -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="plugin-details-actions">
+                                    <button class="btn btn-primary" onclick="window.pipelineBuilder && window.pipelineBuilder.addPluginFromCatalog()">
+                                        <i class="fas fa-plus"></i> Add Plugin Step
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" data-modal="plugin-catalog-modal">Close</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Keyboard Shortcuts Modal -->
             <div id="shortcuts-modal" class="modal hidden">
                 <div class="modal-content">

@@ -8,6 +8,9 @@ class PipelineBuilder {
         this.pluginCatalog = this.initializePluginCatalog();
         this.stepTemplates = this.initializeStepTemplates();
         this.matrixPresets = this.initializeMatrixPresets();
+        this.currentPluginFilter = 'all';
+        this.currentSearchTerm = '';
+        this.selectedPluginKey = null;
         this.init();
     }
 
@@ -990,55 +993,204 @@ class PipelineBuilder {
         }
     }
 
+    // Plugin Catalog Methods - IMPLEMENTED
     showPluginCatalog() {
-        console.log('Showing plugin catalog');
+        console.log('🔧 Opening plugin catalog...');
         const modal = document.getElementById('plugin-catalog-modal');
         if (modal) {
             modal.classList.remove('hidden');
+            this.initializePluginCatalog();
+            this.renderPluginGrid();
+            this.setupPluginCatalogEvents();
         } else {
-            alert('Plugin catalog coming soon!');
+            console.error('❌ Plugin catalog modal not found');
         }
     }
 
-    showMatrixTemplates() {
-        console.log('Showing matrix templates');
-        const modal = document.getElementById('matrix-builder-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        } else {
-            alert('Matrix builder coming soon!');
+    initializePluginCatalogModal() {
+        // Reset filter state
+        this.currentPluginFilter = 'all';
+        this.currentSearchTerm = '';
+        this.selectedPluginKey = null;
+        
+        // Clear search input
+        const searchInput = document.getElementById('plugin-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        
+        // Reset category buttons
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.category === 'all') {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Hide plugin details preview
+        this.hidePluginDetails();
+    }
+
+    renderPluginGrid() {
+        const grid = document.getElementById('plugin-grid');
+        const emptyState = document.getElementById('plugin-empty-state');
+        
+        if (!grid) return;
+        
+        const filteredPlugins = this.getFilteredPlugins();
+        
+        if (filteredPlugins.length === 0) {
+            grid.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+        
+        grid.style.display = 'grid';
+        if (emptyState) emptyState.style.display = 'none';
+        
+        grid.innerHTML = filteredPlugins.map(([key, plugin]) => this.createPluginCard(key, plugin)).join('');
+        
+        // Add click event listeners to plugin cards
+        grid.querySelectorAll('.plugin-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const pluginKey = card.dataset.pluginKey;
+                this.showPluginDetails(pluginKey);
+            });
+        });
+    }
+
+    createPluginCard(key, plugin) {
+        const categoryIcons = {
+            docker: 'fab fa-docker',
+            testing: 'fas fa-vial',
+            deployment: 'fas fa-rocket',
+            notifications: 'fas fa-bell'
+        };
+        
+        const icon = categoryIcons[plugin.category] || 'fas fa-plug';
+        
+        return `
+            <div class="plugin-card" data-plugin-key="${key}">
+                <div class="plugin-card-header">
+                    <div class="plugin-icon">
+                        <i class="${icon}"></i>
+                    </div>
+                    <div class="plugin-info">
+                        <h5>${plugin.name}</h5>
+                        <span class="plugin-version">${plugin.version}</span>
+                    </div>
+                </div>
+                <p class="plugin-description">${plugin.description}</p>
+                <div class="plugin-card-footer">
+                    <span class="plugin-category-badge">${plugin.category}</span>
+                    <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); window.pipelineBuilder.addPluginStepDirect('${key}')">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    getFilteredPlugins() {
+        return Object.entries(this.pluginCatalog).filter(([key, plugin]) => {
+            // Filter by category
+            if (this.currentPluginFilter !== 'all' && plugin.category !== this.currentPluginFilter) {
+                return false;
+            }
+            
+            // Filter by search term
+            if (this.currentSearchTerm) {
+                const searchLower = this.currentSearchTerm.toLowerCase();
+                return plugin.name.toLowerCase().includes(searchLower) || 
+                       plugin.description.toLowerCase().includes(searchLower);
+            }
+            
+            return true;
+        });
+    }
+
+    setupPluginCatalogEvents() {
+        // Search input
+        const searchInput = document.getElementById('plugin-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.currentSearchTerm = e.target.value;
+                this.renderPluginGrid();
+            });
+        }
+        
+        // Category buttons
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                btn.classList.add('active');
+                
+                this.currentPluginFilter = btn.dataset.category;
+                this.renderPluginGrid();
+            });
+        });
+    }
+
+    showPluginDetails(pluginKey) {
+        const plugin = this.pluginCatalog[pluginKey];
+        if (!plugin) return;
+        
+        this.selectedPluginKey = pluginKey;
+        
+        const preview = document.getElementById('plugin-details-preview');
+        if (!preview) return;
+        
+        // Update plugin details
+        const nameEl = document.getElementById('plugin-details-name');
+        const descEl = document.getElementById('plugin-details-description');
+        const versionEl = document.getElementById('plugin-details-version');
+        const categoryEl = document.getElementById('plugin-details-category');
+        const fieldsEl = document.getElementById('plugin-details-fields');
+        
+        if (nameEl) nameEl.textContent = plugin.name;
+        if (descEl) descEl.textContent = plugin.description;
+        if (versionEl) versionEl.textContent = plugin.version;
+        if (categoryEl) categoryEl.textContent = plugin.category;
+        
+        if (fieldsEl) {
+            const fieldsHTML = Object.entries(plugin.fields || {}).map(([key, field]) => `
+                <div class="plugin-field">
+                    <span class="field-name">${field.label}</span>
+                    <span class="field-type">${field.type}${field.required ? ' (required)' : ''}</span>
+                </div>
+            `).join('');
+            
+            fieldsEl.innerHTML = fieldsHTML || '<p>No configuration options</p>';
+        }
+        
+        preview.style.display = 'block';
+    }
+
+    hidePluginDetails() {
+        const preview = document.getElementById('plugin-details-preview');
+        if (preview) {
+            preview.style.display = 'none';
+        }
+        this.selectedPluginKey = null;
+    }
+
+    addPluginFromCatalog() {
+        if (!this.selectedPluginKey) return;
+        
+        const plugin = this.pluginCatalog[this.selectedPluginKey];
+        if (!plugin) return;
+        
+        this.addPluginStepDirect(this.selectedPluginKey);
+        
+        // Close the modal
+        if (window.closeModal) {
+            window.closeModal('plugin-catalog-modal');
         }
     }
 
-    showStepTemplates() {
-        console.log('Showing step templates');
-        const modal = document.getElementById('step-templates-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        } else {
-            alert('Step templates modal coming soon!');
-        }
-    }
-
-    openPipelineValidator() {
-        console.log('Opening pipeline validator');
-        const modal = document.getElementById('pipeline-validator-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        } else {
-            alert('Pipeline validator coming soon!');
-        }
-    }
-
-    showKeyboardShortcuts() {
-        console.log('Showing keyboard shortcuts');
-        const modal = document.getElementById('shortcuts-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-        }
-    }
-
-    addPluginStep(pluginKey) {
+    addPluginStepDirect(pluginKey) {
         console.log('Adding plugin step:', pluginKey);
         const plugin = this.pluginCatalog[pluginKey];
         if (!plugin) {
@@ -1057,6 +1209,33 @@ class PipelineBuilder {
         this.selectStep(step.id);
         
         console.log('Added plugin step:', plugin.name);
+    }
+
+    showMatrixTemplates() {
+        console.log('Showing matrix templates');
+        alert('Matrix templates modal coming soon!');
+    }
+
+    showStepTemplates() {
+        console.log('Showing step templates');
+        alert('Step templates modal coming soon!');
+    }
+
+    openPipelineValidator() {
+        console.log('Opening pipeline validator');
+        alert('Pipeline validator coming soon!');
+    }
+
+    showKeyboardShortcuts() {
+        console.log('Showing keyboard shortcuts');
+        const modal = document.getElementById('shortcuts-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    addPluginStep(pluginKey) {
+        this.addPluginStepDirect(pluginKey);
     }
 }
 

@@ -20,7 +20,7 @@ class MainInitializer {
         ];
         
         this.currentStep = 0;
-        this.maxRetries = 15; // Increased retries
+        this.maxRetries = 15;
         this.retryCount = 0;
         this.debugMode = true;
     }
@@ -69,7 +69,7 @@ class MainInitializer {
             // Wait for dependencies to be available with longer timeout
             let attempts = 0;
             while (!step.check() && attempts < this.maxRetries) {
-                await this.wait(200); // Longer wait between attempts
+                await this.wait(200);
                 attempts++;
                 if (attempts % 5 === 0) {
                     console.log(`   ⏳ Still waiting for ${step.name}... (attempt ${attempts}/${this.maxRetries})`);
@@ -374,6 +374,9 @@ class MainInitializer {
     }
 
     async postInit() {
+        // Inject plugin catalog styles
+        this.injectPluginCatalogStyles();
+        
         // Ensure all methods are properly bound
         this.ensureMethodBindings();
         
@@ -390,8 +393,244 @@ class MainInitializer {
         this.verifyFunctionality();
     }
 
+    injectPluginCatalogStyles() {
+        // Inject plugin catalog specific styles if not already present
+        if (!document.getElementById('plugin-catalog-styles')) {
+            const style = document.createElement('style');
+            style.id = 'plugin-catalog-styles';
+            style.textContent = `
+                /* Plugin Catalog Specific Styles */
+                .plugin-search {
+                    margin-bottom: 1.5rem;
+                }
+
+                .plugin-search input {
+                    width: 100%;
+                    padding: 0.75rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    font-size: 1rem;
+                    margin-bottom: 1rem;
+                }
+
+                .plugin-categories {
+                    display: flex;
+                    gap: 0.5rem;
+                    flex-wrap: wrap;
+                }
+
+                .category-btn {
+                    padding: 0.5rem 1rem;
+                    border: 1px solid #e2e8f0;
+                    background: white;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-size: 0.9rem;
+                }
+
+                .category-btn.active,
+                .category-btn:hover {
+                    background: #667eea;
+                    color: white;
+                    border-color: #667eea;
+                }
+
+                .plugin-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                    gap: 1.5rem;
+                    margin-top: 1.5rem;
+                }
+
+                .plugin-card {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    background: white;
+                    position: relative;
+                }
+
+                .plugin-card:hover {
+                    border-color: #667eea;
+                    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+                    transform: translateY(-4px);
+                }
+
+                .plugin-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 1rem;
+                }
+
+                .plugin-header h5 {
+                    margin: 0;
+                    color: #2d3748;
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .plugin-header h5 i {
+                    color: #667eea;
+                }
+
+                .plugin-version {
+                    background: #edf2f7;
+                    color: #4a5568;
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 4px;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                }
+
+                .plugin-description {
+                    color: #718096;
+                    font-size: 0.9rem;
+                    line-height: 1.5;
+                    margin-bottom: 1rem;
+                }
+
+                .plugin-meta {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1rem;
+                }
+
+                .category-tag {
+                    padding: 0.25rem 0.5rem;
+                    border-radius: 4px;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                }
+
+                .category-docker { background: #e3f2fd; color: #1565c0; }
+                .category-testing { background: #e8f5e8; color: #2e7d32; }
+                .category-deployment { background: #fff3e0; color: #ef6c00; }
+                .category-notifications { background: #f3e5f5; color: #7b1fa2; }
+
+                .fields-count {
+                    color: #718096;
+                    font-size: 0.8rem;
+                }
+
+                .plugin-fields-preview {
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    padding: 0.75rem;
+                    margin-bottom: 1rem;
+                }
+
+                .fields-preview {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                }
+
+                .field-preview {
+                    background: white;
+                    border: 1px solid #cbd5e0;
+                    border-radius: 4px;
+                    padding: 0.25rem 0.5rem;
+                    font-size: 0.75rem;
+                    color: #4a5568;
+                }
+
+                .field-preview .required {
+                    color: #e53e3e;
+                    font-weight: bold;
+                }
+
+                .more-fields {
+                    color: #667eea;
+                    font-style: italic;
+                    font-size: 0.75rem;
+                }
+
+                .no-fields {
+                    color: #a0aec0;
+                    font-style: italic;
+                    margin: 0;
+                    font-size: 0.85rem;
+                }
+
+                .plugin-actions {
+                    display: flex;
+                    gap: 0.75rem;
+                    justify-content: space-between;
+                }
+
+                .plugin-actions .btn {
+                    flex: 1;
+                    text-align: center;
+                    font-size: 0.85rem;
+                    padding: 0.6rem 1rem;
+                }
+
+                .no-plugins {
+                    grid-column: 1 / -1;
+                    text-align: center;
+                    padding: 3rem;
+                    color: #a0aec0;
+                }
+
+                .no-plugins i {
+                    font-size: 3rem;
+                    margin-bottom: 1rem;
+                    color: #cbd5e0;
+                }
+
+                .no-plugins h4 {
+                    margin: 0 0 0.5rem 0;
+                    color: #718096;
+                }
+
+                .plugin-loading {
+                    grid-column: 1 / -1;
+                    text-align: center;
+                    padding: 3rem;
+                    color: #718096;
+                }
+
+                .plugin-loading i {
+                    font-size: 2rem;
+                    margin-bottom: 1rem;
+                    color: #667eea;
+                }
+
+                /* Responsive design */
+                @media (max-width: 768px) {
+                    .plugin-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .plugin-categories {
+                        flex-direction: column;
+                    }
+                    
+                    .plugin-actions {
+                        flex-direction: column;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('✅ Plugin catalog styles injected');
+        }
+    }
+
     setupUIEventListeners() {
         console.log('🔧 Setting up UI event listeners...');
+        
+        // Setup enhanced keyboard shortcuts
+        this.setupEnhancedKeyboardShortcuts();
         
         // Header buttons
         const clearBtn = document.getElementById('clear-pipeline');
@@ -429,6 +668,19 @@ class MainInitializer {
         this.setupQuickActionButtons();
 
         console.log('✅ UI event listeners setup complete');
+    }
+
+    setupEnhancedKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                if (window.pipelineBuilder && typeof window.pipelineBuilder.showPluginCatalog === 'function') {
+                    console.log('🔌 Plugin catalog opened via keyboard shortcut');
+                    window.pipelineBuilder.showPluginCatalog();
+                }
+            }
+        });
+        console.log('⌨️ Enhanced keyboard shortcuts configured');
     }
 
     setupDragAndDrop() {
@@ -488,7 +740,7 @@ class MainInitializer {
             });
         });
 
-        // Action buttons - FIXED to properly check for functionality
+        // Action buttons
         document.querySelectorAll('.action-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const action = button.dataset.action;
@@ -517,7 +769,6 @@ class MainInitializer {
                         }
                         break;
                     case 'dependency-graph':
-                        // FIXED: Check for dependency graph properly and don't show alert if it exists
                         if (window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && 
                             typeof window.pipelineBuilder.dependencyGraph.showDependencyGraph === 'function') {
                             console.log('✅ Opening dependency graph...');
@@ -531,7 +782,6 @@ class MainInitializer {
                         }
                         break;
                     case 'conditional-builder':
-                        // FIXED: Check for conditional builder properly and don't show alert if it exists
                         if (window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && 
                             typeof window.pipelineBuilder.dependencyGraph.showConditionalBuilder === 'function') {
                             console.log('✅ Opening conditional builder...');
@@ -545,7 +795,6 @@ class MainInitializer {
                         }
                         break;
                     case 'dependency-manager':
-                        // FIXED: Check for dependency manager properly and don't show alert if it exists
                         if (window.pipelineBuilder && window.pipelineBuilder.dependencyGraph && 
                             typeof window.pipelineBuilder.dependencyGraph.showDependencyManager === 'function') {
                             console.log('✅ Opening dependency manager...');
@@ -868,6 +1117,7 @@ class MainInitializer {
             console.log('   Ctrl+S - Export YAML');
             console.log('   Ctrl+N - Clear Pipeline');
             console.log('   Ctrl+E - Load Example');
+            console.log('   Ctrl+P - Plugin Catalog');
             
             if (window.dependencyGraph) {
                 console.log('   Ctrl+G - Dependency Graph');
@@ -893,3 +1143,22 @@ if (document.readyState === 'loading') {
 } else {
     mainInitializer.initialize();
 }
+
+// Enhanced initialization with plugin catalog support
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔌 Plugin Catalog Phase 1 - Enhanced initialization starting...');
+    
+    // Verify plugin catalog functionality after initialization
+    setTimeout(() => {
+        if (window.pipelineBuilder && typeof window.pipelineBuilder.showPluginCatalog === 'function') {
+            console.log('✅ Plugin Catalog Phase 1 - Ready!');
+            console.log('🔌 Plugin catalog accessible via:');
+            console.log('   - Plugin Catalog button in Quick Actions');
+            console.log('   - Ctrl+P keyboard shortcut');
+            console.log('   - Plugin quick buttons in sidebar');
+            console.log(`📦 ${Object.keys(window.pipelineBuilder.pluginCatalog || {}).length} plugins available`);
+        } else {
+            console.warn('⚠️ Plugin catalog not fully initialized');
+        }
+    }, 3000);
+});
