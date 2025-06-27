@@ -1060,4 +1060,5 @@ class PipelineBuilder {
     }
 }
 
-// DO NOT initialize here - wait for main initialization script
+// Export to global scope for initialization
+window.PipelineBuilder = PipelineBuilder;

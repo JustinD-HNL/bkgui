@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 8080;
 // Critical: Get Firebase project ID for domain-specific CSP
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'buildkite-pipeline-builder';
 
-// Enhanced security middleware with FIXED CSP for Firebase Auth 2024-2025
+// Enhanced security middleware with FIXED CSP for Firebase Auth 2024-2025 + Inline handlers
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -25,6 +25,8 @@ app.use(helmet({
                 "https://www.google.com",
                 "https://accounts.google.com"
             ],
+            // FIXED: Allow inline event handlers (onclick, etc.)
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: [
                 "'self'", 
                 "'unsafe-inline'", 
@@ -228,7 +230,8 @@ app.get('/api/debug/firebase-status', (req, res) => {
                 `https://${FIREBASE_PROJECT_ID}.firebaseapp.com`,
                 `https://${FIREBASE_PROJECT_ID}.web.app`
             ],
-            coopHeader: 'same-origin-allow-popups'
+            coopHeader: 'same-origin-allow-popups',
+            scriptSrcAttr: 'unsafe-inline (FIXED - allows onclick handlers)'
         },
         totalEnvVars: Object.keys(process.env).length,
         allConfigured: envVars.every(varName => {
@@ -254,19 +257,21 @@ app.get('/api/debug/security-headers', (req, res) => {
         appliedHeaders: {
             'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
             'Cross-Origin-Embedder-Policy': 'credentialless',
-            'Content-Security-Policy': 'Enhanced for Firebase Auth 2024-2025'
+            'Content-Security-Policy': 'Enhanced for Firebase Auth 2024-2025 + Inline Handlers'
         },
         firebaseSupport: {
             popupAuth: 'enabled with COOP header',
             redirectAuth: 'enabled',
             frameSrc: 'includes *.firebaseapp.com wildcard',
-            connectSrc: 'includes all Firebase services'
+            connectSrc: 'includes all Firebase services',
+            inlineHandlers: 'enabled with script-src-attr unsafe-inline'
         },
         troubleshooting: [
             'Check browser console for CSP violations',
             'Verify Firebase project ID matches environment variable',
             'Ensure domains are added to Firebase authorized domains',
-            'Test popup authentication with dev tools Network tab'
+            'Test popup authentication with dev tools Network tab',
+            'Inline onclick handlers should now work'
         ]
     });
 });
@@ -321,7 +326,7 @@ app.get('/health', (req, res) => {
     const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: '1.0.1',
+        version: '1.0.2',
         environment: process.env.NODE_ENV || 'development',
         cloudRun: {
             service: process.env.K_SERVICE || 'Not on Cloud Run',
@@ -342,9 +347,10 @@ app.get('/health', (req, res) => {
             recommended: 'popup preferred for 2024-2025'
         },
         security: {
-            csp: 'Firebase-optimized with *.firebaseapp.com',
+            csp: 'Firebase-optimized with *.firebaseapp.com + inline handlers',
             coop: 'same-origin-allow-popups',
-            coep: 'credentialless'
+            coep: 'credentialless',
+            inlineHandlers: 'enabled (FIXED)'
         },
         memory: process.memoryUsage(),
         uptime: process.uptime()
@@ -365,10 +371,11 @@ app.get('/api/test', (req, res) => {
 // CSP test endpoint to verify current policy
 app.get('/api/debug/csp-test', (req, res) => {
     res.json({
-        message: 'CSP test endpoint - Enhanced for Firebase Auth 2024-2025',
+        message: 'CSP test endpoint - Enhanced for Firebase Auth 2024-2025 + Inline Handlers',
         timestamp: new Date().toISOString(),
         cspDirectives: [
             'script-src: self, unsafe-inline, unsafe-eval, Firebase domains, Google domains',
+            'script-src-attr: unsafe-inline (FIXED - allows onclick handlers)',
             'connect-src: Firebase and Google OAuth endpoints, project-specific Firebase domains',
             'frame-src: Google OAuth domains AND *.firebaseapp.com wildcard',
             'img-src: Google user avatars and Firebase assets',
@@ -377,14 +384,16 @@ app.get('/api/debug/csp-test', (req, res) => {
         criticalFixes: {
             frameSrc: `Added https://*.firebaseapp.com and https://${FIREBASE_PROJECT_ID}.firebaseapp.com`,
             coop: 'Added Cross-Origin-Opener-Policy: same-origin-allow-popups',
-            coep: 'Set Cross-Origin-Embedder-Policy: credentialless'
+            coep: 'Set Cross-Origin-Embedder-Policy: credentialless',
+            scriptSrcAttr: 'Added script-src-attr unsafe-inline for onclick handlers'
         },
         authSupport: {
             popupAuth: 'enabled with COOP header',
             redirectAuth: 'enabled',
-            thirdPartyCookies: 'popup-first mitigation implemented'
+            thirdPartyCookies: 'popup-first mitigation implemented',
+            inlineHandlers: 'FIXED - onclick handlers now work'
         },
-        note: 'CSP and COOP optimized for Firebase Auth v10+ with 2024-2025 browser requirements'
+        note: 'CSP and COOP optimized for Firebase Auth v10+ with 2024-2025 browser requirements + inline handler support'
     });
 });
 
@@ -443,7 +452,7 @@ const server = app.listen(PORT, () => {
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔐 Firebase configured: ${!!process.env.FIREBASE_API_KEY}`);
     console.log(`☁️  Cloud Run service: ${process.env.K_SERVICE || 'Not on Cloud Run'}`);
-    console.log(`🛡️  Security: CSP with *.firebaseapp.com + COOP same-origin-allow-popups`);
+    console.log(`🛡️  Security: CSP with *.firebaseapp.com + COOP same-origin-allow-popups + inline handlers FIXED`);
     
     if (!process.env.FIREBASE_API_KEY) {
         console.log('⚠️  Firebase authentication not configured');
@@ -454,6 +463,8 @@ const server = app.listen(PORT, () => {
         console.log('✅ Firebase authentication properly configured');
         console.log(`✅ CSP configured for Firebase project: ${FIREBASE_PROJECT_ID}`);
     }
+    
+    console.log('✅ FIXED: Inline event handlers (onclick) now work with script-src-attr unsafe-inline');
 });
 
 // Graceful shutdown

@@ -472,6 +472,48 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         `;
     }
 
+    generateNotifyForm(step) {
+        return `
+            <div class="property-group">
+                <label>Step Label</label>
+                <input type="text" name="label" value="${step.properties.label}" />
+            </div>
+            
+            <div class="property-group">
+                <label>Command</label>
+                <textarea name="command" placeholder="echo 'Sending notification'">${step.properties.command}</textarea>
+            </div>
+            
+            <div class="property-group">
+                <label>Notification Config (JSON)</label>
+                <textarea name="notify" placeholder='{"slack": {"webhook_url": "", "channel": "#builds"}}'>${JSON.stringify(step.properties.notify, null, 2)}</textarea>
+            </div>
+        `;
+    }
+
+    generatePipelineUploadForm(step) {
+        return `
+            <div class="property-group">
+                <label>Step Label</label>
+                <input type="text" name="label" value="${step.properties.label}" />
+            </div>
+            
+            <div class="property-group">
+                <label>Pipeline File</label>
+                <input type="text" name="pipeline_file" value="${step.properties.pipeline_file}" 
+                       placeholder=".buildkite/pipeline.yml" />
+                <small>Path to the pipeline file to upload</small>
+            </div>
+            
+            <div class="property-group">
+                <label>Dynamic Script</label>
+                <input type="text" name="dynamic_script" value="${step.properties.dynamic_script}" 
+                       placeholder="./scripts/generate-pipeline.sh" />
+                <small>Script to generate pipeline dynamically</small>
+            </div>
+        `;
+    }
+
     renderMatrixPreview(matrix) {
         if (!matrix || !matrix.setup) {
             return '<p class="empty-state">No matrix configured</p>';
@@ -510,6 +552,28 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         `;
     }
 
+    renderPluginConfig(selectedPlugin, plugins) {
+        if (!selectedPlugin) {
+            return '<p class="empty-state">Select a plugin to configure</p>';
+        }
+        
+        const plugin = this.pluginCatalog[selectedPlugin];
+        if (!plugin) {
+            return '<p class="empty-state">Plugin configuration not available</p>';
+        }
+        
+        return `
+            <div class="plugin-configuration">
+                <h5>${plugin.name} Configuration</h5>
+                <p>${plugin.description}</p>
+                <div class="property-group">
+                    <label>Plugin Config (JSON)</label>
+                    <textarea name="plugin_config" placeholder='{"image": "node:18"}'>${JSON.stringify(plugins[selectedPlugin] || {}, null, 2)}</textarea>
+                </div>
+            </div>
+        `;
+    }
+
     calculateMatrixCombinations(setup) {
         return Object.values(setup).reduce((total, values) => {
             return total * (Array.isArray(values) ? values.length : 1);
@@ -517,15 +581,25 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
     }
 
     openMatrixBuilder(stepId) {
-        // Implementation for matrix builder modal
         console.log('Opening matrix builder for step:', stepId);
-        // This would open a modal with matrix configuration options
+        alert('Matrix builder modal coming soon!');
     }
 
     openPluginBuilder(stepId) {
-        // Implementation for plugin builder modal
         console.log('Opening plugin builder for step:', stepId);
-        // This would open a modal with plugin selection and configuration
+        alert('Plugin builder modal coming soon!');
+    }
+
+    updatePluginConfig(stepId, pluginName) {
+        console.log('Updating plugin config for step:', stepId, 'plugin:', pluginName);
+        const step = this.steps.find(s => s.id === stepId);
+        if (step) {
+            step.properties.selected_plugin = pluginName;
+            if (pluginName && !step.properties.plugins[pluginName]) {
+                step.properties.plugins[pluginName] = {};
+            }
+            this.renderProperties();
+        }
     }
 
     setupEnhancedEventListeners() {
@@ -551,18 +625,18 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
     }
 
     showMatrixTemplates() {
-        // Show modal with matrix presets
         console.log('Showing matrix templates');
+        alert('Matrix templates modal coming soon!');
     }
 
     showPluginCatalog() {
-        // Show modal with available plugins
         console.log('Showing plugin catalog');
+        alert('Plugin catalog modal coming soon!');
     }
 
     showStepTemplates() {
-        // Show modal with step templates
         console.log('Showing step templates');
+        alert('Step templates modal coming soon!');
     }
 
     // Enhanced YAML generation with new features
@@ -764,6 +838,6 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
     }
 }
 
-// Replace the global instances with enhanced versions
-window.yamlGenerator = new EnhancedYAMLGenerator();
-window.pipelineBuilder = new EnhancedPipelineBuilder();
+// Export enhanced classes to global scope
+window.EnhancedPipelineBuilder = EnhancedPipelineBuilder;
+window.EnhancedYAMLGenerator = EnhancedYAMLGenerator;
