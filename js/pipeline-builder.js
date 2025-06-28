@@ -22,6 +22,8 @@ class PipelineBuilder {
         this.setupEnhancedKeyboardShortcuts();
     }
 
+
+
     initializePluginCatalog() {
         return {
             'docker': {
@@ -83,6 +85,61 @@ class PipelineBuilder {
                     registry_id: { type: 'text', label: 'Registry ID' }
                 }
             }
+            // ADD these to your existing plugin catalog:
+            'slack': {
+                name: 'Slack',
+                description: 'Send notifications to Slack',
+                version: 'v1.4.2',
+                category: 'notifications',
+                fields: {
+                    channels: { type: 'array', label: 'Channels' },
+                    message: { type: 'text', label: 'Message' },
+                    webhook_url: { type: 'text', label: 'Webhook URL' }
+                }
+            },
+            'kubernetes': {
+                name: 'Kubernetes',
+                description: 'Deploy to Kubernetes clusters',
+                version: 'v1.4.1',
+                category: 'deployment',
+                fields: {
+                    apply: { type: 'array', label: 'Manifest Files' },
+                    namespace: { type: 'text', label: 'Namespace' },
+                    context: { type: 'text', label: 'Kubectl Context' }
+                }
+            },
+            'terraform': {
+                name: 'Terraform',
+                description: 'Run Terraform commands',
+                version: 'v1.0.0',
+                category: 'deployment',
+                fields: {
+                    init: { type: 'boolean', label: 'Run Init' },
+                    plan: { type: 'boolean', label: 'Run Plan' },
+                    apply: { type: 'boolean', label: 'Run Apply' }
+                }
+            },
+            'codecov': {
+                name: 'Codecov',
+                description: 'Upload coverage reports to Codecov',
+                version: 'v2.2.4',
+                category: 'testing',
+                fields: {
+                    file: { type: 'text', label: 'Coverage File' },
+                    token: { type: 'text', label: 'Codecov Token' }
+                }
+            },
+            'cache': {
+                name: 'Cache',
+                description: 'Cache dependencies and build artifacts',
+                version: 'v2.4.0',
+                category: 'optimization',
+                fields: {
+                    restore: { type: 'text', label: 'Cache Key to Restore' },
+                    save: { type: 'text', label: 'Cache Key to Save' },
+                    paths: { type: 'array', label: 'Paths to Cache' }
+                }
+            }
         };
     }
 
@@ -113,24 +170,50 @@ class PipelineBuilder {
 
     initializeMatrixPresets() {
         return {
-            'node_versions': {
-                name: 'Node.js Versions',
-                matrix: { node: ['16', '18', '20', '21'] }
+            'node-versions': {
+                name: 'Node.js Versions', 
+                description: 'Test across multiple Node.js versions',
+                matrix: {  // ✅ FIX: Change 'setup' to 'matrix'
+                    node_version: ['16', '18', '20']
+                }
             },
-            'os_matrix': {
+            'web-browsers': {
+                name: 'Web Browsers',
+                description: 'Test across multiple web browsers',
+                matrix: {
+                    browser: ['chrome', 'firefox', 'safari', 'edge'],
+                    browser_version: ['latest', 'latest-1']
+                }
+            },
+            'os-matrix': {
                 name: 'Operating Systems',
-                matrix: { os: ['ubuntu', 'windows', 'macos'] }
+                description: 'Test across different operating systems',
+                matrix: {
+                    os: ['ubuntu-20.04', 'ubuntu-22.04', 'windows-2019', 'windows-2022', 'macos-12'],
+                    arch: ['x64', 'arm64']
+                }
             },
-            'browser_matrix': {
-                name: 'Browser Testing',
-                matrix: { browser: ['chrome', 'firefox', 'safari', 'edge'] }
-            },
-            'environments': {
+            'deployment-environments': {
                 name: 'Deployment Environments',
-                matrix: { env: ['development', 'staging', 'production'] }
+                description: 'Deploy to multiple environments',
+                matrix: {
+                    environment: ['staging', 'production'],
+                    region: ['us-east-1', 'us-west-2', 'eu-west-1']
+                }
+            },
+            'testing-strategies': {
+                name: 'Testing Strategies',
+                description: 'Run different types of tests',
+                matrix: {
+                    test_type: ['unit', 'integration', 'e2e'],
+                    parallel: ['true', 'false']
+                }
             }
         };
     }
+    
+
+    
 
     setupDragAndDrop() {
         // Make step types draggable
@@ -523,25 +606,48 @@ class PipelineBuilder {
         const presets = Object.entries(this.matrixPresets);
         
         presetsContainer.innerHTML = presets.map(([key, preset]) => `
-            <button class="preset-btn" data-preset="${key}">
+            <button class="preset-btn" data-preset="${key}" type="button">
                 <i class="fas fa-layer-group"></i>
                 <span>${preset.name}</span>
             </button>
         `).join('');
+        
+        // ✅ FIX: Re-setup events after rendering
+        setTimeout(() => {
+            this.setupMatrixPresetEvents();
+        }, 100);
     }
+
+
 
     setupMatrixPresetEvents() {
         const presetsContainer = document.getElementById('matrix-preset-buttons');
         if (!presetsContainer) return;
         
-        presetsContainer.addEventListener('click', (e) => {
-            const presetBtn = e.target.closest('.preset-btn');
-            if (!presetBtn) return;
-            
-            const presetKey = presetBtn.dataset.preset;
-            this.applyMatrixPreset(presetKey);
-        });
+        // ✅ FIX: Bind context properly and remove existing listeners
+        presetsContainer.removeEventListener('click', this.handleMatrixPresetClick);
+        this.handleMatrixPresetClick = this.handleMatrixPresetClick.bind(this);
+        presetsContainer.addEventListener('click', this.handleMatrixPresetClick);
     }
+
+    // ✅ FIX: Add separate event handler method
+    handleMatrixPresetClick(e) {
+        const presetBtn = e.target.closest('.preset-btn');
+        if (!presetBtn) return;
+        
+        const presetKey = presetBtn.dataset.preset;
+        console.log(`🔲 Applying matrix preset: ${presetKey}`);
+        
+        try {
+            this.applyMatrixPreset(presetKey);
+            console.log(`✅ Matrix preset ${presetKey} applied successfully`);
+        } catch (error) {
+            console.error(`❌ Error applying preset ${presetKey}:`, error);
+            alert(`Error applying preset: ${error.message}`);
+        }
+    }
+
+
 
     applyMatrixPreset(presetKey) {
         const preset = this.matrixPresets[presetKey];

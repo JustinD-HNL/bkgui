@@ -450,43 +450,39 @@ class MainInitializer {
         
         // Final verification
         this.verifyFunctionality();
+        
+        this.finalMatrixBuilderSetup();
     }
 
     // MATRIX BUILDER FIX: Ensure matrix builder is fully functional
+    // ADD this method to your MainInitializer class:
     finalMatrixBuilderSetup() {
         console.log('🔧 Final matrix builder setup...');
         
         if (window.pipelineBuilder) {
-            // Verify all required matrix methods exist
-            const requiredMethods = [
-                'openMatrixBuilder', 
-                'showMatrixTemplates',
-                'initializeMatrixBuilder',
-                'setupMatrixBuilderEvents'
-            ];
-            
-            requiredMethods.forEach(method => {
-                if (typeof window.pipelineBuilder[method] !== 'function') {
-                    console.warn(`⚠️ Missing matrix method: ${method}`);
+            // Force matrix builder initialization
+            if (typeof window.pipelineBuilder.initializeMatrixBuilder === 'function') {
+                try {
+                    window.pipelineBuilder.initializeMatrixBuilder();
+                    console.log('✅ Matrix builder re-initialized');
+                } catch (error) {
+                    console.warn('⚠️ Matrix builder initialization error:', error);
                 }
-            });
-            
-            // Verify matrix builder modal exists
-            const matrixModal = document.getElementById('matrix-builder-modal');
-            if (matrixModal) {
-                console.log('✅ Matrix builder modal found');
-            } else {
-                console.warn('⚠️ Matrix builder modal not found in DOM');
             }
             
-            // Test matrix builder accessibility
-            if (typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
-                console.log('✅ Matrix builder is accessible');
-            } else {
-                console.error('❌ Matrix builder method not accessible');
-            }
+            // Ensure preset buttons are properly rendered
+            setTimeout(() => {
+                if (typeof window.pipelineBuilder.renderMatrixPresets === 'function') {
+                    window.pipelineBuilder.renderMatrixPresets();
+                    console.log('✅ Matrix presets re-rendered');
+                }
+            }, 500);
         }
     }
+
+
+
+    
 
     injectPluginCatalogStyles() {
         // Inject plugin catalog specific styles if not already present
