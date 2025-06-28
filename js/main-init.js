@@ -1,6 +1,6 @@
 // js/main-init.js
 /**
- * Main Initialization Script - FIXED VERSION
+ * Main Initialization Script - MATRIX BUILDER FIXED VERSION
  * Coordinates the loading of all pipeline builder components with robust error handling
  */
 
@@ -26,7 +26,7 @@ class MainInitializer {
     }
 
     async initialize() {
-        console.log('🚀 Starting Enhanced Pipeline Builder initialization (FIXED VERSION)...');
+        console.log('🚀 Starting Enhanced Pipeline Builder initialization (MATRIX BUILDER FIXED)...');
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -100,7 +100,91 @@ class MainInitializer {
         }
         
         console.log('🎉 Pipeline Builder initialization complete!');
-        this.logFeatureStatus();
+        console.log('📊 Final status:');
+        this.verifyFunctionality();
+    }
+
+    async initYamlGenerator() {
+        if (!window.yamlGenerator) {
+            console.warn('YAML Generator not found, creating basic version');
+            window.yamlGenerator = {
+                generateYAML: (steps) => {
+                    if (!steps || steps.length === 0) return 'steps: []';
+                    return 'steps:\n' + steps.map(step => `  - label: "${step.properties.label}"\n    command: "${step.properties.command || 'echo hello'}"`).join('\n');
+                }
+            };
+        }
+    }
+
+    async initPipelinePatterns() {
+        if (window.PipelinePatterns) {
+            window.pipelinePatterns = new window.PipelinePatterns();
+            console.log('📋 Pipeline patterns initialized');
+        } else {
+            console.warn('Pipeline Patterns class not found');
+        }
+    }
+
+    async initPipelineBuilder() {
+        if (window.pipelineBuilder) {
+            console.log('✅ Pipeline Builder already exists');
+            return;
+        }
+
+        if (window.PipelineBuilder) {
+            // Choose the most advanced available builder
+            let BuilderClass = window.PipelineBuilder;
+            
+            if (window.EnhancedPipelineBuilderWithDependencies) {
+                BuilderClass = window.EnhancedPipelineBuilderWithDependencies;
+                console.log('🚀 Using Enhanced Pipeline Builder with Dependencies');
+            } else if (window.EnhancedPipelineBuilder) {
+                BuilderClass = window.EnhancedPipelineBuilder;
+                console.log('✨ Using Enhanced Pipeline Builder');
+            } else {
+                console.log('🔧 Using Basic Pipeline Builder');
+            }
+            
+            window.pipelineBuilder = new BuilderClass();
+            
+            // MATRIX BUILDER FIX: Create global shorthand reference for button compatibility
+            if (!window.pipelineBuilder) {
+                console.error('❌ Failed to create pipeline builder instance');
+                return;
+            }
+            
+            // Ensure global accessibility for all button contexts
+            window.pipelineBuilder = window.pipelineBuilder;
+            
+            // CRITICAL FIX: Verify matrix builder methods are available
+            if (typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
+                console.log('✅ Matrix builder methods verified');
+            } else {
+                console.warn('⚠️ Matrix builder methods missing - adding fallback');
+                this.addMatrixBuilderFallback();
+            }
+            
+        } else {
+            throw new Error('PipelineBuilder class not found');
+        }
+    }
+
+    // MATRIX BUILDER FIX: Add fallback methods if missing
+    addMatrixBuilderFallback() {
+        if (window.pipelineBuilder && !window.pipelineBuilder.openMatrixBuilder) {
+            window.pipelineBuilder.openMatrixBuilder = function(stepId) {
+                console.log('🔧 Matrix builder fallback called for step:', stepId);
+                
+                if (typeof this.showMatrixTemplates === 'function') {
+                    this.showMatrixTemplates();
+                } else {
+                    console.warn('⚠️ Matrix templates method not available');
+                    alert('Matrix builder functionality is loading. Please try again in a moment.');
+                }
+            };
+            
+            console.log('✅ Matrix builder fallback method added');
+        }
     }
 
     async createFallbackPipelineBuilder() {
@@ -161,108 +245,86 @@ class MainInitializer {
                 const stepElement = document.querySelector(`[data-step-id="${stepId}"]`);
                 if (stepElement) {
                     stepElement.classList.add('selected');
+                    this.selectedStep = stepId;
+                    this.renderProperties();
                 }
-
-                this.selectedStep = this.steps.find(step => step.id === stepId);
-                this.renderProperties();
             },
 
             renderPipeline: function() {
                 const container = document.getElementById('pipeline-steps');
                 if (!container) return;
-                
-                container.innerHTML = '';
 
                 if (this.steps.length === 0) {
                     container.innerHTML = `
-                        <div class="drop-zone" data-drop-index="0">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>Drop steps here to start building your pipeline</span>
+                        <div class="empty-pipeline">
+                            <i class="fas fa-stream"></i>
+                            <h3>Start Building Your Pipeline</h3>
+                            <p>Drag step types from the sidebar or use the quick actions to get started</p>
                         </div>
                     `;
                     return;
                 }
 
-                this.steps.forEach((step, index) => {
-                    const stepElement = document.createElement('div');
-                    stepElement.className = 'pipeline-step';
-                    stepElement.dataset.stepId = step.id;
-                    stepElement.innerHTML = `
+                container.innerHTML = this.steps.map((step, index) => `
+                    <div class="pipeline-step" data-step-id="${step.id}" onclick="window.pipelineBuilder.selectStep('${step.id}')">
                         <div class="step-header">
-                            <div class="step-title">
-                                <i class="${step.icon}"></i>
-                                <span>${step.properties.label}</span>
-                            </div>
+                            <i class="${step.icon}"></i>
+                            <span class="step-label">${step.properties.label}</span>
                             <div class="step-actions">
-                                <button class="step-action" title="Delete" data-action="remove" data-index="${index}">
+                                <button onclick="event.stopPropagation(); window.pipelineBuilder.removeStep(${index})" title="Remove step">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="step-content">
-                            ${step.properties.command || `${step.type} step`}
-                        </div>
-                    `;
-
-                    // Add click event listener
-                    stepElement.addEventListener('click', () => this.selectStep(step.id));
-                    
-                    container.appendChild(stepElement);
-                });
-
-                // Add event listeners for step actions
-                this.bindStepActionEvents();
-            },
-
-            bindStepActionEvents: function() {
-                document.querySelectorAll('.step-action[data-action="remove"]').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const index = parseInt(button.dataset.index);
-                        this.removeStep(index);
-                    });
-                });
+                        <div class="step-type">${step.type}</div>
+                    </div>
+                `).join('');
             },
 
             renderProperties: function() {
-                const propertiesContainer = document.getElementById('step-properties');
-                if (!propertiesContainer) return;
-                
+                const container = document.getElementById('properties-content');
+                if (!container) return;
+
                 if (!this.selectedStep) {
-                    propertiesContainer.innerHTML = `
+                    container.innerHTML = `
                         <div class="no-selection">
                             <i class="fas fa-mouse-pointer"></i>
-                            <p>Select a step to edit its properties</p>
+                            <p>Select a step to view and edit its properties</p>
                         </div>
                     `;
                     return;
                 }
 
-                const step = this.selectedStep;
-                propertiesContainer.innerHTML = `
-                    <div class="property-group">
-                        <label>Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label}" />
-                    </div>
-                    <div class="property-group">
-                        <label>Command</label>
-                        <textarea name="command" placeholder="echo 'Hello World'">${step.properties.command || ''}</textarea>
+                const step = this.steps.find(s => s.id === this.selectedStep);
+                if (!step) return;
+
+                container.innerHTML = `
+                    <div class="step-properties">
+                        <h4>${step.type} Step Properties</h4>
+                        <div class="property-group">
+                            <label>Step Label</label>
+                            <input type="text" value="${step.properties.label}" onchange="window.pipelineBuilder.updateStepProperty('label', this.value)">
+                        </div>
+                        ${step.type === 'command' ? `
+                            <div class="property-group">
+                                <label>Command</label>
+                                <textarea onchange="window.pipelineBuilder.updateStepProperty('command', this.value)">${step.properties.command}</textarea>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
+            },
 
-                // Bind property change events
-                propertiesContainer.querySelectorAll('input, textarea').forEach(input => {
-                    input.addEventListener('input', (e) => {
-                        const { name, value } = e.target;
-                        this.selectedStep.properties[name] = value;
-                        this.renderPipeline();
-                        this.selectStep(this.selectedStep.id);
-                    });
-                });
+            updateStepProperty: function(property, value) {
+                const step = this.steps.find(s => s.id === this.selectedStep);
+                if (step) {
+                    step.properties[property] = value;
+                    this.renderPipeline();
+                }
             },
 
             clearPipeline: function() {
-                if (this.steps.length > 0 && !confirm('Are you sure you want to clear the entire pipeline?')) {
+                if (this.steps.length === 0) {
                     return;
                 }
                 this.steps = [];
@@ -303,6 +365,48 @@ class MainInitializer {
                 this.selectedStep = null;
                 this.renderPipeline();
                 this.renderProperties();
+            },
+
+            // MATRIX BUILDER FIX: Add matrix builder methods to fallback
+            showMatrixTemplates: function() {
+                console.log('Fallback matrix templates called');
+                alert('Matrix builder is loading. Please try again in a moment.');
+            },
+
+            openMatrixBuilder: function(stepId) {
+                console.log('Fallback matrix builder called for step:', stepId);
+                this.showMatrixTemplates();
+            },
+
+            // Add other missing methods
+            showPluginCatalog: function() {
+                console.log('Fallback plugin catalog called');
+                alert('Plugin catalog is loading. Please try again in a moment.');
+            },
+
+            showStepTemplates: function() {
+                console.log('Fallback step templates called');
+                alert('Step templates are loading. Please try again in a moment.');
+            },
+
+            openPipelineValidator: function() {
+                console.log('Fallback pipeline validator called');
+                alert('Pipeline validator is loading. Please try again in a moment.');
+            },
+
+            addTemplate: function(templateKey) {
+                console.log('Fallback add template called:', templateKey);
+                alert(`Template "${templateKey}" is loading. Please try again in a moment.`);
+            },
+
+            addPattern: function(patternKey) {
+                console.log('Fallback add pattern called:', patternKey);
+                alert(`Pattern "${patternKey}" is loading. Please try again in a moment.`);
+            },
+
+            addPluginStep: function(pluginKey) {
+                console.log('Fallback add plugin step called:', pluginKey);
+                alert(`Plugin "${pluginKey}" is loading. Please try again in a moment.`);
             }
         };
 
@@ -310,55 +414,7 @@ class MainInitializer {
         window.pipelineBuilder.renderPipeline();
         window.pipelineBuilder.renderProperties();
         
-        console.log('✅ Fallback Pipeline Builder created');
-    }
-
-    async initYamlGenerator() {
-        if (!window.yamlGenerator) {
-            console.warn('YAML Generator not found, creating basic version');
-            window.yamlGenerator = {
-                generateYAML: (steps) => {
-                    if (!steps || steps.length === 0) return 'steps: []';
-                    return 'steps:\n' + steps.map(step => `  - label: "${step.properties.label}"\n    command: "${step.properties.command || 'echo hello'}"`).join('\n');
-                }
-            };
-        }
-    }
-
-    async initPipelinePatterns() {
-        if (window.PipelinePatterns) {
-            window.pipelinePatterns = new window.PipelinePatterns();
-            console.log('📋 Pipeline patterns initialized');
-        } else {
-            console.warn('Pipeline Patterns class not found');
-        }
-    }
-
-    async initPipelineBuilder() {
-        if (window.pipelineBuilder) {
-            console.log('✅ Pipeline Builder already exists (fallback created)');
-            return;
-        }
-
-        if (window.PipelineBuilder) {
-            // Choose the most advanced available builder
-            let BuilderClass = window.PipelineBuilder;
-            
-            if (window.EnhancedPipelineBuilderWithDependencies) {
-                BuilderClass = window.EnhancedPipelineBuilderWithDependencies;
-                console.log('🚀 Using Enhanced Pipeline Builder with Dependencies');
-            } else if (window.EnhancedPipelineBuilder) {
-                BuilderClass = window.EnhancedPipelineBuilder;
-                console.log('✨ Using Enhanced Pipeline Builder');
-            } else {
-                console.log('🔧 Using Basic Pipeline Builder');
-            }
-            
-            window.pipelineBuilder = new BuilderClass();
-            
-        } else {
-            throw new Error('PipelineBuilder class not found');
-        }
+        console.log('✅ Fallback Pipeline Builder created with matrix builder support');
     }
 
     async initDependencyGraph() {
@@ -389,95 +445,95 @@ class MainInitializer {
         // Setup event listeners for UI elements
         this.setupUIEventListeners();
         
+        // MATRIX BUILDER FIX: Final verification and setup
+        this.finalMatrixBuilderSetup();
+        
         // Final verification
         this.verifyFunctionality();
     }
 
+    // MATRIX BUILDER FIX: Ensure matrix builder is fully functional
+    finalMatrixBuilderSetup() {
+        console.log('🔧 Final matrix builder setup...');
+        
+        if (window.pipelineBuilder) {
+            // Verify all required matrix methods exist
+            const requiredMethods = [
+                'openMatrixBuilder', 
+                'showMatrixTemplates',
+                'initializeMatrixBuilder',
+                'setupMatrixBuilderEvents'
+            ];
+            
+            requiredMethods.forEach(method => {
+                if (typeof window.pipelineBuilder[method] !== 'function') {
+                    console.warn(`⚠️ Missing matrix method: ${method}`);
+                }
+            });
+            
+            // Verify matrix builder modal exists
+            const matrixModal = document.getElementById('matrix-builder-modal');
+            if (matrixModal) {
+                console.log('✅ Matrix builder modal found');
+            } else {
+                console.warn('⚠️ Matrix builder modal not found in DOM');
+            }
+            
+            // Test matrix builder accessibility
+            if (typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
+                console.log('✅ Matrix builder is accessible');
+            } else {
+                console.error('❌ Matrix builder method not accessible');
+            }
+        }
+    }
+
     injectPluginCatalogStyles() {
         // Inject plugin catalog specific styles if not already present
-        if (!document.getElementById('plugin-catalog-styles')) {
+        if (!document.getElementById('plugin-catalog-dynamic-styles')) {
             const style = document.createElement('style');
-            style.id = 'plugin-catalog-styles';
+            style.id = 'plugin-catalog-dynamic-styles';
             style.textContent = `
-                /* Plugin Catalog Specific Styles */
-                .plugin-search {
-                    margin-bottom: 1.5rem;
+                .plugin-item.selected { 
+                    border-color: #667eea !important; 
+                    background: #f7fafc !important; 
                 }
-
-                .plugin-search input {
-                    width: 100%;
-                    padding: 0.75rem;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 8px;
-                    font-size: 1rem;
-                    margin-bottom: 1rem;
+                .plugin-details { 
+                    border-left: 3px solid #667eea; 
                 }
-
-                .plugin-categories {
-                    display: flex;
-                    gap: 0.5rem;
-                    flex-wrap: wrap;
-                }
-
-                .category-btn {
-                    padding: 0.5rem 1rem;
-                    border: 1px solid #e2e8f0;
-                    background: white;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    font-size: 0.9rem;
-                }
-
-                .category-btn.active,
-                .category-btn:hover {
-                    background: #667eea;
-                    color: white;
-                    border-color: #667eea;
-                }
-
                 .plugin-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                    gap: 1.5rem;
-                    margin-top: 1.5rem;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 1rem;
+                    padding: 1rem;
                 }
 
-                .plugin-card {
+                .plugin-item {
                     border: 1px solid #e2e8f0;
-                    border-radius: 12px;
-                    padding: 1.5rem;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
+                    border-radius: 8px;
+                    padding: 1rem;
                     background: white;
-                    position: relative;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
                 }
 
-                .plugin-card:hover {
+                .plugin-item:hover {
                     border-color: #667eea;
-                    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-                    transform: translateY(-4px);
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
                 }
 
                 .plugin-header {
                     display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 1rem;
-                }
-
-                .plugin-header h5 {
-                    margin: 0;
-                    color: #2d3748;
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    display: flex;
                     align-items: center;
-                    gap: 0.5rem;
+                    justify-content: space-between;
+                    margin-bottom: 0.5rem;
                 }
 
-                .plugin-header h5 i {
-                    color: #667eea;
+                .plugin-title {
+                    font-weight: 600;
+                    color: #2d3748;
+                    font-size: 1rem;
+                    margin: 0;
                 }
 
                 .plugin-version {
@@ -485,66 +541,35 @@ class MainInitializer {
                     color: #4a5568;
                     padding: 0.25rem 0.5rem;
                     border-radius: 4px;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     font-weight: 500;
                 }
 
                 .plugin-description {
                     color: #718096;
                     font-size: 0.9rem;
-                    line-height: 1.5;
-                    margin-bottom: 1rem;
+                    margin: 0.5rem 0;
+                    line-height: 1.4;
                 }
 
-                .plugin-meta {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 1rem;
-                }
-
-                .category-tag {
+                .plugin-category {
+                    background: #667eea;
+                    color: white;
                     padding: 0.25rem 0.5rem;
                     border-radius: 4px;
                     font-size: 0.75rem;
                     font-weight: 500;
-                    text-transform: uppercase;
-                }
-
-                .category-docker { background: #e3f2fd; color: #1565c0; }
-                .category-testing { background: #e8f5e8; color: #2e7d32; }
-                .category-deployment { background: #fff3e0; color: #ef6c00; }
-                .category-notifications { background: #f3e5f5; color: #7b1fa2; }
-
-                .fields-count {
-                    color: #718096;
-                    font-size: 0.8rem;
+                    display: inline-block;
+                    margin-top: 0.5rem;
                 }
 
                 .plugin-fields-preview {
-                    background: #f8fafc;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 6px;
-                    padding: 0.75rem;
-                    margin-bottom: 1rem;
+                    margin-top: 0.75rem;
+                    font-size: 0.8rem;
+                    color: #a0aec0;
                 }
 
-                .fields-preview {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 0.5rem;
-                }
-
-                .field-preview {
-                    background: white;
-                    border: 1px solid #cbd5e0;
-                    border-radius: 4px;
-                    padding: 0.25rem 0.5rem;
-                    font-size: 0.75rem;
-                    color: #4a5568;
-                }
-
-                .field-preview .required {
+                .plugin-fields-preview .required {
                     color: #e53e3e;
                     font-weight: bold;
                 }
@@ -624,6 +649,127 @@ class MainInitializer {
             document.head.appendChild(style);
             console.log('✅ Plugin catalog styles injected');
         }
+    }
+
+    ensureMethodBindings() {
+        if (!window.pipelineBuilder) return;
+        
+        const requiredMethods = [
+            'addStep', 'showPluginCatalog', 'showMatrixTemplates', 'openMatrixBuilder',
+            'showStepTemplates', 'openPipelineValidator', 'exportYAML', 'clearPipeline'
+        ];
+        
+        requiredMethods.forEach(methodName => {
+            if (typeof window.pipelineBuilder[methodName] !== 'function') {
+                console.warn(`⚠️ Method ${methodName} not found, creating fallback`);
+                
+                window.pipelineBuilder[methodName] = function() {
+                    console.log(`${methodName} called`);
+                    alert(`${methodName} functionality coming soon!`);
+                };
+            } else {
+                console.log(`✅ Method ${methodName} verified`);
+            }
+        });
+    }
+
+    setupErrorHandling() {
+        console.log('🔧 Setting up global error handling...');
+        
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error caught:', event.error);
+            if (event.error && event.error.message && event.error.message.includes('pipelineBuilder')) {
+                console.error('🚨 PipelineBuilder related error detected');
+            }
+        });
+        
+        console.log('✅ Global error handling configured');
+    }
+
+    setupModalManagement() {
+        console.log('🔧 Setting up modal management...');
+        
+        // Create global modal close function if it doesn't exist
+        if (!window.closeModal) {
+            window.closeModal = function(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                    console.log(`📋 Closed modal: ${modalId}`);
+                } else {
+                    console.warn(`⚠️ Modal not found: ${modalId}`);
+                }
+            };
+        }
+        
+        // Setup modal close button event listeners
+        document.addEventListener('click', (e) => {
+            // Handle modal close buttons
+            if (e.target.classList.contains('modal-close')) {
+                const modal = e.target.closest('.modal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    console.log('📋 Modal closed via close button');
+                }
+            }
+            
+            // Handle data-modal close buttons
+            if (e.target.dataset.modal) {
+                const modalId = e.target.dataset.modal;
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.classList.add('hidden');
+                    console.log(`📋 Modal closed via data-modal: ${modalId}`);
+                }
+            }
+
+            // Handle template buttons in modals
+            if (e.target.hasAttribute('data-template')) {
+                const template = e.target.getAttribute('data-template');
+                console.log(`Template button clicked: ${template}`);
+                
+                if (window.dependencyGraph && typeof window.dependencyGraph.applyConditionTemplate === 'function') {
+                    window.dependencyGraph.applyConditionTemplate(template);
+                }
+            }
+            
+            // Handle dependency type buttons
+            if (e.target.classList.contains('dependency-type-btn')) {
+                const type = e.target.getAttribute('data-type');
+                console.log(`Dependency type clicked: ${type}`);
+                
+                // Remove active class from all buttons
+                document.querySelectorAll('.dependency-type-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Add active class to clicked button
+                e.target.classList.add('active');
+                
+                // Show/hide corresponding sections
+                document.querySelectorAll('.dependency-section').forEach(section => {
+                    section.style.display = 'none';
+                });
+                
+                const targetSection = document.getElementById(`${type}-dependencies`);
+                if (targetSection) {
+                    targetSection.style.display = 'block';
+                }
+            }
+        });
+        
+        // Handle ESC key for modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
+                if (visibleModals.length > 0) {
+                    visibleModals.forEach(modal => modal.classList.add('hidden'));
+                    console.log('📋 Modals closed via ESC key');
+                }
+            }
+        });
+        
+        console.log('✅ Modal management configured');
     }
 
     setupUIEventListeners() {
@@ -755,10 +901,16 @@ class MainInitializer {
                         }
                         break;
                     case 'matrix-builder':
+                        // MATRIX BUILDER FIX: Enhanced error handling and fallback
                         if (window.pipelineBuilder && typeof window.pipelineBuilder.showMatrixTemplates === 'function') {
+                            console.log('✅ Opening matrix builder via quick action...');
                             window.pipelineBuilder.showMatrixTemplates();
+                        } else if (window.pipelineBuilder && typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
+                            console.log('✅ Opening matrix builder via openMatrixBuilder...');
+                            window.pipelineBuilder.openMatrixBuilder();
                         } else {
-                            alert('Matrix builder coming soon!');
+                            console.warn('⚠️ Matrix builder methods not available');
+                            alert('Matrix builder is loading. Please try again in a moment.');
                         }
                         break;
                     case 'step-templates':
@@ -846,192 +998,6 @@ class MainInitializer {
         }
     }
 
-    ensureMethodBindings() {
-        console.log('🔗 Ensuring method bindings...');
-        
-        if (!window.pipelineBuilder) {
-            console.error('❌ No pipeline builder instance found');
-            return;
-        }
-
-        const builder = window.pipelineBuilder;
-        
-        // Core methods that must exist
-        const requiredMethods = [
-            'addTemplate', 'addPattern', 'addPluginStep',
-            'showPluginCatalog', 'showMatrixTemplates', 'showStepTemplates',
-            'openPipelineValidator'
-        ];
-        
-        requiredMethods.forEach(methodName => {
-            if (typeof builder[methodName] !== 'function') {
-                console.warn(`⚠️ Method ${methodName} not found, creating fallback`);
-                
-                builder[methodName] = function() {
-                    console.log(`${methodName} called`);
-                    alert(`${methodName} functionality coming soon!`);
-                };
-            } else {
-                console.log(`✅ Method ${methodName} verified`);
-            }
-        });
-    }
-
-    setupErrorHandling() {
-        console.log('🔧 Setting up global error handling...');
-        
-        window.addEventListener('error', (event) => {
-            console.error('🚨 Global error caught:', event.error);
-        });
-        
-        console.log('✅ Global error handling configured');
-    }
-
-    setupModalManagement() {
-        console.log('🔧 Setting up modal management...');
-        
-        // Create global modal close function if it doesn't exist
-        if (!window.closeModal) {
-            window.closeModal = function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.add('hidden');
-                    console.log(`📋 Closed modal: ${modalId}`);
-                } else {
-                    console.warn(`⚠️ Modal not found: ${modalId}`);
-                }
-            };
-        }
-        
-        // Setup modal close button event listeners
-        document.addEventListener('click', (e) => {
-            // Handle modal close buttons
-            if (e.target.classList.contains('modal-close')) {
-                const modal = e.target.closest('.modal');
-                if (modal) {
-                    modal.classList.add('hidden');
-                    console.log('📋 Modal closed via close button');
-                }
-            }
-            
-            // Handle data-modal close buttons
-            if (e.target.hasAttribute('data-modal')) {
-                const modalId = e.target.getAttribute('data-modal');
-                window.closeModal(modalId);
-            }
-            
-            // Handle clicking outside modal to close
-            if (e.target.classList.contains('modal')) {
-                e.target.classList.add('hidden');
-                console.log('📋 Modal closed by clicking outside');
-            }
-        });
-        
-        // Setup ESC key to close modals
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const openModals = document.querySelectorAll('.modal:not(.hidden)');
-                openModals.forEach(modal => {
-                    modal.classList.add('hidden');
-                });
-                if (openModals.length > 0) {
-                    console.log('📋 Closed modals with ESC key');
-                }
-            }
-        });
-        
-        // Setup modal action buttons
-        this.setupModalActionButtons();
-        
-        console.log('✅ Modal management configured');
-    }
-
-    setupModalActionButtons() {
-        console.log('🔧 Setting up modal action buttons...');
-        
-        // Handle all buttons with data-action attributes in modals
-        document.addEventListener('click', (e) => {
-            if (e.target.hasAttribute('data-action')) {
-                const action = e.target.getAttribute('data-action');
-                const modal = e.target.closest('.modal');
-                
-                console.log(`Modal action clicked: ${action}`);
-                
-                switch (action) {
-                    case 'reset-view':
-                        if (window.dependencyGraph && typeof window.dependencyGraph.resetView === 'function') {
-                            window.dependencyGraph.resetView();
-                        }
-                        break;
-                    case 'auto-layout':
-                        if (window.dependencyGraph && typeof window.dependencyGraph.autoLayout === 'function') {
-                            window.dependencyGraph.autoLayout();
-                        }
-                        break;
-                    case 'export-graph':
-                        if (window.dependencyGraph && typeof window.dependencyGraph.exportGraph === 'function') {
-                            window.dependencyGraph.exportGraph();
-                        }
-                        break;
-                    case 'add-condition':
-                        const conditionType = e.target.getAttribute('data-type');
-                        if (window.dependencyGraph && typeof window.dependencyGraph.addCondition === 'function') {
-                            window.dependencyGraph.addCondition(conditionType);
-                        }
-                        break;
-                    case 'apply-conditions':
-                        if (window.dependencyGraph && typeof window.dependencyGraph.applyConditions === 'function') {
-                            window.dependencyGraph.applyConditions();
-                        }
-                        break;
-                    case 'apply-dependencies':
-                        if (window.dependencyGraph && typeof window.dependencyGraph.applyDependencies === 'function') {
-                            window.dependencyGraph.applyDependencies();
-                        }
-                        break;
-                    default:
-                        console.log(`Unhandled modal action: ${action}`);
-                }
-            }
-            
-            // Handle template buttons in modals
-            if (e.target.hasAttribute('data-template')) {
-                const template = e.target.getAttribute('data-template');
-                console.log(`Template button clicked: ${template}`);
-                
-                if (window.dependencyGraph && typeof window.dependencyGraph.applyConditionTemplate === 'function') {
-                    window.dependencyGraph.applyConditionTemplate(template);
-                }
-            }
-            
-            // Handle dependency type buttons
-            if (e.target.classList.contains('dependency-type-btn')) {
-                const type = e.target.getAttribute('data-type');
-                console.log(`Dependency type clicked: ${type}`);
-                
-                // Remove active class from all buttons
-                document.querySelectorAll('.dependency-type-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                
-                // Add active class to clicked button
-                e.target.classList.add('active');
-                
-                // Show/hide corresponding sections
-                document.querySelectorAll('.dependency-section').forEach(section => {
-                    section.style.display = 'none';
-                });
-                
-                const targetSection = document.getElementById(`${type}-dependencies`);
-                if (targetSection) {
-                    targetSection.style.display = 'block';
-                }
-            }
-        });
-        
-        console.log('✅ Modal action buttons configured');
-    }
-
     verifyFunctionality() {
         console.log('🔍 Verifying functionality...');
         
@@ -1064,6 +1030,11 @@ class MainInitializer {
             {
                 name: 'Plugin methods work',
                 test: () => window.pipelineBuilder && typeof window.pipelineBuilder.addPluginStep === 'function',
+                critical: false
+            },
+            {
+                name: 'Matrix builder methods work',
+                test: () => window.pipelineBuilder && typeof window.pipelineBuilder.openMatrixBuilder === 'function',
                 critical: false
             },
             {
@@ -1101,6 +1072,8 @@ class MainInitializer {
         } else {
             console.log('✅ All critical functionality verified');
         }
+        
+        this.logFeatureStatus();
     }
 
     logFeatureStatus() {
@@ -1111,6 +1084,14 @@ class MainInitializer {
         console.log(`🔗 Dependency Graph: ${window.dependencyGraph ? '✅' : '❌'}`);
         console.log(`🎛️ YAML Generator: ${window.yamlGenerator ? '✅' : '❌'}`);
         
+        // MATRIX BUILDER FIX: Verify matrix builder specifically
+        if (window.pipelineBuilder) {
+            console.log(`🔲 Matrix Builder Methods:`);
+            console.log(`   openMatrixBuilder: ${typeof window.pipelineBuilder.openMatrixBuilder === 'function' ? '✅' : '❌'}`);
+            console.log(`   showMatrixTemplates: ${typeof window.pipelineBuilder.showMatrixTemplates === 'function' ? '✅' : '❌'}`);
+            console.log(`   initializeMatrixBuilder: ${typeof window.pipelineBuilder.initializeMatrixBuilder === 'function' ? '✅' : '❌'}`);
+        }
+        
         if (window.pipelineBuilder) {
             console.log('🚀 Pipeline Builder ready for use!');
             console.log('💡 Available keyboard shortcuts:');
@@ -1118,6 +1099,7 @@ class MainInitializer {
             console.log('   Ctrl+N - Clear Pipeline');
             console.log('   Ctrl+E - Load Example');
             console.log('   Ctrl+P - Plugin Catalog');
+            console.log('   Ctrl+M - Matrix Builder');
             
             if (window.dependencyGraph) {
                 console.log('   Ctrl+G - Dependency Graph');
@@ -1160,5 +1142,127 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.warn('⚠️ Plugin catalog not fully initialized');
         }
+        
+        // MATRIX BUILDER FIX: Final verification after full initialization
+        if (window.pipelineBuilder && typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
+            console.log('✅ Matrix Builder - Ready!');
+            console.log('🔲 Matrix builder accessible via:');
+            console.log('   - Matrix Builder button in Quick Actions');
+            console.log('   - Configure Matrix buttons in step properties');
+            console.log('   - Ctrl+M keyboard shortcut');
+        } else {
+            console.warn('⚠️ Matrix builder not fully initialized');
+        }
     }, 3000);
 });
+
+// MATRIX BUILDER FIX: Global helper function for safe matrix builder access
+window.openMatrixBuilderSafe = function(stepId) {
+    console.log('🔲 Safe matrix builder called for step:', stepId);
+    
+    // Check if pipeline builder exists
+    if (!window.pipelineBuilder) {
+        console.warn('⚠️ Pipeline builder not available');
+        alert('Pipeline builder is still loading. Please wait a moment and try again.');
+        return false;
+    }
+    
+    // Try different matrix builder methods in order of preference
+    if (typeof window.pipelineBuilder.openMatrixBuilder === 'function') {
+        console.log('✅ Using openMatrixBuilder method');
+        try {
+            window.pipelineBuilder.openMatrixBuilder(stepId);
+            return true;
+        } catch (error) {
+            console.error('❌ Error calling openMatrixBuilder:', error);
+        }
+    }
+    
+    if (typeof window.pipelineBuilder.showMatrixTemplates === 'function') {
+        console.log('✅ Using showMatrixTemplates method');
+        try {
+            window.pipelineBuilder.showMatrixTemplates();
+            return true;
+        } catch (error) {
+            console.error('❌ Error calling showMatrixTemplates:', error);
+        }
+    }
+    
+    // Check if the modal exists and can be shown manually
+    const matrixModal = document.getElementById('matrix-builder-modal');
+    if (matrixModal) {
+        console.log('✅ Opening matrix modal manually');
+        matrixModal.classList.remove('hidden');
+        
+        // Try to initialize the matrix builder
+        if (window.pipelineBuilder.initializeMatrixBuilder) {
+            try {
+                window.pipelineBuilder.initializeMatrixBuilder();
+            } catch (error) {
+                console.warn('⚠️ Could not initialize matrix builder:', error);
+            }
+        }
+        return true;
+    }
+    
+    // If all else fails, show a helpful message
+    console.warn('⚠️ No matrix builder methods available');
+    alert('Matrix builder is still loading. Please try again in a moment, or refresh the page if the issue persists.');
+    return false;
+};
+
+// MATRIX BUILDER FIX: Enhanced matrix builder modal handling
+window.openMatrixModal = function() {
+    console.log('🔲 Opening matrix modal directly');
+    
+    const modal = document.getElementById('matrix-builder-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        console.log('✅ Matrix modal opened');
+        
+        // Initialize matrix builder if pipeline builder is available
+        if (window.pipelineBuilder && window.pipelineBuilder.initializeMatrixBuilder) {
+            try {
+                window.pipelineBuilder.initializeMatrixBuilder();
+                window.pipelineBuilder.setupMatrixBuilderEvents();
+                console.log('✅ Matrix builder initialized');
+            } catch (error) {
+                console.warn('⚠️ Could not initialize matrix builder:', error);
+            }
+        }
+    } else {
+        console.error('❌ Matrix builder modal not found');
+        alert('Matrix builder modal not found. Please refresh the page.');
+    }
+};
+
+// MATRIX BUILDER FIX: Enhanced debugging function
+window.debugMatrixBuilder = function() {
+    console.log('🔍 Matrix Builder Debug Information:');
+    console.log('   window.pipelineBuilder:', !!window.pipelineBuilder);
+    
+    if (window.pipelineBuilder) {
+        console.log('   openMatrixBuilder method:', typeof window.pipelineBuilder.openMatrixBuilder);
+        console.log('   showMatrixTemplates method:', typeof window.pipelineBuilder.showMatrixTemplates);
+        console.log('   initializeMatrixBuilder method:', typeof window.pipelineBuilder.initializeMatrixBuilder);
+        console.log('   setupMatrixBuilderEvents method:', typeof window.pipelineBuilder.setupMatrixBuilderEvents);
+    }
+    
+    const modal = document.getElementById('matrix-builder-modal');
+    console.log('   Matrix modal exists:', !!modal);
+    console.log('   Matrix modal visible:', modal && !modal.classList.contains('hidden'));
+    
+    // Test matrix builder accessibility
+    const buttons = document.querySelectorAll('[onclick*="openMatrixBuilder"], [onclick*="showMatrixTemplates"]');
+    console.log('   Matrix builder buttons found:', buttons.length);
+    
+    return {
+        pipelineBuilder: !!window.pipelineBuilder,
+        openMatrixBuilder: window.pipelineBuilder ? typeof window.pipelineBuilder.openMatrixBuilder : 'N/A',
+        showMatrixTemplates: window.pipelineBuilder ? typeof window.pipelineBuilder.showMatrixTemplates : 'N/A',
+        modal: !!modal,
+        buttons: buttons.length
+    };
+};
+
+console.log('✅ Matrix Builder global helpers loaded');

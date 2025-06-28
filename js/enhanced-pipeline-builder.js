@@ -1010,6 +1010,104 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
     }
 }
 
+// js/enhanced-pipeline-builder.js
+// MATRIX BUILDER FIX: Add to the bottom of the enhanced-pipeline-builder.js file
+
+// Ensure matrix builder methods are properly available in EnhancedPipelineBuilder
+if (window.EnhancedPipelineBuilder) {
+    // Add matrix builder methods to prototype if they're missing
+    if (!window.EnhancedPipelineBuilder.prototype.openMatrixBuilder) {
+        window.EnhancedPipelineBuilder.prototype.openMatrixBuilder = function(stepId) {
+            console.log('🔲 Enhanced Pipeline Builder - Opening matrix builder for step:', stepId);
+            
+            // Call the parent method if available
+            if (this.showMatrixTemplates) {
+                this.showMatrixTemplates();
+                
+                // If we have a specific step ID, pre-populate the matrix
+                if (stepId) {
+                    const step = this.steps.find(s => s.id === stepId);
+                    if (step && step.properties.matrix && step.properties.matrix.setup) {
+                        setTimeout(() => {
+                            if (this.prePopulateMatrix) {
+                                this.prePopulateMatrix(step.properties.matrix.setup);
+                            }
+                        }, 100);
+                    }
+                }
+            } else {
+                console.warn('⚠️ showMatrixTemplates method not available');
+                alert('Matrix builder is loading. Please try again in a moment.');
+            }
+        };
+    }
+    
+    // Ensure the method is bound properly to instances
+    const originalConstructor = window.EnhancedPipelineBuilder;
+    window.EnhancedPipelineBuilder = function() {
+        const instance = new originalConstructor();
+        
+        // Ensure matrix builder methods are bound
+        if (!instance.openMatrixBuilder && instance.showMatrixTemplates) {
+            instance.openMatrixBuilder = function(stepId) {
+                console.log('🔲 Instance method - Opening matrix builder for step:', stepId);
+                this.showMatrixTemplates();
+                
+                if (stepId) {
+                    const step = this.steps.find(s => s.id === stepId);
+                    if (step && step.properties.matrix && step.properties.matrix.setup) {
+                        setTimeout(() => {
+                            if (this.prePopulateMatrix) {
+                                this.prePopulateMatrix(step.properties.matrix.setup);
+                            }
+                        }, 100);
+                    }
+                }
+            };
+        }
+        
+        return instance;
+    };
+    
+    // Copy prototype
+    window.EnhancedPipelineBuilder.prototype = originalConstructor.prototype;
+    
+    console.log('✅ Enhanced Pipeline Builder matrix methods ensured');
+}
+
+// Also ensure the method is available on the global instance
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (window.pipelineBuilder && !window.pipelineBuilder.openMatrixBuilder) {
+            console.log('🔧 Adding openMatrixBuilder method to global instance');
+            
+            window.pipelineBuilder.openMatrixBuilder = function(stepId) {
+                console.log('🔲 Global instance - Opening matrix builder for step:', stepId);
+                
+                if (this.showMatrixTemplates) {
+                    this.showMatrixTemplates();
+                    
+                    if (stepId) {
+                        const step = this.steps.find(s => s.id === stepId);
+                        if (step && step.properties.matrix && step.properties.matrix.setup) {
+                            setTimeout(() => {
+                                if (this.prePopulateMatrix) {
+                                    this.prePopulateMatrix(step.properties.matrix.setup);
+                                }
+                            }, 100);
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ showMatrixTemplates method not available on instance');
+                    alert('Matrix builder is loading. Please try again in a moment.');
+                }
+            };
+        }
+    }, 1000);
+});
+
 // Export enhanced classes to global scope
 window.EnhancedPipelineBuilder = EnhancedPipelineBuilder;
 window.EnhancedYAMLGenerator = EnhancedYAMLGenerator;
+
+
