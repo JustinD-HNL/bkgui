@@ -9,7 +9,153 @@
     
     <!-- Enhanced Styles for New Features -->
     <style>
-        /* Include the enhanced CSS styles inline for the new features */
+        /* Matrix Builder Specific Styles */
+        .matrix-dimensions-list {
+            margin-bottom: 1rem;
+        }
+        
+        .matrix-dimension {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .matrix-dimension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .matrix-key-input {
+            font-weight: 600;
+            color: #2d3748;
+            background: white;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .dimension-remove-btn {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .dimension-remove-btn:hover {
+            background: rgba(229, 62, 62, 0.1);
+        }
+        
+        .matrix-values-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .matrix-values-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .matrix-value-tag {
+            background: white;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .value-remove-btn {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            cursor: pointer;
+            font-size: 0.75rem;
+            padding: 0;
+            margin-left: 0.25rem;
+        }
+        
+        .matrix-live-preview {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            min-height: 200px;
+        }
+        
+        .matrix-stats {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-label {
+            display: block;
+            color: #718096;
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-value {
+            display: block;
+            color: #2d3748;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .matrix-warning {
+            background: #fef5e7;
+            border: 1px solid #ed8936;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            color: #d69e2e;
+            font-size: 0.9rem;
+        }
+        
+        .matrix-warning i {
+            margin-right: 0.5rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #a0aec0;
+            font-style: italic;
+            padding: 2rem;
+        }
+        
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        
+        /* Additional styles from the existing file... */
+        /* Include all the enhanced CSS styles inline for the new features */
         
         /* Dependency Graph Styles */
         .graph-controls {
@@ -153,6 +299,14 @@
             .template-buttons {
                 grid-template-columns: 1fr;
             }
+            
+            .matrix-builder-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .matrix-stats {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     
@@ -232,31 +386,24 @@
                             <div class="step-type" draggable="true" data-step-type="group">
                                 <i class="fas fa-layer-group"></i>
                                 <span>Group Step</span>
-                                <small>Group related steps</small>
+                                <small>Organize related steps</small>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Advanced Step Types -->
-                    <div class="step-category">
-                        <h4><i class="fas fa-star"></i> Advanced Steps</h4>
-                        <div class="step-palette">
-                            <div class="step-type advanced" draggable="true" data-step-type="annotation">
-                                <i class="fas fa-comment"></i>
-                                <span>Annotation Step</span>
-                                <small>Add build annotations</small>
+                            <div class="step-type" draggable="true" data-step-type="annotation">
+                                <i class="fas fa-sticky-note"></i>
+                                <span>Annotation</span>
+                                <small>Build annotations</small>
                             </div>
-                            <div class="step-type advanced" draggable="true" data-step-type="plugin">
+                            <div class="step-type" draggable="true" data-step-type="plugin">
                                 <i class="fas fa-plug"></i>
                                 <span>Plugin Step</span>
                                 <small>Use Buildkite plugins</small>
                             </div>
-                            <div class="step-type advanced" draggable="true" data-step-type="notify">
+                            <div class="step-type" draggable="true" data-step-type="notify">
                                 <i class="fas fa-bell"></i>
                                 <span>Notify Step</span>
                                 <small>Send notifications</small>
                             </div>
-                            <div class="step-type advanced" draggable="true" data-step-type="pipeline-upload">
+                            <div class="step-type" draggable="true" data-step-type="upload">
                                 <i class="fas fa-upload"></i>
                                 <span>Pipeline Upload</span>
                                 <small>Dynamic pipeline generation</small>
@@ -264,14 +411,14 @@
                         </div>
                     </div>
 
-                    <!-- Step Templates -->
+                    <!-- Common Templates -->
                     <div class="step-category">
-                        <h4><i class="fas fa-clipboard-list"></i> Quick Templates</h4>
+                        <h4><i class="fas fa-templates"></i> Common Templates</h4>
                         <div class="template-palette">
-                            <div class="template-item" data-template="node-test">
-                                <i class="fab fa-node-js"></i>
-                                <span>Node.js Tests</span>
-                                <small>Test with coverage</small>
+                            <div class="template-item" data-template="test-suite">
+                                <i class="fas fa-vial"></i>
+                                <span>Test Suite</span>
+                                <small>Run comprehensive tests</small>
                             </div>
                             <div class="template-item" data-template="docker-build">
                                 <i class="fab fa-docker"></i>
@@ -366,56 +513,42 @@
                                 <span>AWS ECR</span>
                             </div>
                             <div class="plugin-quick" data-plugin="artifacts">
-                                <i class="fas fa-archive"></i>
+                                <i class="fas fa-box"></i>
                                 <span>Artifacts</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Help & Documentation -->
-                    <div class="step-category">
-                        <h4><i class="fas fa-question-circle"></i> Help</h4>
-                        <div class="help-links">
-                            <a href="https://buildkite.com/docs" target="_blank" class="help-link">
-                                <i class="fas fa-book"></i>
-                                <span>Buildkite Docs</span>
-                            </a>
-                            <a href="https://buildkite.com/docs/pipelines/step-reference" target="_blank" class="help-link">
-                                <i class="fas fa-list"></i>
-                                <span>Step Reference</span>
-                            </a>
-                            <a href="#" class="help-link" data-action="keyboard-shortcuts">
-                                <i class="fas fa-keyboard"></i>
-                                <span>Shortcuts</span>
-                            </a>
                         </div>
                     </div>
                 </aside>
 
                 <!-- Pipeline Canvas -->
-                <main class="pipeline-canvas">
+                <div class="pipeline-canvas">
                     <div class="canvas-header">
-                        <h3><i class="fas fa-project-diagram"></i> Pipeline Canvas</h3>
-                        <span class="canvas-hint">Drag step types from the sidebar to build your pipeline</span>
-                    </div>
-                    <div id="pipeline-steps" class="pipeline-steps">
-                        <div class="drop-zone" data-drop-index="0">
-                            <i class="fas fa-plus-circle"></i>
-                            <span>Drop steps here to start building your pipeline</span>
+                        <h2><i class="fas fa-stream"></i> Pipeline Steps</h2>
+                        <div class="canvas-actions">
+                            <button class="btn btn-secondary btn-small" title="Keyboard Shortcuts" onclick="window.pipelineBuilder && window.pipelineBuilder.showKeyboardShortcuts()">
+                                <i class="fas fa-keyboard"></i>
+                            </button>
                         </div>
                     </div>
-                </main>
+                    <div id="pipeline-steps" class="pipeline-steps-container">
+                        <div class="empty-pipeline">
+                            <i class="fas fa-stream"></i>
+                            <h3>Start Building Your Pipeline</h3>
+                            <p>Drag step types from the sidebar or use the quick actions to get started</p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Properties Panel -->
                 <aside class="properties-panel">
-                    <h3><i class="fas fa-cog"></i> Properties</h3>
-                    <div id="step-properties" class="step-properties">
+                    <h3><i class="fas fa-cog"></i> Step Properties</h3>
+                    <div id="properties-content">
                         <div class="no-selection">
                             <i class="fas fa-mouse-pointer"></i>
-                            <p>Select a step to edit its properties</p>
+                            <p>Select a step to view and edit its properties</p>
                         </div>
                     </div>
-                </aside>
+                </div>
             </div>
 
             <!-- EXISTING MODALS (unchanged) -->
@@ -466,6 +599,10 @@
                                 <span class="legend-item">
                                     <div class="legend-color" style="background: #667eea;"></div>
                                     Command Steps
+                                </span>
+                                <span class="legend-item">
+                                    <div class="legend-color" style="background: #48bb78;"></div>
+                                    Plugin Steps
                                 </span>
                                 <span class="legend-item">
                                     <div class="legend-color" style="background: #f6ad55;"></div>
@@ -641,12 +778,16 @@
                             <!-- Search and Filters -->
                             <div class="plugin-search">
                                 <div class="search-container">
-                                    <input type="text" id="plugin-search-input" placeholder="Search plugins..." class="plugin-search-input">
+                                    <input type="text" 
+                                           id="plugin-search-input" 
+                                           class="plugin-search-input" 
+                                           placeholder="Search plugins..."
+                                           autocomplete="off">
                                     <i class="fas fa-search search-icon"></i>
                                 </div>
-                                <div class="plugin-categories">
+                                <div class="plugin-categories" id="plugin-categories">
                                     <button class="category-btn active" data-category="all">
-                                        <i class="fas fa-th"></i> All
+                                        <i class="fas fa-th-large"></i> All
                                     </button>
                                     <button class="category-btn" data-category="docker">
                                         <i class="fab fa-docker"></i> Docker
@@ -662,24 +803,26 @@
                                     </button>
                                 </div>
                             </div>
-
+                            
                             <!-- Plugin Grid -->
-                            <div class="plugin-grid" id="plugin-grid">
-                                <!-- Plugin cards will be populated by JavaScript -->
+                            <div id="plugin-grid" class="plugin-grid">
+                                <!-- Plugins will be populated dynamically -->
                             </div>
-
+                            
                             <!-- Empty State -->
-                            <div class="plugin-empty-state" id="plugin-empty-state" style="display: none;">
+                            <div id="plugin-empty-state" class="empty-state" style="display: none;">
                                 <i class="fas fa-search"></i>
-                                <h4>No plugins found</h4>
-                                <p>Try adjusting your search terms or category filter.</p>
+                                <p>No plugins found matching your criteria</p>
                             </div>
-
-                            <!-- Plugin Details Preview -->
-                            <div class="plugin-details-preview" id="plugin-details-preview" style="display: none;">
+                        </div>
+                        
+                        <!-- Plugin Details Preview -->
+                        <div id="plugin-details-preview" class="plugin-details-preview" style="display: none;">
+                            <div class="plugin-details">
                                 <div class="plugin-details-header">
                                     <h4 id="plugin-details-name">Plugin Name</h4>
-                                    <button class="btn btn-secondary btn-small" onclick="window.pipelineBuilder && window.pipelineBuilder.hidePluginDetails()">
+                                    <button class="btn btn-secondary btn-small" 
+                                            onclick="window.pipelineBuilder && window.pipelineBuilder.hidePluginDetails()">
                                         <i class="fas fa-times"></i> Close Preview
                                     </button>
                                 </div>
@@ -712,6 +855,66 @@
                 </div>
             </div>
 
+            <!-- Matrix Builder Modal -->
+            <div id="matrix-builder-modal" class="modal hidden">
+                <div class="modal-content large">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-th"></i> Matrix Builder</h3>
+                        <button class="modal-close" data-modal="matrix-builder-modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="matrix-builder-content">
+                            <!-- Left Panel: Matrix Dimensions Editor -->
+                            <div class="matrix-dimensions">
+                                <h4><i class="fas fa-cogs"></i> Matrix Dimensions</h4>
+                                <div id="matrix-dimensions-list" class="matrix-dimensions-list">
+                                    <!-- Matrix dimensions will be added here dynamically -->
+                                </div>
+                                <button class="btn btn-secondary btn-small" id="add-matrix-dimension">
+                                    <i class="fas fa-plus"></i> Add Dimension
+                                </button>
+                            </div>
+                            
+                            <!-- Right Panel: Live Preview -->
+                            <div class="matrix-preview-section">
+                                <h4><i class="fas fa-eye"></i> Matrix Preview</h4>
+                                <div id="matrix-live-preview" class="matrix-live-preview">
+                                    <div class="empty-state">
+                                        <i class="fas fa-cube"></i>
+                                        <p>Add matrix dimensions to see preview</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="matrix-stats" id="matrix-stats" style="display: none;">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Total Jobs:</span>
+                                        <span class="stat-value" id="total-jobs">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Dimensions:</span>
+                                        <span class="stat-value" id="dimension-count">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Matrix Presets Section -->
+                        <div class="matrix-presets">
+                            <h4><i class="fas fa-templates"></i> Quick Presets</h4>
+                            <div class="preset-buttons" id="matrix-preset-buttons">
+                                <!-- Preset buttons will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" data-modal="matrix-builder-modal">Cancel</button>
+                        <button class="btn btn-primary" id="apply-matrix">
+                            <i class="fas fa-check"></i> Apply Matrix
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Keyboard Shortcuts Modal -->
             <div id="shortcuts-modal" class="modal hidden">
                 <div class="modal-content">
@@ -724,52 +927,35 @@
                             <div class="shortcut-category">
                                 <h4>General</h4>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>S</kbd>
-                                    <span>Export YAML</span>
+                                    <span>Export Pipeline</span>
+                                    <kbd>Ctrl</kbd>+<kbd>S</kbd>
                                 </div>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>N</kbd>
                                     <span>Clear Pipeline</span>
+                                    <kbd>Ctrl</kbd>+<kbd>N</kbd>
                                 </div>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>E</kbd>
                                     <span>Load Example</span>
-                                </div>
-                                <div class="shortcut-item">
-                                    <kbd>Delete</kbd>
-                                    <span>Remove Selected Step</span>
-                                </div>
-                                <div class="shortcut-item">
-                                    <kbd>Escape</kbd>
-                                    <span>Deselect Step</span>
+                                    <kbd>Ctrl</kbd>+<kbd>E</kbd>
                                 </div>
                             </div>
-
                             <div class="shortcut-category">
                                 <h4>Enhanced Features</h4>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>P</kbd>
                                     <span>Plugin Catalog</span>
+                                    <kbd>Ctrl</kbd>+<kbd>P</kbd>
                                 </div>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>M</kbd>
                                     <span>Matrix Builder</span>
+                                    <kbd>Ctrl</kbd>+<kbd>M</kbd>
                                 </div>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>T</kbd>
                                     <span>Step Templates</span>
+                                    <kbd>Ctrl</kbd>+<kbd>T</kbd>
                                 </div>
                                 <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>G</kbd>
                                     <span>Dependency Graph</span>
-                                </div>
-                                <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>L</kbd>
-                                    <span>Conditional Logic</span>
-                                </div>
-                                <div class="shortcut-item">
-                                    <kbd>Ctrl</kbd> + <kbd>D</kbd>
-                                    <span>Dependency Manager</span>
+                                    <kbd>Ctrl</kbd>+<kbd>G</kbd>
                                 </div>
                             </div>
                         </div>
