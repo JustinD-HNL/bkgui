@@ -49,29 +49,8 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 fields: {
                     artifacts: { type: 'text', label: 'JUnit XML Pattern', required: true },
                     context: { type: 'text', label: 'Annotation Context' },
-                    fail_on_error: { type: 'boolean', label: 'Fail on Test Errors' }
-                }
-            },
-            'docker-compose': {
-                name: 'Docker Compose',
-                description: 'Run commands with Docker Compose',
-                version: 'v4.16.0',
-                category: 'docker',
-                fields: {
-                    run: { type: 'text', label: 'Service to Run', required: true },
-                    config: { type: 'text', label: 'Compose File Path' },
-                    env: { type: 'keyvalue', label: 'Environment Variables' }
-                }
-            },
-            'ecr': {
-                name: 'Amazon ECR',
-                description: 'Login to Amazon Elastic Container Registry',
-                version: 'v2.7.0',
-                category: 'deployment',
-                fields: {
-                    login: { type: 'boolean', label: 'Auto-login', default: true },
-                    region: { type: 'text', label: 'AWS Region' },
-                    registry_ids: { type: 'array', label: 'Registry IDs' }
+                    style: { type: 'select', label: 'Annotation Style', options: ['info', 'success', 'warning', 'error'] },
+                    job_uuid_file_pattern: { type: 'text', label: 'Job UUID File Pattern' }
                 }
             },
             'slack': {
@@ -80,31 +59,33 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 version: 'v1.4.2',
                 category: 'notifications',
                 fields: {
-                    channels: { type: 'array', label: 'Channels', required: true },
-                    message: { type: 'text', label: 'Message' },
-                    emoji: { type: 'text', label: 'Emoji' }
+                    notify: { type: 'array', label: 'Notify Events' },
+                    webhook_url: { type: 'text', label: 'Webhook URL', required: true },
+                    channel: { type: 'text', label: 'Channel' },
+                    username: { type: 'text', label: 'Username' }
                 }
             },
-            'cache': {
-                name: 'Cache',
-                description: 'Cache files and directories',
-                version: 'v2.5.0',
-                category: 'deployment',
+            'github-status': {
+                name: 'GitHub Status',
+                description: 'Update GitHub commit status',
+                version: 'v1.7.0',
+                category: 'notifications',
                 fields: {
-                    cache_key: { type: 'text', label: 'Cache Key', required: true },
-                    paths: { type: 'array', label: 'Paths to Cache' },
-                    restore_keys: { type: 'array', label: 'Restore Keys' }
+                    repo: { type: 'text', label: 'Repository', required: true },
+                    commit: { type: 'text', label: 'Commit SHA' },
+                    context: { type: 'text', label: 'Status Context' }
                 }
             },
-            'kubernetes': {
-                name: 'Kubernetes',
-                description: 'Deploy to Kubernetes clusters',
-                version: 'v1.3.0',
+            'ecr': {
+                name: 'AWS ECR',
+                description: 'Push Docker images to AWS ECR',
+                version: 'v2.7.0',
                 category: 'deployment',
                 fields: {
-                    namespace: { type: 'text', label: 'Namespace' },
-                    config_file: { type: 'text', label: 'Config File Path' },
-                    context: { type: 'text', label: 'Kubectl Context' }
+                    login: { type: 'boolean', label: 'ECR Login' },
+                    account_ids: { type: 'array', label: 'Account IDs' },
+                    region: { type: 'text', label: 'AWS Region' },
+                    registry_region: { type: 'text', label: 'Registry Region' }
                 }
             }
         };
@@ -112,349 +93,159 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
 
     initializeStepTemplates() {
         return {
-            'node-test': {
-                name: 'Node.js Test Suite',
-                description: 'Standard Node.js testing with coverage',
-                template: {
-                    type: 'command',
-                    properties: {
-                        label: 'Node.js Tests',
-                        commands: ['npm ci', 'npm test'],
-                        artifact_paths: ['coverage/**/*', 'test-results.xml'],
-                        plugins: {
-                            'junit-annotate': {
-                                artifacts: 'test-results.xml'
-                            }
-                        }
-                    }
-                }
+            'node-ci': {
+                name: 'Node.js CI',
+                description: 'Standard Node.js CI pipeline with testing',
+                steps: [
+                    { type: 'command', label: 'Install Dependencies', command: 'npm ci' },
+                    { type: 'command', label: 'Run Tests', command: 'npm test' },
+                    { type: 'command', label: 'Build', command: 'npm run build' }
+                ]
             },
             'docker-build': {
                 name: 'Docker Build & Push',
-                description: 'Build Docker image and push to registry',
-                template: {
-                    type: 'command',
-                    properties: {
-                        label: 'Docker Build',
-                        command: 'docker build -t $IMAGE_TAG .',
-                        plugins: {
-                            'ecr': { login: true },
-                            'docker': {
-                                image: 'docker:latest',
-                                always_pull: true
-                            }
-                        }
-                    }
-                }
+                description: 'Build and push Docker images',
+                steps: [
+                    { type: 'command', label: 'Build Image', command: 'docker build -t my-app .' },
+                    { type: 'command', label: 'Push Image', command: 'docker push my-app' }
+                ]
             },
-            'parallel-tests': {
-                name: 'Parallel Test Matrix',
-                description: 'Run tests in parallel across multiple environments',
-                template: {
-                    type: 'command',
-                    properties: {
-                        label: 'Tests ({{matrix.env}})',
-                        command: 'npm test',
-                        matrix: {
-                            setup: {
-                                env: ['development', 'staging', 'production'],
-                                node: ['16', '18', '20']
-                            }
-                        }
-                    }
-                }
-            },
-            'microservice-pipeline': {
-                name: 'Microservice Pipeline',
-                description: 'Complete microservice CI/CD',
-                template: {
-                    type: 'command',
-                    properties: {
-                        label: 'Microservice Build',
-                        command: 'npm install && npm test && npm run build',
-                        plugins: {
-                            'docker': {
-                                image: 'node:18-alpine',
-                                workdir: '/app'
-                            }
-                        }
-                    }
-                }
-            },
-            'deployment-pipeline': {
-                name: 'Deployment Pipeline',
-                description: 'Deploy with approvals',
-                template: {
-                    type: 'command',
-                    properties: {
-                        label: 'Deploy to Production',
-                        command: 'npm run deploy',
-                        agents: {
-                            queue: 'deployment'
-                        }
-                    }
-                }
+            'approval-deploy': {
+                name: 'Approval + Deploy',
+                description: 'Manual approval followed by deployment',
+                steps: [
+                    { type: 'block', label: 'Deploy to Production?', prompt: 'Ready to deploy?' },
+                    { type: 'command', label: 'Deploy', command: 'npm run deploy' }
+                ]
             }
         };
     }
 
     initializeMatrixPresets() {
         return {
-            'node_versions': {
+            'node-versions': {
                 name: 'Node.js Versions',
-                matrix: { node: ['16', '18', '20', '21'] }
+                description: 'Test across multiple Node.js versions',
+                setup: {
+                    node_version: ['16', '18', '20']
+                }
             },
-            'os_matrix': {
+            'os-matrix': {
                 name: 'Operating Systems',
-                matrix: { os: ['ubuntu-latest', 'windows-latest', 'macos-latest'] }
+                description: 'Test across different operating systems',
+                setup: {
+                    os: ['ubuntu-20.04', 'ubuntu-22.04', 'windows-2019', 'macos-12']
+                }
             },
-            'browser_matrix': {
+            'browser-testing': {
                 name: 'Browser Testing',
-                matrix: { 
-                    browser: ['chrome', 'firefox', 'safari'],
-                    version: ['latest', 'latest-1']
+                description: 'Test across multiple browsers',
+                setup: {
+                    browser: ['chrome', 'firefox', 'safari', 'edge'],
+                    browser_version: ['latest', 'latest-1']
                 }
             },
-            'database_matrix': {
-                name: 'Database Testing',
-                matrix: {
-                    database: ['postgresql', 'mysql', 'sqlite'],
-                    version: ['latest', '14', '13']
-                }
-            }
-        };
-    }
-
-    // Enhanced step type support
-    getDefaultProperties(type) {
-        const baseProperties = super.getDefaultProperties(type);
-        
-        // Add enhanced properties for existing types
-        if (type === 'command') {
-            return {
-                ...baseProperties,
-                parallelism: null,
-                concurrency: null,
-                concurrency_group: '',
-                matrix: {},
-                depends_on: [],
-                skip: '',
-                if: '',
-                branches: '',
-                soft_fail: false,
-                cancel_on_build_failing: false,
-                allow_dependency_failure: false
-            };
-        }
-        
-        // Add new step types
-        const enhancedDefaults = {
-            annotation: {
-                label: 'Annotation Step',
-                body: '',
-                style: 'info',
-                context: 'default',
-                priority: 0
-            },
-            plugin: {
-                label: 'Plugin Step',
-                command: '',
-                plugins: {},
-                selected_plugin: ''
-            },
-            notify: {
-                label: 'Notification Step',
-                notify: [],
-                command: ''
-            },
-            'pipeline-upload': {
-                label: 'Pipeline Upload',
-                dynamic_script: '',
-                pipeline_file: '.buildkite/pipeline.yml'
-            }
-        };
-
-        return enhancedDefaults[type] || baseProperties;
-    }
-
-    // Enhanced step creation
-    createStep(stepType) {
-        const step = super.createStep(stepType);
-        
-        const enhancedStepConfigs = {
-            'annotation': {
-                type: 'annotation',
-                label: 'Annotation',
-                icon: 'fas fa-comment',
-                properties: {
-                    label: `Annotation ${this.stepCounter}`,
-                    body: '# Build Status\n\nBuild completed successfully!',
-                    style: 'success',
-                    context: 'default',
-                    priority: 0
-                }
-            },
-            'plugin': {
-                type: 'plugin',
-                label: 'Plugin',
-                icon: 'fas fa-plug',
-                properties: {
-                    label: `Plugin Step ${this.stepCounter}`,
-                    command: '',
-                    plugins: {},
-                    selected_plugin: ''
-                }
-            },
-            'notify': {
-                type: 'notify',
-                label: 'Notification',
-                icon: 'fas fa-bell',
-                properties: {
-                    label: `Notification ${this.stepCounter}`,
-                    command: 'echo "Sending notification"',
-                    notify: {
-                        slack: {
-                            webhook_url: '',
-                            channel: '#builds'
-                        }
-                    }
-                }
-            },
-            'pipeline-upload': {
-                type: 'pipeline-upload',
-                label: 'Pipeline Upload',
-                icon: 'fas fa-upload',
-                properties: {
-                    label: `Pipeline Upload ${this.stepCounter}`,
-                    command: 'buildkite-agent pipeline upload',
-                    pipeline_file: '.buildkite/pipeline.yml',
-                    dynamic_script: ''
+            'deployment-environments': {
+                name: 'Deployment Environments',
+                description: 'Deploy to multiple environments',
+                setup: {
+                    environment: ['staging', 'production'],
+                    region: ['us-east-1', 'us-west-2', 'eu-west-1']
                 }
             }
         };
-
-        if (enhancedStepConfigs[stepType]) {
-            return {
-                id: step.id,
-                ...enhancedStepConfigs[stepType]
-            };
-        }
-
-        return step;
     }
 
-    generatePropertiesForm(step) {
-        const baseForm = super.generatePropertiesForm(step);
-        
-        if (step.type === 'command') {
-            return this.generateEnhancedCommandForm(step);
-        } else if (step.type === 'annotation') {
-            return this.generateAnnotationForm(step);
-        } else if (step.type === 'plugin') {
-            return this.generatePluginForm(step);
-        } else if (step.type === 'notify') {
-            return this.generateNotifyForm(step);
-        } else if (step.type === 'pipeline-upload') {
-            return this.generatePipelineUploadForm(step);
-        }
-        
-        return baseForm;
-    }
-
-    generateEnhancedCommandForm(step) {
+    // Enhanced property rendering with new step types
+    renderCommandProperties(step) {
+        const props = step.properties;
         return `
-            <div class="properties-form">
-                <h3><i class="fas fa-terminal"></i> Enhanced Command Step Properties</h3>
+            <div class="properties-panel">
+                <h3><i class="fas fa-cog"></i> Command Step Properties</h3>
                 
-                <!-- Basic Properties -->
                 <div class="property-section">
-                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                    <h4><i class="fas fa-tag"></i> Basic Configuration</h4>
                     <div class="property-group">
                         <label>Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                        <input type="text" name="label" value="${props.label || ''}" />
                     </div>
                     
                     <div class="property-group">
                         <label>Command</label>
-                        <textarea name="command" placeholder="echo 'Hello World'">${step.properties.command || ''}</textarea>
+                        <textarea name="command" rows="3" placeholder="npm test">${props.command || ''}</textarea>
+                        <small>Shell command(s) to execute</small>
                     </div>
                 </div>
 
-                <!-- Advanced Conditions -->
+                <!-- Conditional Logic -->
                 <div class="property-section">
-                    <h4><i class="fas fa-question-circle"></i> Conditions & Flow Control</h4>
+                    <h4><i class="fas fa-code-branch"></i> Conditional Logic</h4>
                     
                     <div class="property-group">
                         <label>Skip Condition</label>
-                        <input type="text" name="skip" value="${step.properties.skip || ''}" 
-                               placeholder="e.g., 'Temporarily disabled'" />
-                        <small>Message to display when step is skipped</small>
+                        <input type="text" name="skip" value="${props.skip || ''}" 
+                               placeholder="build.branch == 'main'" />
+                        <small>Skip this step when condition is true</small>
                     </div>
                     
                     <div class="property-group">
                         <label>If Condition</label>
-                        <input type="text" name="if" value="${step.properties.if || ''}" 
-                               placeholder="e.g., build.branch == 'main'" />
-                        <small>Boolean expression to control when step runs</small>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label>Branch Filter</label>
-                        <input type="text" name="branches" value="${step.properties.branches || ''}" 
-                               placeholder="main feature/*" />
-                        <small>Space-separated list of branch patterns</small>
+                        <input type="text" name="if" value="${props.if || ''}" 
+                               placeholder="build.pull_request.id != null" />
+                        <small>Only run when condition is true</small>
                     </div>
                 </div>
 
-                <!-- Execution Control -->
+                <!-- Advanced Settings -->
                 <div class="property-section">
-                    <h4><i class="fas fa-play"></i> Execution Control</h4>
+                    <h4><i class="fas fa-sliders-h"></i> Advanced Settings</h4>
+                    
+                    <div class="property-group">
+                        <label>Timeout (minutes)</label>
+                        <input type="number" name="timeout_in_minutes" value="${props.timeout_in_minutes || ''}" 
+                               placeholder="30" min="1" max="480" />
+                    </div>
                     
                     <div class="property-group">
                         <label>Parallelism</label>
-                        <input type="number" name="parallelism" value="${step.properties.parallelism || ''}" 
-                               min="1" max="50" placeholder="1" />
-                        <small>Number of jobs to run in parallel</small>
+                        <input type="number" name="parallelism" value="${props.parallelism || ''}" 
+                               placeholder="1" min="1" max="100" />
+                        <small>Number of parallel jobs</small>
                     </div>
                     
                     <div class="property-group">
                         <label>Concurrency</label>
-                        <input type="number" name="concurrency" value="${step.properties.concurrency || ''}" 
-                               min="1" placeholder="1" />
-                        <small>Limit concurrent executions</small>
+                        <input type="number" name="concurrency" value="${props.concurrency || ''}" 
+                               placeholder="1" min="1" />
+                        <small>Maximum concurrent jobs</small>
                     </div>
                     
                     <div class="property-group">
                         <label>Concurrency Group</label>
-                        <input type="text" name="concurrency_group" value="${step.properties.concurrency_group || ''}" 
-                               placeholder="deployment" />
+                        <input type="text" name="concurrency_group" value="${props.concurrency_group || ''}" 
+                               placeholder="deploy-group" />
                         <small>Group name for concurrency limiting</small>
                     </div>
                 </div>
 
-                <!-- Error Handling -->
+                <!-- Build Behavior -->
                 <div class="property-section">
-                    <h4><i class="fas fa-exclamation-triangle"></i> Error Handling</h4>
+                    <h4><i class="fas fa-exclamation-triangle"></i> Build Behavior</h4>
                     
                     <div class="property-checkbox">
-                        <input type="checkbox" name="retry" ${step.properties.retry ? 'checked' : ''} />
-                        <label>Retry on failure</label>
-                    </div>
-                    
-                    <div class="property-checkbox">
-                        <input type="checkbox" name="soft_fail" ${step.properties.soft_fail ? 'checked' : ''} />
+                        <input type="checkbox" name="soft_fail" ${props.soft_fail ? 'checked' : ''} />
                         <label>Soft fail</label>
-                        <small>Don't fail the build if this step fails</small>
+                        <small>Allow pipeline to continue if this step fails</small>
                     </div>
                     
                     <div class="property-checkbox">
-                        <input type="checkbox" name="cancel_on_build_failing" ${step.properties.cancel_on_build_failing ? 'checked' : ''} />
+                        <input type="checkbox" name="cancel_on_build_failing" ${props.cancel_on_build_failing ? 'checked' : ''} />
                         <label>Cancel on build failing</label>
                         <small>Cancel this step if the build is already failing</small>
                     </div>
                     
                     <div class="property-checkbox">
-                        <input type="checkbox" name="allow_dependency_failure" ${step.properties.allow_dependency_failure ? 'checked' : ''} />
+                        <input type="checkbox" name="allow_dependency_failure" ${props.allow_dependency_failure ? 'checked' : ''} />
                         <label>Allow dependency failure</label>
                         <small>Run even if dependencies fail</small>
                     </div>
@@ -496,52 +287,49 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     
                     <div class="property-group">
                         <label>Agent Query</label>
-                        <input type="text" name="agents" value="${step.properties.agents || ''}" 
-                               placeholder="queue=default,os=linux" />
-                        <small>Key=value pairs to target specific agents</small>
+                        <input type="text" name="agents" value="${props.agents || ''}" 
+                               placeholder="queue=default" />
+                        <small>Target specific build agents</small>
                     </div>
                     
                     <div class="property-group">
-                        <label>Environment Variables (JSON)</label>
-                        <textarea name="env" placeholder='{"NODE_ENV": "test", "API_KEY": "secret"}'>${JSON.stringify(step.properties.env || {}, null, 2)}</textarea>
+                        <label>Environment Variables</label>
+                        <textarea name="env" rows="3" placeholder="NODE_ENV=production">${this.formatEnvVars(props.env)}</textarea>
+                        <small>One per line: KEY=value</small>
                     </div>
                 </div>
 
-                <!-- Artifacts -->
+                <!-- Dependencies -->
                 <div class="property-section">
-                    <h4><i class="fas fa-archive"></i> Artifacts</h4>
-                    
+                    <h4><i class="fas fa-link"></i> Dependencies</h4>
                     <div class="property-group">
-                        <label>Artifact Paths</label>
-                        <textarea name="artifact_paths" placeholder="build/**/*${String.fromCharCode(10)}test-results/**/*${String.fromCharCode(10)}coverage/**/*">${Array.isArray(step.properties.artifact_paths) ? step.properties.artifact_paths.join('\n') : ''}</textarea>
-                        <small>One path per line, supports glob patterns</small>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label>Timeout (minutes)</label>
-                        <input type="number" name="timeout_in_minutes" value="${step.properties.timeout_in_minutes || ''}" 
-                               min="1" max="1440" placeholder="30" />
+                        <label>Depends On</label>
+                        <input type="text" name="depends_on" value="${(props.depends_on || []).join(',')}" 
+                               placeholder="step-1,step-2" />
+                        <small>Comma-separated list of step IDs</small>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    generateAnnotationForm(step) {
+    // Enhanced annotation step properties
+    renderAnnotationProperties(step) {
+        const props = step.properties;
         return `
-            <div class="properties-form">
+            <div class="properties-panel">
                 <h3><i class="fas fa-comment"></i> Annotation Step Properties</h3>
                 
                 <div class="property-section">
                     <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
                     <div class="property-group">
                         <label>Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                        <input type="text" name="label" value="${props.label || ''}" />
                     </div>
                     
                     <div class="property-group">
-                        <label>Context</label>
-                        <input type="text" name="context" value="${step.properties.context || 'default'}" 
+                        <label>Annotation Context</label>
+                        <input type="text" name="context" value="${props.context || 'default'}" 
                                placeholder="default" />
                         <small>Unique identifier for this annotation</small>
                     </div>
@@ -549,97 +337,72 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     <div class="property-group">
                         <label>Style</label>
                         <select name="style">
-                            <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
-                            <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
-                            <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
-                            <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
+                            <option value="info" ${props.style === 'info' ? 'selected' : ''}>Info</option>
+                            <option value="success" ${props.style === 'success' ? 'selected' : ''}>Success</option>
+                            <option value="warning" ${props.style === 'warning' ? 'selected' : ''}>Warning</option>
+                            <option value="error" ${props.style === 'error' ? 'selected' : ''}>Error</option>
                         </select>
                     </div>
                     
                     <div class="property-group">
-                        <label>Content (Markdown)</label>
-                        <textarea name="body" rows="6" placeholder="# Your Markdown Here${String.fromCharCode(10)}${String.fromCharCode(10)}Add **formatted** content to your build.">${step.properties.body || ''}</textarea>
-                        <small>CommonMark markdown content for the annotation</small>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label>Priority</label>
-                        <input type="number" name="priority" value="${step.properties.priority || 0}" 
-                               min="0" max="10" />
-                        <small>Display priority (0-10, higher numbers shown first)</small>
+                        <label>Annotation Body</label>
+                        <textarea name="body" rows="5" placeholder="Enter your annotation content here...">${props.body || ''}</textarea>
+                        <small>Supports Markdown formatting</small>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    generatePluginForm(step) {
-        const pluginOptions = Object.entries(this.pluginCatalog)
-            .map(([key, plugin]) => `<option value="${key}">${plugin.name}</option>`)
-            .join('');
-            
+    // Plugin step properties
+    renderPluginProperties(step) {
+        const props = step.properties;
         return `
-            <div class="properties-form">
+            <div class="properties-panel">
                 <h3><i class="fas fa-plug"></i> Plugin Step Properties</h3>
                 
                 <div class="property-section">
                     <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
                     <div class="property-group">
                         <label>Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" />
+                        <input type="text" name="label" value="${props.label || ''}" />
                     </div>
                     
                     <div class="property-group">
-                        <label>Command</label>
-                        <textarea name="command" placeholder="echo 'Running with plugins'">${step.properties.command || ''}</textarea>
+                        <label>Command (Optional)</label>
+                        <input type="text" name="command" value="${props.command || ''}" 
+                               placeholder="echo 'Running with plugin'" />
+                        <small>Command to run alongside the plugin</small>
                     </div>
-                    
+                </div>
+
+                <!-- Plugin Selection -->
+                <div class="property-section">
+                    <h4><i class="fas fa-puzzle-piece"></i> Plugin Configuration</h4>
                     <div class="property-group">
-                        <label>Select Plugin</label>
+                        <label>Selected Plugin</label>
                         <select name="selected_plugin" onchange="pipelineBuilder.updatePluginConfig('${step.id}', this.value)">
-                            <option value="">Choose a plugin...</option>
-                            ${pluginOptions}
+                            <option value="">Select a plugin...</option>
+                            ${Object.entries(this.pluginCatalog).map(([key, plugin]) => 
+                                `<option value="${key}" ${props.selected_plugin === key ? 'selected' : ''}>${plugin.name}</option>`
+                            ).join('')}
                         </select>
                     </div>
                     
-                    <div id="plugin-config-${step.id}" class="plugin-config">
-                        ${this.renderPluginConfig(step.properties.selected_plugin, step.properties.plugins)}
+                    <div id="plugin-config-${step.id}">
+                        ${this.renderPluginConfig(props.selected_plugin, props.plugins)}
                     </div>
                 </div>
             </div>
         `;
     }
 
-    generateNotifyForm(step) {
+    // Pipeline upload step properties
+    renderPipelineUploadProperties(step) {
+        const props = step.properties;
         return `
-            <div class="properties-form">
-                <h3><i class="fas fa-bell"></i> Notification Step Properties</h3>
-                
-                <div class="property-section">
-                    <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
-                    <div class="property-group">
-                        <label>Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" />
-                    </div>
-                    
-                    <div class="property-group">
-                        <label>Command</label>
-                        <textarea name="command" placeholder="echo 'Sending notification'">${step.properties.command || ''}</textarea>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label>Notification Config (JSON)</label>
-                        <textarea name="notify" placeholder='{"slack": {"webhook_url": "", "channel": "#builds"}}'>${JSON.stringify(step.properties.notify || {}, null, 2)}</textarea>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    generatePipelineUploadForm(step) {
-        return `
-            <div class="properties-form">
-                <h3><i class="fas fa-upload"></i> Pipeline Upload Properties</h3>
+            <div class="properties-panel">
+                <h3><i class="fas fa-upload"></i> Pipeline Upload Step Properties</h3>
                 
                 <div class="property-section">
                     <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
@@ -733,10 +496,9 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         }, 1);
     }
 
-    openMatrixBuilder(stepId) {
-        console.log('Opening matrix builder for step:', stepId);
-        alert('Matrix builder modal coming soon!');
-    }
+    // NOTE: Removed stub implementations of openMatrixBuilder() and showMatrixTemplates()
+    // These methods are now inherited from the parent PipelineBuilder class which has
+    // the full working implementation
 
     openPluginBuilder(stepId) {
         console.log('Opening plugin builder for step:', stepId);
@@ -762,6 +524,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 switch (e.key) {
                     case 'm':
                         e.preventDefault();
+                        // Use inherited method from parent class
                         this.showMatrixTemplates();
                         break;
                     case 'p':
@@ -775,11 +538,6 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 }
             }
         });
-    }
-
-    showMatrixTemplates() {
-        console.log('Showing matrix templates');
-        alert('Matrix templates modal coming soon!');
     }
 
     // ✅ REMOVED STUB - Now inherits working showPluginCatalog from parent class
@@ -866,42 +624,43 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
             yaml += `${this.indent}${this.indent}skip: "${props.skip}"\n`;
         }
 
-        // If condition
+        // If condition  
         if (props.if) {
             yaml += `${this.indent}${this.indent}if: "${props.if}"\n`;
         }
 
-        // Branch filter
-        if (props.branches) {
-            yaml += `${this.indent}${this.indent}branches: "${props.branches}"\n`;
+        // Timeout
+        if (props.timeout_in_minutes) {
+            yaml += `${this.indent}${this.indent}timeout_in_minutes: ${props.timeout_in_minutes}\n`;
         }
 
-        // Matrix configuration
-        if (props.matrix && props.matrix.setup) {
-            yaml += `${this.indent}${this.indent}matrix:\n`;
-            yaml += `${this.indent}${this.indent}${this.indent}setup:\n`;
-            Object.entries(props.matrix.setup).forEach(([key, values]) => {
-                yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}:\n`;
-                if (Array.isArray(values)) {
-                    values.forEach(value => {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}- "${value}"\n`;
-                    });
-                }
-            });
+        // Soft fail
+        if (props.soft_fail) {
+            yaml += `${this.indent}${this.indent}soft_fail: true\n`;
+        }
 
-            // Matrix adjustments
-            if (props.matrix.adjustments) {
-                yaml += `${this.indent}${this.indent}${this.indent}adjustments:\n`;
-                props.matrix.adjustments.forEach(adjustment => {
-                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}- with:\n`;
-                    Object.entries(adjustment.with).forEach(([key, value]) => {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
-                    });
-                    if (adjustment.soft_fail) {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}soft_fail: true\n`;
-                    }
-                });
-            }
+        // Cancel on build failing
+        if (props.cancel_on_build_failing) {
+            yaml += `${this.indent}${this.indent}cancel_on_build_failing: true\n`;
+        }
+
+        // Allow dependency failure
+        if (props.allow_dependency_failure) {
+            yaml += `${this.indent}${this.indent}allow_dependency_failure: true\n`;
+        }
+
+        // Agents
+        if (props.agents) {
+            yaml += `${this.indent}${this.indent}agents:\n`;
+            yaml += `${this.indent}${this.indent}${this.indent}queue: "${props.agents}"\n`;
+        }
+
+        // Environment variables
+        if (props.env && typeof props.env === 'object' && Object.keys(props.env).length > 0) {
+            yaml += `${this.indent}${this.indent}env:\n`;
+            Object.entries(props.env).forEach(([key, value]) => {
+                yaml += `${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
+            });
         }
 
         // Enhanced features
@@ -937,83 +696,33 @@ class EnhancedYAMLGenerator extends YAMLGenerator {
                             yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}${subKey}: "${subValue}"\n`;
                         });
                     } else {
-                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}: ${typeof value === 'string' ? 
-                            `"${value}"` : value}\n`;
+                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}: ${typeof value === 'string' ? `"${value}"` : value}\n`;
                     }
                 });
             });
         }
 
-        // Concurrency
-        if (props.concurrency) {
-            yaml += `${this.indent}${this.indent}concurrency: ${props.concurrency}\n`;
-        }
-        if (props.concurrency_group) {
-            yaml += `${this.indent}${this.indent}concurrency_group: "${props.concurrency_group}"\n`;
-        }
-
-        // Agents
-        if (props.agents) {
-            yaml += `${this.indent}${this.indent}agents:\n`;
-            const agentPairs = props.agents.split(',').map(pair => pair.trim());
-            agentPairs.forEach(pair => {
-                const [key, value] = pair.split('=').map(s => s.trim());
-                if (key && value) {
-                    yaml += `${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
+        // Matrix
+        if (props.matrix && props.matrix.setup && Object.keys(props.matrix.setup).length > 0) {
+            yaml += `${this.indent}${this.indent}matrix:\n`;
+            yaml += `${this.indent}${this.indent}${this.indent}setup:\n`;
+            Object.entries(props.matrix.setup).forEach(([key, values]) => {
+                yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${key}:\n`;
+                if (Array.isArray(values)) {
+                    values.forEach(value => {
+                        yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}- "${value}"\n`;
+                    });
+                } else {
+                    yaml += `${this.indent}${this.indent}${this.indent}${this.indent}${this.indent}- "${values}"\n`;
                 }
             });
         }
 
-        // Environment variables
-        if (props.env && Object.keys(props.env).length > 0) {
-            yaml += `${this.indent}${this.indent}env:\n`;
-            Object.entries(props.env).forEach(([key, value]) => {
-                yaml += `${this.indent}${this.indent}${this.indent}${key}: "${value}"\n`;
-            });
-        }
-
-        // Artifact paths
-        if (props.artifact_paths && props.artifact_paths.length > 0) {
-            yaml += `${this.indent}${this.indent}artifact_paths:\n`;
-            props.artifact_paths.forEach(path => {
-                yaml += `${this.indent}${this.indent}${this.indent}- "${path}"\n`;
-            });
-        }
-
-        // Timeout
-        if (props.timeout_in_minutes && props.timeout_in_minutes !== 10) {
-            yaml += `${this.indent}${this.indent}timeout_in_minutes: ${props.timeout_in_minutes}\n`;
-        }
-
-        // Retry configuration
-        if (props.retry) {
-            yaml += `${this.indent}${this.indent}retry:\n`;
-            yaml += `${this.indent}${this.indent}${this.indent}automatic: true\n`;
-        }
-
-        // Soft fail
-        if (props.soft_fail) {
-            yaml += `${this.indent}${this.indent}soft_fail: true\n`;
-        }
-
-        // Cancel on build failing
-        if (props.cancel_on_build_failing) {
-            yaml += `${this.indent}${this.indent}cancel_on_build_failing: true\n`;
-        }
-
-        // Allow dependency failure
-        if (props.allow_dependency_failure) {
-            yaml += `${this.indent}${this.indent}allow_dependency_failure: true\n`;
-        }
-
-        return yaml + '\n';
+        return yaml;
     }
 }
 
-// js/enhanced-pipeline-builder.js
-// MATRIX BUILDER FIX: Add to the bottom of the enhanced-pipeline-builder.js file
-
-// Ensure matrix builder methods are properly available in EnhancedPipelineBuilder
+// MATRIX BUILDER FIX: Ensure matrix builder methods are properly available in EnhancedPipelineBuilder
 if (window.EnhancedPipelineBuilder) {
     // Add matrix builder methods to prototype if they're missing
     if (!window.EnhancedPipelineBuilder.prototype.openMatrixBuilder) {
@@ -1109,5 +818,3 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export enhanced classes to global scope
 window.EnhancedPipelineBuilder = EnhancedPipelineBuilder;
 window.EnhancedYAMLGenerator = EnhancedYAMLGenerator;
-
-
