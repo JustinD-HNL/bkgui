@@ -465,7 +465,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     <h4><i class="fas fa-th"></i> Matrix Builds</h4>
                     <div class="property-group">
                         <div class="matrix-builder">
-                            <button type="button" class="btn btn-secondary" onclick="pipelineBuilder.openMatrixBuilder('${step.id}')">
+                            <button type="button" class="btn btn-secondary" onclick="window.openMatrixBuilderSafe('${step.id}')">
                                 <i class="fas fa-plus"></i> Configure Matrix
                             </button>
                             <div id="matrix-preview-${step.id}" class="matrix-preview">
