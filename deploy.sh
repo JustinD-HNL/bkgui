@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Buildkite Pipeline Builder - Google Cloud Run Deployment Script
-# This script deploys the application to Google Cloud Run
+# This script deploys the application to Google Cloud Run (No Authentication)
 
 set -e
 
@@ -20,28 +20,17 @@ IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
 echo -e "${BLUE}🚀 Buildkite Pipeline Builder - Cloud Run Deployment${NC}"
 echo -e "${BLUE}=================================================${NC}"
-
-# Firebase Configuration Check
-echo -e "${BLUE}🔧 Firebase Authentication Configuration${NC}"
-echo -e "${YELLOW}Firebase is required for user authentication. Please have your Firebase project ready.${NC}"
-echo -e "You can find your config at: https://console.firebase.google.com/project/${PROJECT_ID}/settings/general/"
+echo -e "${GREEN}✅ Authentication disabled - no Firebase configuration needed${NC}"
 echo ""
 
-# Prompt for Firebase configuration
-read -p "Enter your Firebase API Key: " FIREBASE_API_KEY
-read -p "Enter your Firebase Auth Domain (e.g., your-project.firebaseapp.com): " FIREBASE_AUTH_DOMAIN
-read -p "Enter your Firebase Project ID: " FIREBASE_PROJECT_ID
-read -p "Enter your Firebase Storage Bucket (e.g., your-project.appspot.com): " FIREBASE_STORAGE_BUCKET
-read -p "Enter your Firebase Messaging Sender ID: " FIREBASE_MESSAGING_SENDER_ID
-read -p "Enter your Firebase App ID: " FIREBASE_APP_ID
-
-# Validate Firebase configuration
-if [[ -z "$FIREBASE_API_KEY" || -z "$FIREBASE_AUTH_DOMAIN" || -z "$FIREBASE_PROJECT_ID" ]]; then
-    echo -e "${RED}❌ Firebase configuration is incomplete. Please provide all required values.${NC}"
-    exit 1
+# Prompt for project configuration
+read -p "Enter your Google Cloud Project ID [${PROJECT_ID}]: " INPUT_PROJECT_ID
+if [[ ! -z "$INPUT_PROJECT_ID" ]]; then
+    PROJECT_ID=$INPUT_PROJECT_ID
+    IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 fi
 
-echo -e "${GREEN}✅ Firebase configuration collected${NC}"
+echo -e "${GREEN}✅ Using Project ID: ${PROJECT_ID}${NC}"
 echo ""
 
 # Check if required tools are installed
@@ -85,13 +74,14 @@ gcloud run deploy $SERVICE_NAME \
     --concurrency 100 \
     --max-instances 10 \
     --port 8080 \
-    --set-env-vars "NODE_ENV=production,FIREBASE_API_KEY=$FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN=$FIREBASE_AUTH_DOMAIN,FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID,FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET,FIREBASE_MESSAGING_SENDER_ID=$FIREBASE_MESSAGING_SENDER_ID,FIREBASE_APP_ID=$FIREBASE_APP_ID"
+    --set-env-vars "NODE_ENV=production"
 
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
 
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
 echo -e "${GREEN}🌍 Your application is now live at: ${SERVICE_URL}${NC}"
+echo -e "${GREEN}🔓 Authentication: Disabled (no sign-in required)${NC}"
 echo -e "${BLUE}📊 To view logs: gcloud logs tail --service=${SERVICE_NAME}${NC}"
 echo -e "${BLUE}🔍 To view in console: https://console.cloud.google.com/run/detail/${REGION}/${SERVICE_NAME}${NC}"
 
@@ -101,3 +91,5 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     open $SERVICE_URL
 fi
+
+echo -e "${GREEN}🎉 Deployment complete! Your Buildkite Pipeline Builder is ready to use.${NC}"
