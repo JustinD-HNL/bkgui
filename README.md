@@ -1,139 +1,267 @@
 # Buildkite Pipeline Builder
 
-A visual GUI application for creating and editing Buildkite CI/CD pipelines through an intuitive drag-and-drop interface.
+A powerful, visual GUI application for creating and managing Buildkite CI/CD pipelines. Build complex pipelines with drag-and-drop simplicity, advanced step configuration, and real-time YAML generation.
 
-## Features
+## ✨ Features
 
-🎯 **Visual Pipeline Building**
-- Drag and drop step types to build pipelines
-- Real-time visual feedback and step ordering
-- Interactive step configuration
+### Core Functionality
+- **Visual Pipeline Builder**: Drag-and-drop interface for creating pipeline steps
+- **Real-time YAML Generation**: See your pipeline YAML update as you build
+- **Step Templates**: Pre-configured templates for common tasks
+- **Plugin Catalog**: Browse and add popular Buildkite plugins
+- **Matrix Builds**: Configure build matrices with live preview
+- **YAML Validation**: Built-in validation and error checking
+- **Export Options**: Download or copy pipeline YAML
 
-🛠️ **Comprehensive Step Support**
-- Command Steps - Execute shell commands
-- Wait Steps - Control pipeline flow
-- Block Steps - Manual approval gates
-- Input Steps - Collect user input
-- Trigger Steps - Launch other pipelines
-- Group Steps - Organize related steps
+### Advanced Features
+- **Command Palette**: Quick access to all features with Ctrl+K
+- **Keyboard Shortcuts**: Speed up your workflow with hotkeys
+- **Auto-save**: Never lose your work with automatic saving
+- **Step Dependencies**: Visual dependency management
+- **Conditional Steps**: Configure steps with conditions
+- **Environment Variables**: Manage pipeline and step-level variables
+- **Plugin Configuration**: Visual plugin setup with validation
 
-📋 **Smart Configuration**
-- Property panels for detailed step configuration
-- Real-time YAML generation and preview
-- Pipeline validation and error checking
+### User Experience
+- **Modern Interface**: Clean, responsive design that works on all devices
+- **No Authentication Required**: Start building immediately without sign-in
+- **Fast Performance**: Built with vanilla JavaScript for speed
+- **Accessibility**: Full keyboard navigation and screen reader support
 
-🚀 **Productivity Features**
-- Example pipeline templates
-- Keyboard shortcuts for quick actions
-- Export/import pipeline configurations
-- Auto-save functionality
+## 🚀 Quick Start
 
-## Getting Started
+### Option 1: Cloud Deployment (Recommended)
 
-### Prerequisites
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- For cloud deployment: Google Cloud account and gcloud CLI
-- For authentication: Firebase project (see [FIREBASE_SETUP.md](FIREBASE_SETUP.md))
+Deploy directly to Google Cloud Run:
 
-### Local Development
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd buildkite-pipeline-builder
-   ```
+```bash
+git clone https://github.com/your-repo/buildkite-pipeline-builder.git
+cd buildkite-pipeline-builder
+./deploy.sh
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+The deployment script will:
+- Build and push your Docker image
+- Deploy to Google Cloud Run  
+- Provide you with a live URL
+- No authentication setup required
 
-3. **Set up Firebase Authentication**:
-   - Follow the guide in [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
-   - Copy `firebase-config.template.js` to `firebase-config.js`
-   - Update the configuration with your Firebase project settings
+### Option 2: Local Development
 
-4. **Start local server**
-   ```bash
-   npm start
-   ```
+Run locally for development:
 
-5. **Open in browser**
-   ```
-   http://localhost:8080
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/your-repo/buildkite-pipeline-builder.git
+cd buildkite-pipeline-builder
 
-### Cloud Deployment (Google Cloud Run)
+# Install dependencies
+npm install
 
-#### Quick Deploy
-1. **Edit deployment script**: Update `PROJECT_ID` in `deploy.sh`
-2. **Run deployment**: `./deploy.sh`
-   - The script will prompt you for Firebase configuration during deployment
+# Start the server
+npm start
 
-#### Manual Deploy
-Follow the detailed steps in [DEPLOYMENT.md](DEPLOYMENT.md)
+# Open in browser
+open http://localhost:8080
+```
 
-#### CI/CD Setup
-Connect your repository to Google Cloud Build for automatic deployments using the included `cloudbuild.yaml`
+### Option 3: Docker
 
-## 🔐 Authentication
+Run with Docker:
 
-The application uses Firebase Authentication with Google Sign-In to secure access and provide user management.
+```bash
+# Build the image
+docker build -t buildkite-pipeline-builder .
 
-### Features
-- **Google Sign-In**: One-click authentication with Google accounts
-- **Session Persistence**: Users stay logged in across browser sessions
-- **Secure Configuration**: Firebase config is handled securely via environment variables
-- **Clean Interface**: Simple, modern authentication with minimal friction
+# Run the container
+docker run -p 8080:8080 buildkite-pipeline-builder
 
-### Setup Requirements
-1. **Firebase Project**: Create a project at [Firebase Console](https://console.firebase.google.com/)
-2. **Enable Google Auth**: Enable Google sign-in in Authentication settings
-3. **Configure Domains**: Add your domain(s) to authorized domains
-4. **Set Environment Variables**: Configure Firebase credentials for deployment
+# Access the application
+open http://localhost:8080
+```
 
-For detailed setup instructions, see [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
+## 📋 Usage
 
-## Troubleshooting
+### Building Your First Pipeline
 
-### Authentication Issues
+1. **Add Steps**: Drag step types from the sidebar to the pipeline area
+2. **Configure Steps**: Click on any step to configure its settings
+3. **Add Dependencies**: Connect steps by configuring the `depends_on` field
+4. **Use Plugins**: Browse the plugin catalog and add popular plugins
+5. **Export YAML**: Click "Export YAML" to get your pipeline configuration
 
-If Firebase authentication is not working, use the built-in debug tool:
+### Step Types
 
-1. **Visit the debug page**: `http://your-domain/debug-auth.html`
-2. **Run diagnostic tests**: The page will guide you through testing each component
-3. **Check the issues below** for common problems
+- **Command Step**: Execute shell commands and scripts
+- **Wait Step**: Create dependencies between pipeline stages  
+- **Block Step**: Add manual approval points
+- **Input Step**: Collect user input during builds
+- **Trigger Step**: Trigger other pipelines
+- **Group Step**: Organize related steps
 
-#### Common Issues & Solutions
+### Advanced Features
 
-**🚨 "Firebase configuration not available"**
-- **Cause**: Missing environment variables or firebase-config.js
-- **Solution**: 
-  - For deployment: Set `FIREBASE_API_KEY` and other env vars in Cloud Run
-  - For local: Create `firebase-config.js` with your Firebase project settings
+#### Matrix Builds
+Configure matrix builds to run the same step with different parameters:
+```yaml
+matrix:
+  - os: ["ubuntu", "windows", "macos"]
+    node: ["16", "18", "20"]
+```
 
-**🚨 "This domain is not authorized"**
-- **Cause**: Domain not added to Firebase authorized domains
-- **Solution**: 
-  1. Go to [Firebase Console](https://console.firebase.google.com/)
-  2. Select your project → Authentication → Sign-in method
-  3. Scroll to "Authorized domains" and add your domain
+#### Plugin Integration
+Add popular plugins with visual configuration:
+- Docker build and push
+- Artifact upload/download  
+- Test result annotations
+- Slack notifications
+- Security scanning
 
-**🚨 "Pop-up blocked by browser"**
-- **Cause**: Browser blocking the Google sign-in popup
-- **Solution**: Allow popups for your domain in browser settings
+#### Command Palette
+Press `Ctrl+K` (or `Cmd+K` on Mac) to open the command palette for quick access to:
+- Add new steps
+- Export pipeline
+- Load templates
+- Clear pipeline
+- Show shortcuts
 
-**🚨 "Firebase SDK not loaded"**
-- **Cause**: Network issues or CDN problems
-- **Solution**: Check browser console for script loading errors
+### Example Pipeline
 
-#### Debug Tools
+```yaml
+steps:
+  - label: "🧪 Test"
+    command: "npm test"
+    
+  - wait
+  
+  - label: "🚀 Deploy"
+    command: "npm run deploy"
+    depends_on: "test"
+    if: build.branch == "main"
+```
 
-1. **Built-in Debug Page**: Visit `/debug-auth.html` for comprehensive testing
-2. **Browser Console**: Check for JavaScript errors and Firebase logs
-3. **Server Debug**: Visit `/api/debug/firebase-status` for server-side status
-4. **Health Check**: Visit `/health` to verify server is running
+## 🛠 Development
 
-### Server Issues
+### Project Structure
+
+```
+buildkite-pipeline-builder/
+├── index.html              # Main application HTML
+├── styles.css              # Application styles and themes
+├── js/
+│   ├── pipeline-builder.js # Core pipeline building logic
+│   ├── yaml-generator.js   # YAML generation and validation
+│   ├── firebase-auth.js    # Authentication service (disabled)
+│   └── app.js              # Application utilities and features
+├── server.js               # Express server for production
+├── package.json            # Node.js dependencies
+├── Dockerfile              # Container configuration
+├── deploy.sh               # Quick deployment script
+├── cloudbuild.yaml         # Google Cloud Build configuration
+├── DEPLOYMENT.md           # Detailed deployment guide
+└── README.md               # This documentation
+```
+
+### Building Features
+
+The application is built with vanilla JavaScript and requires no build process:
+
+- `pipeline-builder.js` - Core drag & drop and step management
+- `yaml-generator.js` - Buildkite YAML generation and validation  
+- `firebase-auth.js` - Authentication service (currently disabled)
+- `app.js` - Application features and utilities
+- `styles.css` - Responsive design and theming
+
+### Contributing
+
+This is an open-source project! Contributions are welcome:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 🚀 Deployment
+
+### Google Cloud Run (Recommended)
+
+Use the included deployment script:
+
+```bash
+./deploy.sh
+```
+
+This will:
+- Build your Docker image
+- Push to Google Container Registry
+- Deploy to Cloud Run
+- Provide a public URL
+
+### Manual Cloud Run Deployment
+
+```bash
+# Build and push image
+docker build -t gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder .
+docker push gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder
+
+# Deploy to Cloud Run
+gcloud run deploy buildkite-pipeline-builder \
+  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Environment Variables
+
+The application runs without any required environment variables. Optional configuration:
+
+- `NODE_ENV`: Set to `production` for production deployments
+- `PORT`: Server port (defaults to 8080)
+
+## 📖 Buildkite Integration
+
+### Using Generated Pipelines
+
+1. **Export your pipeline** as YAML from the application
+2. **Save the YAML file** in your repository (e.g., `.buildkite/pipeline.yml`)  
+3. **Configure your Buildkite pipeline** to use the file
+4. **Commit and push** your changes
+
+### Pipeline Upload
+
+You can also upload pipelines directly using the Buildkite CLI:
+
+```bash
+buildkite-agent pipeline upload .buildkite/pipeline.yml
+```
+
+### Example Integration
+
+Add this to your repository's `.buildkite/pipeline.yml`:
+
+```yaml
+steps:
+  - label: "📦 Install"
+    command: "npm ci"
+    
+  - label: "🧪 Test" 
+    command: "npm test"
+    depends_on: "install"
+    
+  - wait
+  
+  - label: "🚀 Deploy"
+    command: "npm run deploy"
+    if: build.branch == "main"
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
 
 **🚨 Server not starting**
 ```bash
@@ -144,220 +272,49 @@ lsof -i :8080
 NODE_ENV=development npm start
 ```
 
-**🚨 Environment variables not loading**
+**🚨 Docker build fails**
 ```bash
-# Check current environment
-curl http://localhost:8080/api/debug/firebase-status
-
-# For Cloud Run deployment
-gcloud run services describe buildkite-pipeline-builder \
-  --region=us-central1 \
-  --format="value(spec.template.spec.containers[0].env[].name,spec.template.spec.containers[0].env[].value)"
+# Test locally first
+docker build -t test-image .
+docker run -p 8080:8080 test-image
 ```
 
-### Development Environment
-
-**🚨 Local Firebase config not loading**
-1. Ensure `firebase-config.js` exists and is properly formatted
-2. Check that the file is not in `.gitignore`
-3. Verify the config object is assigned to `window.FIREBASE_CONFIG`
-
-**🚨 CORS errors in development**
-- The server is configured to allow Firebase domains
-- Check browser console for specific CORS errors
-- Ensure you're accessing via `http://localhost:8080` (not file://)
-
-## Usage
-
-#### Basic Pipeline Creation
-1. **Add Steps**: Drag step types from the left sidebar to the pipeline canvas
-2. **Configure Steps**: Click on any step to edit its properties in the right panel
-3. **Reorder Steps**: Use the arrow buttons or drag steps to reorder
-4. **Export Pipeline**: Click "Export YAML" to generate the Buildkite pipeline configuration
-
-#### Keyboard Shortcuts
-- `Ctrl+S` (or `Cmd+S`) - Export YAML
-- `Ctrl+N` (or `Cmd+N`) - Clear pipeline
-- `Ctrl+E` (or `Cmd+E`) - Load example pipeline
-- `Delete` - Remove selected step
-- `Escape` - Deselect current step
-
-#### Step Types
-
-**Command Step**
-- Execute shell commands, scripts, or tools
-- Configure agent targeting, timeouts, and retry behavior
-- Set environment variables and working directories
-
-**Wait Step**
-- Pause pipeline execution until all previous steps complete
-- Control pipeline flow and dependencies
-
-**Block Step**
-- Require manual approval before continuing
-- Ideal for deployment gates and review processes
-
-**Input Step**
-- Collect user input during pipeline execution
-- Define custom form fields and validation
-
-**Trigger Step**
-- Launch other Buildkite pipelines
-- Pass environment variables and build parameters
-
-**Group Step**
-- Organize related steps together
-- Run steps in parallel or sequence
-
-## Examples
-
-### Basic CI Pipeline
-```yaml
-steps:
-  - label: "Install Dependencies"
-    command: "npm install"
-    
-  - label: "Run Tests"
-    command: "npm test"
-    
-  - label: "Build Application"
-    command: "npm run build"
-```
-
-### Deployment Pipeline with Approval
-```yaml
-steps:
-  - label: "Run Tests"
-    command: "npm test"
-    
-  - wait
-  
-  - block: "Deploy to Production"
-    prompt: "Ready to deploy to production?"
-    
-  - label: "Deploy"
-    command: "npm run deploy"
-```
-
-## File Structure
-
-```
-buildkite-pipeline-builder/
-├── index.html              # Main application HTML
-├── styles.css              # Application styles and themes
-├── js/
-│   ├── firebase-auth.js    # Firebase authentication service
-│   ├── pipeline-builder.js # Core pipeline building logic
-│   ├── yaml-generator.js   # YAML generation and validation
-│   └── app.js              # Application utilities and features
-├── server.js               # Express server for production
-├── debug-auth.html         # Authentication debugging tool
-├── package.json            # Node.js dependencies
-├── Dockerfile              # Container configuration
-├── deploy.sh               # Quick deployment script
-├── cloudbuild.yaml         # Google Cloud Build configuration
-├── DEPLOYMENT.md           # Detailed deployment guide
-├── FIREBASE_SETUP.md       # Firebase setup instructions
-└── README.md               # This documentation
-```
-
-## Browser Support
-
-- ✅ Chrome 70+
-- ✅ Firefox 65+
-- ✅ Safari 12+
-- ✅ Edge 79+
-
-## Contributing
-
-This is an open-source project! Contributions are welcome:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly (including authentication)
-5. Submit a pull request
-
-### Development
-
-The application is built with vanilla JavaScript and requires no build process:
-
-- `firebase-auth.js` - Firebase authentication handling with comprehensive error handling
-- `pipeline-builder.js` - Core drag & drop and step management
-- `yaml-generator.js` - Buildkite YAML generation
-- `app.js` - Application features and utilities
-- `styles.css` - Responsive design and theming
-
-## Buildkite Integration
-
-### Using Generated Pipelines
-
-1. Export your pipeline as YAML
-2. Save the YAML file in your repository (e.g., `.buildkite/pipeline.yml`)
-3. Configure your Buildkite pipeline to use the file
-4. Commit and push your changes
-
-### Pipeline Upload
-
-You can also upload pipelines directly using the Buildkite CLI:
-
+**🚨 Cloud Run deployment fails**
 ```bash
-buildkite-agent pipeline upload .buildkite/pipeline.yml
+# Check authentication
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Enable required APIs
+gcloud services enable run.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
 ```
 
-## Support & Debugging
+### Debug Endpoints
+
+- `/health` - Server health check
+- `/api/test` - API connectivity test
 
 ### Getting Help
 
 1. **Check the troubleshooting section** above for common issues
-2. **Use the debug tool** at `/debug-auth.html` for authentication issues
-3. **Check browser console** for JavaScript errors
-4. **Review server logs** for backend issues
+2. **Check browser console** for JavaScript errors  
+3. **Review server logs** for backend issues
+4. **Open an issue** on GitHub with details
 
-### Useful Debug URLs
+## 📱 Browser Support
 
-- `/health` - Server health check
-- `/debug-auth.html` - Authentication diagnostic tool
-- `/api/debug/firebase-status` - Firebase configuration status
-- `/api/firebase-config` - Firebase configuration endpoint
+- ✅ Chrome 70+
+- ✅ Firefox 65+  
+- ✅ Safari 12+
+- ✅ Edge 79+
 
-### Reporting Issues
+## 📄 License
 
-When reporting issues, please include:
-
-1. **Environment details** (browser, OS, deployment type)
-2. **Error messages** from browser console
-3. **Steps to reproduce** the issue
-4. **Output from debug tools** if authentication-related
-
-## Roadmap
-
-🎯 **Planned Features**
-- [ ] Pipeline templates library
-- [ ] Step validation and linting
-- [ ] Dark mode theme
-- [ ] Pipeline import from existing YAML
-- [ ] Step dependency visualization
-- [ ] Plugin marketplace integration
-- [ ] Team collaboration features
-
-## Resources
-
-- [Buildkite Documentation](https://buildkite.com/docs)
-- [Buildkite Step Reference](https://buildkite.com/docs/pipelines/step-reference)
-- [Firebase Auth Documentation](https://firebase.google.com/docs/auth)
-- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
-
-## License
-
-MIT License - feel free to use this project for personal or commercial purposes.
-
-## Support
-
-- 🐛 Report bugs by creating GitHub issues
-- 💡 Request features via GitHub discussions
-- 📧 Contact: Open an issue for support
+This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-**Happy pipeline building!** 🚀
+**Happy pipeline building!** 🎉 
+
+Start creating powerful Buildkite pipelines with our visual builder today!

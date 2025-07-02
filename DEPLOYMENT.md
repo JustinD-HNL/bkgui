@@ -1,118 +1,191 @@
-# Deployment Guide - Google Cloud Run
+# Deployment Guide
 
-This guide will help you deploy the Buildkite Pipeline Builder to Google Cloud Run.
+Complete guide for deploying the Buildkite Pipeline Builder to Google Cloud Run.
 
 ## Prerequisites
 
-1. **Google Cloud Account**: You need a Google Cloud Project with billing enabled
-2. **Google Cloud CLI**: Install the [gcloud CLI](https://cloud.google.com/sdk/docs/install)
-3. **Docker**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed
+- [Docker](https://docs.docker.com/get-docker/) installed
+- Google Cloud project with billing enabled
+- Basic familiarity with command line tools
 
-## Quick Deployment (Recommended)
+## Quick Deployment
 
-### Step 1: Setup Google Cloud Project
+The fastest way to deploy is using the included script:
 
-1. Create a new project in [Google Cloud Console](https://console.cloud.google.com/)
-2. Note your Project ID (you'll need it for deployment)
-3. Enable billing for your project
-
-### Step 2: Configure and Deploy
-
-1. **Edit the deployment script**:
-   ```bash
-   nano deploy.sh
-   ```
-   
-2. **Update the PROJECT_ID**:
-   ```bash
-   PROJECT_ID="your-actual-project-id"  # Replace with your GCP project ID
-   ```
-
-3. **Run the deployment script**:
-   ```bash
-   ./deploy.sh
-   ```
-
-The script will:
-- Authenticate you with Google Cloud
-- Enable required APIs
-- Build and push the Docker image
-- Deploy to Cloud Run
-- Provide you with the live URL
-
-### Step 3: Access Your Application
-
-After successful deployment, you'll receive a URL like:
-```
-https://buildkite-pipeline-builder-[hash]-uc.a.run.app
+```bash
+./deploy.sh
 ```
 
-## Alternative Deployment Methods
+This will guide you through the entire deployment process.
 
-### Method 1: Using gcloud Commands Directly
+## Manual Deployment
 
-1. **Build and submit to Cloud Build**:
-   ```bash
-   gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder
-   ```
+### Step 1: Setup Google Cloud
 
-2. **Deploy to Cloud Run**:
-   ```bash
-   gcloud run deploy buildkite-pipeline-builder \
-     --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
-     --platform managed \
-     --region us-central1 \
-     --allow-unauthenticated
-   ```
+#### 1.1 Authentication
+```bash
+# Login to Google Cloud
+gcloud auth login
 
-### Method 2: Using Cloud Build for CI/CD
+# Set your project ID
+export PROJECT_ID="your-project-id"
+gcloud config set project $PROJECT_ID
+```
 
-1. **Connect your repository** to Cloud Build in the Google Cloud Console
+#### 1.2 Enable APIs
+```bash
+# Enable required Google Cloud APIs
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable run.googleapis.com
+gcloud services enable containerregistry.googleapis.com
+```
 
-2. **Set up triggers** to automatically deploy on code changes
+### Step 2: Build and Push Docker Image
 
-3. **The cloudbuild.yaml** file is already configured for automatic deployment
+```bash
+# Build the Docker image
+docker build -t gcr.io/$PROJECT_ID/buildkite-pipeline-builder .
 
-## Configuration Options
+# Push to Google Container Registry
+docker push gcr.io/$PROJECT_ID/buildkite-pipeline-builder
+```
 
-### Environment Variables
+### Step 3: Deploy to Cloud Run
 
-You can set environment variables during deployment:
+#### Basic Deployment
+```bash
+gcloud run deploy buildkite-pipeline-builder \
+  --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080
+```
+
+#### Production Deployment with Optimizations
+```bash
+gcloud run deploy buildkite-pipeline-builder \
+  --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --memory 512Mi \
+  --cpu 1 \
+  --concurrency 100 \
+  --max-instances 10 \
+  --port 8080 \
+  --set-env-vars "NODE_ENV=production"
+```
+
+### Step 4: Verify Deployment
+
+```bash
+# Get the service URL
+SERVICE_URL=$(gcloud run services describe buildkite-pipeline-builder \
+  --platform managed \
+  --region us-central1 \
+  --format 'value(status.url)')
+
+echo "Application deployed to: $SERVICE_URL"
+
+# Test the deployment
+curl $SERVICE_URL/health
+```
+
+## Advanced Configuration
+
+### Resource Limits
+
+Adjust resource limits based on your needs:
 
 ```bash
 gcloud run deploy buildkite-pipeline-builder \
-  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
-  --set-env-vars NODE_ENV=production,CUSTOM_VAR=value
-```
-
-### Resource Allocation
-
-Adjust memory and CPU allocation:
-
-```bash
-gcloud run deploy buildkite-pipeline-builder \
-  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
   --memory 1Gi \
-  --cpu 2
+  --cpu 2 \
+  --concurrency 50 \
+  --max-instances 20
+```
+
+### Multiple Regions
+
+Deploy to multiple regions for better availability:
+
+```bash
+# Deploy to multiple regions
+regions=("us-central1" "europe-west1" "asia-northeast1")
+
+for region in "${regions[@]}"; do
+  gcloud run deploy buildkite-pipeline-builder \
+    --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder \
+    --platform managed \
+    --region $region \
+    --allow-unauthenticated
+done
 ```
 
 ### Custom Domain
 
-To use a custom domain:
+#### 1. Add Domain Mapping
+```bash
+gcloud run domain-mappings create \
+  --service buildkite-pipeline-builder \
+  --domain your-domain.com \
+  --region us-central1
+```
 
-1. **Map your domain** in Cloud Run console
-2. **Add DNS records** as instructed
-3. **SSL certificates** are automatically provisioned
+#### 2. Configure DNS
+1. **Get mapping details**:
+   ```bash
+   gcloud run domain-mappings describe \
+     --domain your-domain.com \
+     --region us-central1
+   ```
+
+2. **Map your domain** in Cloud Run console
+3. **Add DNS records** as instructed
+4. **SSL certificates** are automatically provisioned
+
+## Continuous Deployment
+
+### Cloud Build Integration
+
+Set up automatic deployments with Cloud Build:
+
+#### 1. Connect Repository
+1. Go to [Cloud Build Triggers](https://console.cloud.google.com/cloud-build/triggers)
+2. Click "Create Trigger"
+3. Connect your GitHub/GitLab repository
+4. Configure trigger on `main` branch pushes
+
+#### 2. Use Included Configuration
+The project includes `cloudbuild.yaml` which will:
+- Build the Docker image
+- Push to Container Registry  
+- Deploy to Cloud Run automatically
+
+#### 3. Manual Trigger
+```bash
+# Trigger build manually
+gcloud builds submit --config cloudbuild.yaml .
+```
 
 ## Security Considerations
 
-### Authentication (Optional)
+### Basic Security
 
-By default, the service allows unauthenticated access. To require authentication:
+The application is deployed with:
+- **No authentication required** - Public access
+- **Basic security headers** via Helmet.js
+- **HTTPS enforcement** by default on Cloud Run
+
+### Restricting Access (Optional)
+
+To require authentication for access:
 
 ```bash
 gcloud run deploy buildkite-pipeline-builder \
-  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
+  --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder \
   --no-allow-unauthenticated
 ```
 
@@ -131,7 +204,7 @@ For internal network access:
 
 ```bash
 gcloud run deploy buildkite-pipeline-builder \
-  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder \
+  --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder \
   --vpc-connector your-vpc-connector \
   --vpc-egress private-ranges-only
 ```
@@ -195,7 +268,8 @@ Response:
 {
   "status": "healthy",
   "timestamp": "2024-01-01T00:00:00.000Z",
-  "version": "1.0.0"
+  "version": "1.0.3",
+  "authentication": "disabled"
 }
 ```
 
@@ -213,7 +287,7 @@ gcloud run deploy buildkite-pipeline-builder \
 ### Resource Limits
 
 - **Minimum**: 256Mi memory, 0.25 CPU
-- **Recommended**: 512Mi memory, 1 CPU
+- **Recommended**: 512Mi memory, 1 CPU  
 - **Maximum**: 4Gi memory, 2 CPU
 
 ### Pricing Estimate
@@ -233,7 +307,7 @@ With default settings (512Mi memory, 1 CPU):
 
 # Or deploy specific image
 gcloud run deploy buildkite-pipeline-builder \
-  --image gcr.io/YOUR_PROJECT_ID/buildkite-pipeline-builder:latest
+  --image gcr.io/$PROJECT_ID/buildkite-pipeline-builder:latest
 ```
 
 ### Rollback to Previous Version
@@ -242,7 +316,7 @@ gcloud run deploy buildkite-pipeline-builder \
 # List revisions
 gcloud run revisions list --service=buildkite-pipeline-builder
 
-# Rollback to specific revision
+# Rollback to specific revision  
 gcloud run services update-traffic buildkite-pipeline-builder \
   --to-revisions=REVISION_NAME=100
 ```
@@ -270,4 +344,4 @@ gcloud run services delete buildkite-pipeline-builder --region=us-central1
 
 ---
 
-**Happy deploying!** 🚀 Your Buildkite Pipeline Builder will be live on Google Cloud Run!
+**Happy deploying!** 🚀 Your Buildkite Pipeline Builder will be live on Google Cloud Run without any authentication requirements!
