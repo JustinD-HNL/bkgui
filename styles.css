@@ -1584,3 +1584,432 @@ kbd {
         animation: none;
     }
 }
+/* Additional CSS for template items and enhanced functionality */
+/* Add this to the end of styles.css */
+
+/* Template items styling - WORKING CLICKABLE ITEMS */
+.template-item, .pattern-item {
+    padding: 1rem;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.template-item:hover, .pattern-item:hover {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.template-item:active, .pattern-item:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.template-item i, .pattern-item i {
+    font-size: 1.3rem;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.template-item span, .pattern-item span {
+    display: block;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.template-item small, .pattern-item small {
+    color: #718096;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+/* Template cards in modals */
+.template-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.template-card:hover {
+    border-color: #cbd5e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.template-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.template-info h4 {
+    margin: 0 0 0.5rem 0;
+    color: #4a5568;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.template-description {
+    color: #718096;
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.template-steps-preview {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.template-steps-preview strong {
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+.template-steps-preview ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.5rem;
+}
+
+.template-steps-preview li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+    color: #667eea;
+}
+
+.template-steps-preview li i {
+    font-size: 0.8rem;
+    color: #667eea;
+    width: 16px;
+    text-align: center;
+}
+
+/* Plugin cards in modals */
+.plugin-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.plugin-card:hover {
+    border-color: #cbd5e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.plugin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.plugin-info h4 {
+    margin: 0 0 0.25rem 0;
+    color: #4a5568;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.plugin-version, .plugin-category {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: #edf2f7;
+    color: #4a5568;
+    margin-right: 0.5rem;
+    display: inline-block;
+}
+
+.plugin-version {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.plugin-category {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.plugin-description {
+    color: #718096;
+    font-size: 0.9rem;
+    margin: 0.5rem 0 1rem 0;
+    line-height: 1.4;
+}
+
+.plugin-config-preview {
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.plugin-config-preview strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+    font-size: 0.85rem;
+}
+
+.config-item {
+    font-size: 0.8rem;
+    color: #667eea;
+    margin: 0.25rem 0;
+    font-family: monospace;
+}
+
+.config-item code {
+    background: #e2e8f0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+/* Matrix builder enhancements */
+.matrix-dimension {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.matrix-dimension label {
+    display: block;
+    margin: 0.5rem 0 0.25rem 0;
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+.matrix-dimension label:first-child {
+    margin-top: 0;
+}
+
+.matrix-dimension input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.matrix-dimension input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.matrix-dimension button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+
+/* Enhanced quick actions grid */
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.action-btn {
+    padding: 0.75rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    text-align: center;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    background: #5a6fd8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-btn i {
+    font-size: 1.2rem;
+}
+
+.action-btn span {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Plugin quickstart grid */
+.plugin-quickstart {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.plugin-quick {
+    padding: 0.75rem;
+    background: #f0fff4;
+    border: 1px solid #9ae6b4;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.plugin-quick:hover {
+    background: #c6f6d5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 161, 105, 0.15);
+}
+
+.plugin-quick:active {
+    transform: translateY(0);
+}
+
+.plugin-quick i {
+    font-size: 1.2rem;
+    color: #38a169;
+}
+
+.plugin-quick span {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #2f855a;
+}
+
+/* Enhanced drag and drop visual feedback */
+.drag-insertion-indicator {
+    height: 6px;
+    margin: 8px 0;
+    pointer-events: none;
+    animation: dragIndicatorShow 0.3s ease;
+}
+
+@keyframes dragIndicatorShow {
+    from {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+    to {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+}
+
+.insertion-line {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 3px;
+    box-shadow: 0 2px 12px rgba(102, 126, 234, 0.4);
+    animation: pulse 1s infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+.insertion-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.step-type.dragging {
+    opacity: 0.6;
+    transform: rotate(5deg) scale(0.95);
+    z-index: 1000;
+}
+
+.drag-active .pipeline-steps {
+    background: rgba(102, 126, 234, 0.05);
+    border: 2px dashed rgba(102, 126, 234, 0.3);
+    border-radius: 12px;
+    transform: scale(1.01);
+}
+
+/* Modal enhancements */
+.modal-content.large {
+    max-width: 1000px;
+    max-height: 90vh;
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .plugin-quickstart {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .template-steps-preview ul {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-btn, .plugin-quick {
+        padding: 1rem;
+    }
+    
+    .action-btn span, .plugin-quick span {
+        font-size: 0.8rem;
+    }
+}

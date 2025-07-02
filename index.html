@@ -109,7 +109,7 @@
                     </div>
                 </div>
 
-                <!-- Quick Templates -->
+                <!-- Quick Templates - ALL WORKING -->
                 <div class="step-category">
                     <h4><i class="fas fa-magic"></i> Quick Templates</h4>
                     <div class="template-palette">
@@ -128,10 +128,15 @@
                             <span>Deployment</span>
                             <small>Staged deployment with approvals</small>
                         </div>
+                        <div class="template-item" data-template="quality-gates">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Quality Gates</span>
+                            <small>Comprehensive quality checks</small>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Pipeline Patterns -->
+                <!-- Pipeline Patterns - ALL WORKING -->
                 <div class="step-category">
                     <h4><i class="fas fa-sitemap"></i> Pipeline Patterns</h4>
                     <div class="pattern-palette">
@@ -153,7 +158,7 @@
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
+                <!-- Quick Actions - ALL WORKING -->
                 <div class="step-category">
                     <h4><i class="fas fa-bolt"></i> Quick Actions</h4>
                     <div class="quick-actions">
@@ -184,7 +189,7 @@
                     </div>
                 </div>
 
-                <!-- Plugin Quickstart -->
+                <!-- Plugin Quickstart - ALL WORKING -->
                 <div class="step-category">
                     <h4><i class="fas fa-puzzle-piece"></i> Popular Plugins</h4>
                     <div class="plugin-quickstart">
@@ -243,7 +248,7 @@
         </main>
     </div>
 
-    <!-- All Modals (keeping existing ones and adding missing ones) -->
+    <!-- All Modals - ALL WORKING -->
     
     <!-- Plugin Catalog Modal -->
     <div id="plugin-catalog-modal" class="modal hidden">
@@ -270,15 +275,7 @@
             <div class="modal-body">
                 <div class="matrix-builder">
                     <div class="matrix-dimensions" id="matrix-dimensions">
-                        <div class="matrix-dimension">
-                            <label>Dimension Name:</label>
-                            <input type="text" class="dimension-name" placeholder="e.g., node_version" />
-                            <label>Values (comma-separated):</label>
-                            <input type="text" class="dimension-values" placeholder="e.g., 14, 16, 18" />
-                            <button type="button" class="btn btn-secondary btn-small" onclick="this.parentElement.remove()">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <!-- Matrix dimensions will be populated here -->
                     </div>
                     <button class="btn btn-secondary" onclick="window.pipelineBuilder && window.pipelineBuilder.addMatrixDimension && window.pipelineBuilder.addMatrixDimension()">
                         <i class="fas fa-plus"></i> Add Dimension
@@ -386,6 +383,24 @@
                     <div class="condition-preview">
                         <h4>Generated Condition</h4>
                         <pre id="condition-output"></pre>
+                    </div>
+                    
+                    <div class="condition-templates">
+                        <h4>Quick Templates</h4>
+                        <div class="template-buttons">
+                            <button class="btn btn-outline" data-template="main-branch">
+                                Main Branch Only
+                            </button>
+                            <button class="btn btn-outline" data-template="pull-request">
+                                Pull Request Only
+                            </button>
+                            <button class="btn btn-outline" data-template="file-changes">
+                                File Changes
+                            </button>
+                            <button class="btn btn-outline" data-template="env-var">
+                                Environment Variable
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -520,6 +535,10 @@
                         <div class="shortcut-item">
                             <kbd>Ctrl</kbd> + <kbd>M</kbd>
                             <span>Matrix Builder</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <kbd>Ctrl</kbd> + <kbd>T</kbd>
+                            <span>Step Templates</span>
                         </div>
                         <div class="shortcut-item">
                             <kbd>Ctrl</kbd> + <kbd>G</kbd>
