@@ -2013,3 +2013,504 @@ kbd {
         font-size: 0.8rem;
     }
 }
+/* Enhanced Properties Panel Styles - Additional CSS for complete configuration */
+
+/* Properties Panel Enhanced Styles */
+.properties-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    height: fit-content;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    position: sticky;
+    top: 1.5rem;
+}
+
+/* Properties Content Container */
+.properties-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Properties Header Enhanced */
+.properties-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+    padding: 1rem 1.5rem;
+    border-radius: 16px 16px 0 0;
+}
+
+.properties-header h3 {
+    color: #4a5568;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.properties-header h3 i {
+    color: #667eea;
+    font-size: 1rem;
+}
+
+.properties-header .step-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Property Sections Enhanced */
+.property-section {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    transition: all 0.2s ease;
+}
+
+.property-section:hover {
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+}
+
+.property-section:last-child {
+    margin-bottom: 0;
+}
+
+.property-section h4 {
+    color: #4a5568;
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.property-section h4 i {
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+/* Property Groups Enhanced */
+.property-group {
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.property-group:last-child {
+    margin-bottom: 0;
+}
+
+.property-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 0.9rem;
+    text-transform: capitalize;
+}
+
+.property-group label::after {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #667eea;
+    margin-top: 2px;
+    border-radius: 1px;
+}
+
+/* Form Controls Enhanced */
+.property-group input,
+.property-group textarea,
+.property-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: white;
+    font-family: inherit;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.property-group input:focus,
+.property-group textarea:focus,
+.property-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+}
+
+.property-group input:hover,
+.property-group textarea:hover,
+.property-group select:hover {
+    border-color: #cbd5e0;
+}
+
+.property-group textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    line-height: 1.4;
+}
+
+/* Small Help Text Enhanced */
+.property-group small {
+    display: block;
+    margin-top: 0.5rem;
+    color: #718096;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    padding: 0.25rem 0.5rem;
+    background: rgba(113, 128, 150, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid #cbd5e0;
+}
+
+/* Checkbox Styling Enhanced */
+.property-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.property-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #667eea;
+    cursor: pointer;
+}
+
+.property-checkbox label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.property-checkbox label::after {
+    display: none;
+}
+
+/* Special Content Sections */
+.conditional-examples {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f0f9ff 100%);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 0.75rem;
+    border: 1px solid #bbdefb;
+}
+
+.conditional-examples strong {
+    color: #1565c0;
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.conditional-examples ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
+.conditional-examples li {
+    margin: 0.5rem 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.conditional-examples code {
+    background: rgba(102, 126, 234, 0.15);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #3f51b5;
+}
+
+/* Matrix and Plugin Previews */
+.matrix-preview,
+.plugins-preview {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    border: 1px solid #b3e5fc;
+}
+
+.matrix-preview strong,
+.plugins-preview strong {
+    color: #0277bd;
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.matrix-preview pre {
+    background: white;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin: 0.5rem 0 0 0;
+    overflow-x: auto;
+    border: 1px solid #e1f5fe;
+    color: #01579b;
+}
+
+.plugins-preview ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
+.plugins-preview li {
+    margin: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.plugins-preview li strong {
+    color: #2e7d32;
+    display: inline;
+    margin: 0;
+}
+
+/* Action Buttons Enhanced */
+.matrix-actions,
+.plugin-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.btn-small {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-small:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+/* Info Sections */
+.matrix-info,
+.group-steps-info {
+    background: #f7fafc;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    color: #4a5568;
+}
+
+.matrix-info p,
+.group-steps-info p {
+    margin: 0 0 0.25rem 0;
+    font-weight: 500;
+}
+
+.matrix-info small,
+.group-steps-info small {
+    color: #718096;
+    font-style: italic;
+}
+
+/* No Selection State Enhanced */
+.no-selection {
+    text-align: center;
+    color: #a0aec0;
+    padding: 2rem 1rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%);
+    border-radius: 12px;
+    border: 2px dashed #cbd5e0;
+}
+
+.no-selection i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: #cbd5e0;
+    animation: float 3s ease-in-out infinite;
+}
+
+.no-selection h3 {
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.no-selection p {
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+}
+
+.properties-help {
+    text-align: left;
+    background: rgba(102, 126, 234, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.properties-help h4 {
+    color: #4a5568;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.properties-help ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.properties-help li {
+    padding: 0.5rem 0;
+    color: #718096;
+    font-size: 0.85rem;
+    position: relative;
+    padding-left: 1.5rem;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.properties-help li:last-child {
+    border-bottom: none;
+}
+
+.properties-help li::before {
+    content: '•';
+    color: #667eea;
+    position: absolute;
+    left: 0.5rem;
+    font-weight: bold;
+}
+
+.properties-help li strong {
+    color: #4a5568;
+    font-weight: 600;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+    .properties-panel {
+        position: static;
+        max-height: none;
+        height: auto;
+        margin-top: 1rem;
+    }
+    
+    .property-section {
+        padding: 1rem;
+    }
+    
+    .properties-header {
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        padding: 0.75rem 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .properties-panel {
+        padding: 1rem;
+    }
+    
+    .properties-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+        margin: -1rem -1rem 1rem -1rem;
+        padding: 1rem;
+    }
+    
+    .properties-header .step-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .property-section {
+        padding: 0.75rem;
+    }
+    
+    .matrix-actions,
+    .plugin-actions {
+        flex-direction: column;
+    }
+    
+    .btn-small {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Animation for float effect */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+/* Smooth transitions for all property elements */
+.property-section,
+.property-group,
+.property-checkbox,
+.conditional-examples,
+.matrix-preview,
+.plugins-preview {
+    transition: all 0.2s ease;
+}
+
+/* Focus within effects for better UX */
+.property-section:focus-within {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Custom scrollbar for properties panel */
+.properties-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.properties-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.properties-panel::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.properties-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
