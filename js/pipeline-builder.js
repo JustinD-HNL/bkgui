@@ -13,6 +13,8 @@ class PipelineBuilder {
         this.steps = [];
         this.stepCounter = 0;
         this.selectedStep = null;
+        this.groupEditorStepId = null;
+        this.matrixBuilderStepId = null;
         
         // Drag and drop state
         this.isDragging = false;
@@ -91,6 +93,46 @@ class PipelineBuilder {
                 }
             }
         };
+
+        // Basic step templates used by the templates modal and quick actions
+        this.stepTemplates = {
+            'test-suite': {
+                name: 'Test Suite',
+                description: 'Install and run tests',
+                steps: [
+                    { type: 'command', properties: { label: 'Install', command: 'npm install' } },
+                    { type: 'command', properties: { label: 'Unit Tests', command: 'npm run test:unit' } },
+                    { type: 'command', properties: { label: 'Integration Tests', command: 'npm run test:integration' } }
+                ]
+            },
+            'docker-build': {
+                name: 'Docker Build',
+                description: 'Build and push Docker image',
+                steps: [
+                    { type: 'command', properties: { label: 'Docker Build', command: 'docker build -t my-app .' } },
+                    { type: 'command', properties: { label: 'Docker Push', command: 'docker push my-app' } }
+                ]
+            },
+            'deployment-pipeline': {
+                name: 'Deployment',
+                description: 'Staged deployment with approval',
+                steps: [
+                    { type: 'command', properties: { label: 'Build', command: 'npm run build', key: 'build' } },
+                    { type: 'command', properties: { label: 'Deploy Staging', command: 'npm run deploy:staging', depends_on: ['build'] } },
+                    { type: 'block', properties: { label: 'Approve Production', prompt: 'Deploy to production?' } },
+                    { type: 'command', properties: { label: 'Deploy Production', command: 'npm run deploy:production' } }
+                ]
+            },
+            'quality-gates': {
+                name: 'Quality Gates',
+                description: 'Lint, test and scan',
+                steps: [
+                    { type: 'command', properties: { label: 'Lint', command: 'npm run lint' } },
+                    { type: 'command', properties: { label: 'Security Scan', command: 'npm run scan' } },
+                    { type: 'command', properties: { label: 'Run Tests', command: 'npm test' } }
+                ]
+            }
+        };
         
         this.init();
     }
@@ -100,6 +142,7 @@ class PipelineBuilder {
         this.renderPipeline();
         this.renderProperties();
         this.updateStepCount();
+        this.dependencyGraph = window.dependencyGraph || null;
         console.log('✅ Fixed Pipeline Builder initialized');
     }
 
@@ -1825,8 +1868,9 @@ class PipelineBuilder {
 
     // Advanced feature methods
     openMatrixBuilder(stepId) {
+        if (!stepId) stepId = this.selectedStep;
         console.log('🔲 Opening matrix builder for step:', stepId);
-        const modal = document.getElementById('matrix-modal');
+        const modal = document.getElementById('matrix-builder-modal');
         if (modal) {
             modal.classList.remove('hidden');
             this.initializeMatrixBuilder(stepId);
@@ -1849,44 +1893,91 @@ class PipelineBuilder {
     }
 
     initializeMatrixBuilder(stepId) {
-        // This would be implemented with full matrix builder functionality
-        console.log('🔧 Initializing matrix builder for:', stepId);
+        const container = document.getElementById('matrix-dimensions');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const step = this.steps.find(s => s.id === stepId);
+        this.matrixBuilderStepId = stepId;
+        const matrix = (step && step.properties.matrix && step.properties.matrix.setup) || {};
+        Object.entries(matrix).forEach(([key, values]) => {
+            this.addMatrixDimension(key, values.join(','));
+        });
+    }
+
+    addMatrixDimension(key = '', values = '') {
+        const container = document.getElementById('matrix-dimensions');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'matrix-dimension';
+        div.innerHTML = `
+            <input type="text" class="matrix-key" placeholder="Key" value="${key}">
+            <input type="text" class="matrix-values" placeholder="a,b,c" value="${values}">
+        `;
+        container.appendChild(div);
+    }
+
+    applyMatrixToStep() {
+        const container = document.getElementById('matrix-dimensions');
+        const step = this.steps.find(s => s.id === this.matrixBuilderStepId);
+        if (!container || !step) return;
+        const setup = {};
+        container.querySelectorAll('.matrix-dimension').forEach(div => {
+            const key = div.querySelector('.matrix-key').value.trim();
+            const values = div.querySelector('.matrix-values').value.split(',').map(v => v.trim()).filter(v => v);
+            if (key && values.length) {
+                setup[key] = values;
+            }
+        });
+        if (!step.properties.matrix) step.properties.matrix = {};
+        step.properties.matrix.setup = setup;
+        document.getElementById('matrix-builder-modal').classList.add('hidden');
+        this.renderProperties();
+        this.updateLastSaved();
     }
 
     openConditionalBuilder(stepId) {
+        if (!stepId) stepId = this.selectedStep;
         console.log('🎯 Opening conditional builder for step:', stepId);
-        const modal = document.getElementById('conditional-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            this.initializeConditionalBuilder(stepId);
+        if (this.dependencyGraph && this.dependencyGraph.showConditionalBuilder) {
+            this.selectStep(stepId);
+            this.dependencyGraph.showConditionalBuilder();
         } else {
-            // Fallback: show input prompts
-            const step = this.steps.find(s => s.id === stepId);
-            if (step) {
-                const ifCondition = prompt('Enter IF condition:', step.properties.if || '');
-                const unlessCondition = prompt('Enter UNLESS condition:', step.properties.unless || '');
-                
-                if (ifCondition !== null) step.properties.if = ifCondition;
-                if (unlessCondition !== null) step.properties.unless = unlessCondition;
-                
-                this.renderProperties();
-                this.updateLastSaved();
+            const modal = document.getElementById('conditional-builder-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                this.initializeConditionalBuilder(stepId);
+            } else {
+                const step = this.steps.find(s => s.id === stepId);
+                if (step) {
+                    const ifCondition = prompt('Enter IF condition:', step.properties.if || '');
+                    const unlessCondition = prompt('Enter UNLESS condition:', step.properties.unless || '');
+                    if (ifCondition !== null) step.properties.if = ifCondition;
+                    if (unlessCondition !== null) step.properties.unless = unlessCondition;
+                    this.renderProperties();
+                    this.updateLastSaved();
+                }
             }
         }
     }
 
     initializeConditionalBuilder(stepId) {
         console.log('🔧 Initializing conditional builder for:', stepId);
-        // This would populate the conditional builder modal with current conditions
+        this.selectStep(stepId);
     }
 
     openDependencyManager(stepId) {
+        if (!stepId) stepId = this.selectedStep;
         console.log('🔗 Opening dependency manager for step:', stepId);
-        const modal = document.getElementById('dependency-manager-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
-            this.initializeDependencyManager(stepId);
+        if (this.dependencyGraph && this.dependencyGraph.showDependencyManager) {
+            this.selectStep(stepId);
+            this.dependencyGraph.showDependencyManager();
         } else {
+            const modal = document.getElementById('dependency-manager-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                this.initializeDependencyManager(stepId);
+            } else {
             // Fallback: show available steps for dependency selection
             const step = this.steps.find(s => s.id === stepId);
             if (step) {
@@ -1914,7 +2005,30 @@ class PipelineBuilder {
 
     openGroupEditor(stepId) {
         console.log('👥 Opening group editor for step:', stepId);
-        alert('Group editor functionality coming soon! You can manually edit the group steps in the JSON configuration.');
+        const modal = document.getElementById('group-editor-modal');
+        const textarea = document.getElementById('group-editor-text');
+        const saveBtn = document.getElementById('group-editor-save');
+        const step = this.steps.find(s => s.id === stepId);
+
+        if (modal && textarea && saveBtn && step) {
+            this.groupEditorStepId = stepId;
+            textarea.value = JSON.stringify(step.properties.steps || [], null, 2);
+            modal.classList.remove('hidden');
+
+            saveBtn.onclick = () => {
+                try {
+                    const data = JSON.parse(textarea.value || '[]');
+                    step.properties.steps = Array.isArray(data) ? data : [];
+                    modal.classList.add('hidden');
+                    this.renderProperties();
+                    this.updateLastSaved();
+                } catch (e) {
+                    alert('Invalid JSON');
+                }
+            };
+        } else {
+            alert('Group editor modal not available');
+        }
     }
 
     showPluginCatalog() {
@@ -1963,6 +2077,37 @@ class PipelineBuilder {
         } else {
             alert('Please select a step first');
         }
+    }
+
+    showStepTemplates() {
+        const modal = document.getElementById('templates-modal');
+        const container = document.getElementById('templates-content');
+        if (modal && container) {
+            const html = Object.entries(this.stepTemplates).map(([key, tmpl]) => `
+                <div class="template-item" data-template="${key}">
+                    <i class="fas fa-magic"></i>
+                    <span>${tmpl.name}</span>
+                    <small>${tmpl.description}</small>
+                </div>
+            `).join('');
+            container.innerHTML = html;
+            modal.classList.remove('hidden');
+        } else {
+            alert('Step templates modal not available');
+        }
+    }
+
+    applyStepTemplate(templateKey) {
+        const tmpl = this.stepTemplates[templateKey];
+        if (!tmpl) return;
+        tmpl.steps.forEach(stepData => {
+            const step = this.createStep(stepData.type);
+            Object.assign(step.properties, stepData.properties);
+            this.steps.push(step);
+        });
+        this.renderPipeline();
+        this.updateStepCount();
+        this.updateLastSaved();
     }
 
     // Utility methods

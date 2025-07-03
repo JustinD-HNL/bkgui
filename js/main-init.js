@@ -961,7 +961,7 @@ class MainInitializer {
                     
                 case 'matrix-builder':
                     if (window.pipelineBuilder && window.pipelineBuilder.openMatrixBuilder) {
-                        window.pipelineBuilder.openMatrixBuilder();
+                        window.pipelineBuilder.openMatrixBuilder(window.pipelineBuilder.selectedStep);
                     } else {
                         alert('Matrix builder functionality coming soon!');
                     }
@@ -1082,49 +1082,31 @@ class MainInitializer {
     }
 
     loadTestSuiteTemplate() {
-        if (window.pipelineBuilder && window.pipelineBuilder.steps) {
-            // Add test suite steps
-            const steps = [
-                { type: 'command', properties: { label: 'Install Dependencies', command: 'npm install' } },
-                { type: 'command', properties: { label: 'Run Unit Tests', command: 'npm run test:unit' } },
-                { type: 'command', properties: { label: 'Run Integration Tests', command: 'npm run test:integration' } },
-                { type: 'command', properties: { label: 'Generate Coverage', command: 'npm run coverage' } }
-            ];
-            
-            steps.forEach(stepData => {
-                if (window.pipelineBuilder.addStep) {
-                    window.pipelineBuilder.addStep(stepData.type);
-                }
-            });
-            
-            console.log('📋 Test suite template loaded');
-        } else {
-            alert('Test suite template functionality coming soon!');
-        }
+        window.pipelineBuilder?.applyStepTemplate('test-suite');
     }
 
     loadDockerBuildTemplate() {
-        alert('Docker build template functionality coming soon!');
+        window.pipelineBuilder?.applyStepTemplate('docker-build');
     }
 
     loadDeploymentTemplate() {
-        alert('Deployment pipeline template functionality coming soon!');
+        window.pipelineBuilder?.applyStepTemplate('deployment-pipeline');
     }
 
     loadQualityGatesTemplate() {
-        alert('Quality gates template functionality coming soon!');
+        window.pipelineBuilder?.applyStepTemplate('quality-gates');
     }
 
     loadBasicCICDPattern() {
-        alert('Basic CI/CD pattern functionality coming soon!');
+        window.pipelinePatterns?.applyPattern('ci-cd-basic');
     }
 
     loadMicroservicesPattern() {
-        alert('Microservices pattern functionality coming soon!');
+        window.pipelinePatterns?.applyPattern('microservices');
     }
 
     loadMatrixTestingPattern() {
-        alert('Matrix testing pattern functionality coming soon!');
+        window.pipelinePatterns?.applyPattern('matrix-testing');
     }
 
     setupKeyboardShortcuts() {
