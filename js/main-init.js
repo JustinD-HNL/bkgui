@@ -962,9 +962,9 @@ class MainInitializer {
                         const pluginList = Object.entries(window.pipelineBuilder.pluginCatalog)
                             .map(([key, plugin]) => `${plugin.name}: ${plugin.description}`)
                             .join('\n');
-                        alert(pluginList ? `Available Plugins:\n\n${pluginList}` : 'No plugins available');
+                        console.warn(pluginList ? `Available Plugins:\n\n${pluginList}` : 'No plugins available');
                     } else {
-                        alert('No plugin catalog available');
+                        console.warn('No plugin catalog available');
                     }
                     break;
                     
@@ -972,7 +972,7 @@ class MainInitializer {
                     if (window.pipelineBuilder && window.pipelineBuilder.openMatrixBuilder) {
                         window.pipelineBuilder.openMatrixBuilder(window.pipelineBuilder.selectedStep);
                     } else {
-                        alert('Matrix builder functionality coming soon!');
+                        console.warn('Matrix builder functionality not available');
                     }
                     break;
                     
@@ -980,7 +980,7 @@ class MainInitializer {
                     if (window.pipelineBuilder && window.pipelineBuilder.showStepTemplates) {
                         window.pipelineBuilder.showStepTemplates();
                     } else {
-                        alert('Step templates functionality coming soon!');
+                        console.warn('Step templates functionality not available');
                     }
                     break;
                     
@@ -988,7 +988,7 @@ class MainInitializer {
                     if (window.dependencyGraph && window.dependencyGraph.showDependencyGraph) {
                         window.dependencyGraph.showDependencyGraph();
                     } else {
-                        alert('Dependency graph functionality coming soon!');
+                        console.warn('Dependency graph functionality not available');
                     }
                     break;
                     
@@ -996,7 +996,7 @@ class MainInitializer {
                     if (window.dependencyGraph && window.dependencyGraph.showConditionalBuilder) {
                         window.dependencyGraph.showConditionalBuilder();
                     } else {
-                        alert('Conditional builder functionality coming soon!');
+                        console.warn('Conditional builder functionality not available');
                     }
                     break;
                     
@@ -1004,12 +1004,12 @@ class MainInitializer {
                     if (window.pipelineBuilder && window.pipelineBuilder.showValidationResults) {
                         window.pipelineBuilder.showValidationResults();
                     } else {
-                        alert('Pipeline validator functionality coming soon!');
+                        console.warn('Pipeline validator functionality not available');
                     }
                     break;
                     
                 default:
-                    alert(`${action} functionality coming soon!`);
+                    console.warn(`${action} functionality not available`);
             }
         });
         

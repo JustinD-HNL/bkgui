@@ -639,6 +639,10 @@ class PipelineBuilder {
             return;
         }
 
+        // Remove any lingering drop zones from previous drag operations
+        this.removeDropZones();
+        container.classList.remove('drag-active', 'drag-over');
+
         if (this.steps.length === 0) {
             container.innerHTML = `
                 <div class="empty-state" id="empty-state">
@@ -666,8 +670,26 @@ class PipelineBuilder {
         container.innerHTML = this.steps.map((step, index) => {
             return this.renderStep(step, index);
         }).join('');
-        
+
+        // Bind click events to newly rendered steps to ensure selection works
+        this.bindStepEvents();
+
         console.log(`✅ Rendered ${this.steps.length} steps`);
+    }
+
+    // Ensure all step elements respond to clicks for selection
+    bindStepEvents() {
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (!pipelineSteps) return;
+        pipelineSteps.querySelectorAll('.pipeline-step').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const id = el.dataset.stepId;
+                if (id) {
+                    e.stopPropagation();
+                    this.selectStep(id);
+                }
+            });
+        });
     }
 
     // FIXED: Added missing Configure button and proper event handling

@@ -2571,6 +2571,7 @@ kbd {
     align-items: center;
     margin-bottom: 0.75rem;
     position: relative; /* FIXED: Establish positioning context */
+    padding-right: 3rem; /* space for action buttons */
 }
 
 .step-info {
@@ -2617,10 +2618,11 @@ kbd {
     gap: 0.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
-    position: relative; /* FIXED: Proper positioning */
-    z-index: 10; /* FIXED: Ensure buttons are on top */
-    flex-shrink: 0; /* FIXED: Prevent shrinking */
-    margin-left: 1rem; /* FIXED: Proper spacing */
+    position: absolute; /* keep actions from covering titles */
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 10;
+    flex-shrink: 0;
 }
 
 .pipeline-step:hover .step-actions {
