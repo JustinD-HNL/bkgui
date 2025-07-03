@@ -1,307 +1,404 @@
-// js/pipeline-builder.js - Fixed version with proper step selection and event handling
+// js/pipeline-builder.js - COMPLETE FIXED VERSION WITH ALL FUNCTIONALITY
 /**
- * Pipeline Builder - Core functionality
- * FIXES: Proper click handling, step selection after drag/drop, event delegation
+ * Complete Enhanced Pipeline Builder with Fixed Drag & Drop
+ * FIXES: Duplicate step creation, missing Configure button, event conflicts, button positioning
+ * INCLUDES: All form generators, property handling, matrix builds, plugins, dependencies, etc.
  */
 
 class PipelineBuilder {
     constructor() {
-        this.steps = [];
-        this.selectedStep = null;
-        this.stepCounter = 0;
-        this.draggedElement = null;
-        this.draggedType = null;
-        this.draggedPlugin = null;
-        this.dropZones = [];
+        console.log('🚀 Initializing COMPLETE Fixed Pipeline Builder...');
         
-        // Plugin catalog
+        // Core state
+        this.steps = [];
+        this.stepCounter = 0;
+        this.selectedStep = null;
+        this.groupEditorStepId = null;
+        this.matrixBuilderStepId = null;
+        
+        // Drag and drop state
+        this.isDragging = false;
+        this.draggedElement = null;
+        this.dragInsertIndex = -1;
+        this.isProcessingDrop = false; // FIXED: Prevent duplicate drops
+        
+        // Plugin catalog for enhanced functionality
         this.pluginCatalog = {
-            'docker-compose': {
-                name: 'Docker Compose',
-                version: 'v3.7.0',
-                category: 'containers',
-                description: 'Build, run and push services via Docker Compose',
+            'docker': {
+                name: 'Docker',
+                description: 'Build and push Docker images',
                 config: {
-                    build: { type: 'string', label: 'Service to Build', default: '' }
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!window.pipelineBuilder) {
-            window.pipelineBuilder = new PipelineBuilder();
-        }
-    });
-} else {
-    if (!window.pipelineBuilder) {
-        window.pipelineBuilder = new PipelineBuilder();
-    }
-},
-                    run: { type: 'string', label: 'Service to Run', default: '' },
-                    push: { type: 'array', label: 'Services to Push', default: [] }
+                    image: { type: 'text', label: 'Base Image', default: 'node:16' },
+                    push: { type: 'boolean', label: 'Push Image', default: true },
+                    registry: { type: 'text', label: 'Registry', default: '' }
                 }
             },
             'artifacts': {
                 name: 'Artifacts',
-                version: 'v1.5.0', 
-                category: 'utilities',
-                description: 'Upload and download artifacts',
+                description: 'Upload build artifacts',
                 config: {
-                    upload: { type: 'string', label: 'Upload Pattern', default: '' },
-                    download: { type: 'string', label: 'Download Pattern', default: '' }
+                    upload: { type: 'text', label: 'Upload Pattern', default: 'dist/**/*' },
+                    download: { type: 'text', label: 'Download Pattern', default: '' },
+                    job: { type: 'text', label: 'Job', default: '' }
+                }
+            },
+            'junit-annotate': {
+                name: 'JUnit Annotate',
+                description: 'Annotate test results',
+                config: {
+                    artifacts: { type: 'text', label: 'Test Results', default: 'test-results/*.xml' },
+                    context: { type: 'text', label: 'Context', default: 'jest' }
+                }
+            },
+            'slack': {
+                name: 'Slack',
+                description: 'Send Slack notifications',
+                config: {
+                    channel: { type: 'text', label: 'Channel', default: '#builds' },
+                    message: { type: 'text', label: 'Message', default: 'Build completed!' },
+                    on_failure: { type: 'boolean', label: 'On Failure', default: true }
                 }
             },
             'ecr': {
                 name: 'AWS ECR',
-                version: 'v2.1.0',
-                category: 'deployment',
-                description: 'Push Docker images to Amazon ECR',
+                description: 'Amazon Elastic Container Registry',
                 config: {
-                    'account-id': { type: 'string', label: 'AWS Account ID', default: '' },
-                    region: { type: 'string', label: 'AWS Region', default: 'us-east-1' },
-                    image: { type: 'string', label: 'Image Name', default: '' }
-                }
-            },
-            'docker': {
-                name: 'Docker',
-                version: 'v5.0.0',
-                category: 'containers',
-                description: 'Build and push Docker images',
-                config: {
-                    image: { type: 'string', label: 'Image Name', default: '' },
-                    dockerfile: { type: 'string', label: 'Dockerfile Path', default: 'Dockerfile' }
+                    account_id: { type: 'text', label: 'Account ID', default: '' },
+                    region: { type: 'text', label: 'Region', default: 'us-east-1' },
+                    registry_name: { type: 'text', label: 'Registry Name', default: '' }
                 }
             }
         };
         
+        // Initialize
         this.init();
     }
 
     init() {
-        console.log('🚀 Initializing Pipeline Builder with fixed event handling...');
-        this.setupEventListeners();
+        console.log('🔧 Initializing pipeline builder components...');
+        
+        // Setup drag and drop - FIXED: Proper event handling
+        this.setupEnhancedDragAndDrop();
+        
+        // Setup keyboard shortcuts
+        this.setupKeyboardShortcuts();
+        
+        // Setup property updates
+        this.setupPropertyEventListeners();
+        
+        // Initial render
         this.renderPipeline();
         this.renderProperties();
         this.updateStepCount();
-        console.log('✅ Pipeline Builder initialized successfully');
+        
+        console.log('✅ Complete Pipeline Builder initialized successfully');
     }
 
-    setupEventListeners() {
-        // FIXED: Use event delegation for pipeline steps to handle dynamic content
-        const pipelineSteps = document.getElementById('pipeline-steps');
-        if (pipelineSteps) {
-            // Click handler for step selection
-            pipelineSteps.addEventListener('click', (e) => {
-                const stepElement = e.target.closest('.pipeline-step');
-                if (stepElement && !e.target.closest('.step-action')) {
-                    const stepId = stepElement.dataset.stepId;
-                    if (stepId) {
-                        this.selectStep(stepId);
-                    }
-                }
-            });
-        }
-
-        // Drag and drop for step types
+    // FIXED: Enhanced drag and drop functionality
+    setupEnhancedDragAndDrop() {
+        console.log('🎯 Setting up enhanced drag and drop...');
+        
+        // Make step types draggable
         const stepTypes = document.querySelectorAll('.step-type');
         stepTypes.forEach(stepType => {
             stepType.addEventListener('dragstart', this.handleDragStart.bind(this));
             stepType.addEventListener('dragend', this.handleDragEnd.bind(this));
         });
 
-        // Drag and drop for plugin types
-        const pluginQuicks = document.querySelectorAll('.plugin-quick');
-        pluginQuicks.forEach(plugin => {
-            plugin.addEventListener('dragstart', this.handleDragStart.bind(this));
-            plugin.addEventListener('dragend', this.handleDragEnd.bind(this));
+        // Make template and pattern items draggable
+        const templateItems = document.querySelectorAll('.template-item, .pattern-item');
+        templateItems.forEach(item => {
+            // Templates and patterns are clickable, not draggable
+            item.addEventListener('click', this.handleTemplateClick.bind(this));
         });
 
-        // Pipeline drop zone
-        if (pipelineSteps) {
-            pipelineSteps.addEventListener('dragover', this.handleDragOver.bind(this));
-            pipelineSteps.addEventListener('drop', this.handleDrop.bind(this));
-            pipelineSteps.addEventListener('dragenter', this.handleDragEnter.bind(this));
-            pipelineSteps.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        }
-
-        // Export button
-        const exportBtn = document.getElementById('export-yaml');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => this.exportYAML());
-        }
-
-        // Clear button
-        const clearBtn = document.getElementById('clear-pipeline');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => this.clearPipeline());
-        }
-
-        // Load example button
-        const loadExampleBtn = document.getElementById('load-example');
-        if (loadExampleBtn) {
-            loadExampleBtn.addEventListener('click', () => this.loadExample());
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', this.handleKeyboard.bind(this));
-
-        console.log('✅ Event listeners configured with proper delegation');
+        // Setup drop zones for pipeline container
+        this.setupPipelineDropZones();
+        
+        console.log('✅ Enhanced drag and drop configured');
     }
 
-    // Drag and Drop Handlers
+    setupPipelineDropZones() {
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        const emptyState = document.getElementById('empty-state');
+        
+        if (!pipelineSteps) {
+            console.warn('⚠️ Pipeline steps container not found');
+            return;
+        }
+
+        // Setup main drop zone
+        pipelineSteps.addEventListener('dragover', this.handleEnhancedDragOver.bind(this));
+        pipelineSteps.addEventListener('drop', this.handleEnhancedDrop.bind(this));
+        pipelineSteps.addEventListener('dragenter', this.handleDragEnter.bind(this));
+        pipelineSteps.addEventListener('dragleave', this.handleDragLeave.bind(this));
+
+        // Setup empty state drop zone
+        if (emptyState) {
+            emptyState.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                emptyState.classList.add('drag-active');
+            });
+            
+            emptyState.addEventListener('dragleave', () => {
+                emptyState.classList.remove('drag-active');
+            });
+            
+            emptyState.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                emptyState.classList.remove('drag-active');
+                
+                // FIXED: Prevent duplicate processing
+                if (this.isProcessingDrop) return;
+                this.isProcessingDrop = true;
+                
+                const stepType = e.dataTransfer.getData('text/plain');
+                if (stepType) {
+                    if (stepType.startsWith('plugin:')) {
+                        const pluginKey = stepType.replace('plugin:', '');
+                        this.addPluginStep(pluginKey);
+                    } else {
+                        this.addStep(stepType);
+                    }
+                }
+                
+                // Reset processing flag after a delay
+                setTimeout(() => {
+                    this.isProcessingDrop = false;
+                }, 100);
+            });
+        }
+    }
+
     handleDragStart(e) {
-        this.draggedElement = e.target;
-        this.draggedType = e.target.dataset.stepType;
-        this.draggedPlugin = e.target.dataset.plugin;
+        const stepType = e.target.dataset.stepType;
+        const plugin = e.target.dataset.plugin;
         
-        e.target.classList.add('dragging');
+        console.log('🎯 Drag started:', stepType, plugin ? `(plugin: ${plugin})` : '');
+        
+        // Set drag data
+        if (plugin) {
+            e.dataTransfer.setData('text/plain', `plugin:${plugin}`);
+        } else {
+            e.dataTransfer.setData('text/plain', stepType);
+        }
+        
         e.dataTransfer.effectAllowed = 'copy';
+        this.draggedElement = e.target;
+        this.isDragging = true;
         
-        // Create drop zones
-        this.createDropZones();
+        // Add dragging class for visual feedback
+        e.target.classList.add('dragging');
         
-        console.log('🎯 Started dragging:', this.draggedType || this.draggedPlugin);
+        // Activate drop zones
+        this.activateDropZones();
     }
 
     handleDragEnd(e) {
+        console.log('🎯 Drag ended');
+        
         e.target.classList.remove('dragging');
-        this.removeDropZones();
+        this.isDragging = false;
         this.draggedElement = null;
-        this.draggedType = null;
-        this.draggedPlugin = null;
+        this.dragInsertIndex = -1;
+        
+        // Deactivate drop zones
+        this.deactivateDropZones();
     }
 
-    handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-    }
-
-    handleDragEnter(e) {
-        if (e.target.classList.contains('pipeline-steps')) {
-            e.target.classList.add('drag-over');
-        }
-    }
-
-    handleDragLeave(e) {
-        if (e.target.classList.contains('pipeline-steps') && !e.currentTarget.contains(e.relatedTarget)) {
-            e.target.classList.remove('drag-over');
-        }
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
+    activateDropZones() {
         const pipelineSteps = document.getElementById('pipeline-steps');
         if (pipelineSteps) {
-            pipelineSteps.classList.remove('drag-over');
+            pipelineSteps.classList.add('drag-active');
+            
+            // Add drop zones between steps and at the end
+            this.createDropZones();
+        }
+    }
+
+    deactivateDropZones() {
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            pipelineSteps.classList.remove('drag-active', 'drag-over');
+            
+            // Remove all drop zones
+            this.removeDropZones();
         }
     }
 
     createDropZones() {
         const pipelineSteps = document.getElementById('pipeline-steps');
         if (!pipelineSteps) return;
-
-        // Clear existing content if empty
-        const emptyMessage = pipelineSteps.querySelector('.empty-pipeline');
-        if (emptyMessage) {
-            emptyMessage.remove();
+        
+        // Remove existing drop zones
+        this.removeDropZones();
+        
+        const steps = pipelineSteps.querySelectorAll('.pipeline-step');
+        
+        // Add drop zone at the beginning
+        const firstDropZone = this.createDropZone(0);
+        if (steps.length > 0) {
+            pipelineSteps.insertBefore(firstDropZone, steps[0]);
+        } else {
+            pipelineSteps.appendChild(firstDropZone);
         }
-
-        // Create drop zones between steps and at the end
-        const existingSteps = pipelineSteps.querySelectorAll('.pipeline-step');
         
-        // First drop zone
-        const firstZone = this.createDropZone(0);
-        pipelineSteps.insertBefore(firstZone, pipelineSteps.firstChild);
-        
-        // Drop zones between steps
-        existingSteps.forEach((step, index) => {
-            const zone = this.createDropZone(index + 1);
-            step.insertAdjacentElement('afterend', zone);
+        // Add drop zones between steps
+        steps.forEach((step, index) => {
+            const dropZone = this.createDropZone(index + 1);
+            step.parentNode.insertBefore(dropZone, step.nextSibling);
         });
-
-        // Activate all drop zones
-        this.dropZones.forEach(zone => zone.classList.add('active'));
     }
 
     createDropZone(index) {
-        const zone = document.createElement('div');
-        zone.className = 'drop-zone';
-        zone.dataset.dropIndex = index;
+        const dropZone = document.createElement('div');
+        dropZone.className = 'drop-zone';
+        dropZone.dataset.insertIndex = index;
         
-        zone.addEventListener('dragover', (e) => {
+        dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            zone.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'copy';
+            dropZone.classList.add('drag-over');
+            this.dragInsertIndex = parseInt(dropZone.dataset.insertIndex);
         });
         
-        zone.addEventListener('dragleave', () => {
-            zone.classList.remove('drag-over');
-        });
-        
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            zone.classList.remove('drag-over');
-            
-            if (this.draggedType) {
-                this.addStepAtIndex(this.draggedType, index);
-            } else if (this.draggedPlugin) {
-                this.addPluginStepAtIndex(this.draggedPlugin, index);
+        dropZone.addEventListener('dragleave', (e) => {
+            // Only remove drag-over if we're actually leaving the drop zone
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
             }
         });
         
-        this.dropZones.push(zone);
-        return zone;
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+            
+            // FIXED: Prevent duplicate processing
+            if (this.isProcessingDrop) return;
+            this.isProcessingDrop = true;
+            
+            const dragData = e.dataTransfer.getData('text/plain');
+            const insertIndex = parseInt(dropZone.dataset.insertIndex);
+            
+            console.log('🎯 Dropping at index:', insertIndex, 'Data:', dragData);
+            
+            if (dragData.startsWith('plugin:')) {
+                const pluginKey = dragData.replace('plugin:', '');
+                this.addPluginStepAtIndex(pluginKey, insertIndex);
+            } else {
+                this.addStepAtIndex(dragData, insertIndex);
+            }
+            
+            // Reset processing flag after a delay
+            setTimeout(() => {
+                this.isProcessingDrop = false;
+            }, 100);
+        });
+        
+        return dropZone;
     }
 
     removeDropZones() {
-        this.dropZones.forEach(zone => zone.remove());
-        this.dropZones = [];
+        document.querySelectorAll('.drop-zone').forEach(zone => zone.remove());
     }
 
-    // Step Management - FIXED
-    addStep(type) {
-        this.addStepAtIndex(type, this.steps.length);
-    }
-
-    addStepAtIndex(type, index) {
-        const step = this.createStep(type);
+    handleEnhancedDragOver(e) {
+        if (!this.isDragging) return;
         
-        if (index >= 0 && index <= this.steps.length) {
-            this.steps.splice(index, 0, step);
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            pipelineSteps.classList.add('drag-over');
+        }
+    }
+
+    handleDragEnter(e) {
+        if (!this.isDragging) return;
+        
+        e.preventDefault();
+        
+        // Activate drop zones when entering pipeline area
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.classList.add('active');
+        });
+    }
+
+    handleDragLeave(e) {
+        if (!this.isDragging) return;
+        
+        // Only deactivate if leaving the pipeline area entirely
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps && !pipelineSteps.contains(e.relatedTarget)) {
+            pipelineSteps.classList.remove('drag-over');
+            
+            // Deactivate drop zones
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('active', 'drag-over');
+            });
+        }
+    }
+
+    handleEnhancedDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // FIXED: Prevent duplicate processing
+        if (this.isProcessingDrop) return;
+        this.isProcessingDrop = true;
+        
+        const dragData = e.dataTransfer.getData('text/plain');
+        console.log('🎯 Drop handled:', dragData);
+        
+        if (dragData.startsWith('plugin:')) {
+            const pluginKey = dragData.replace('plugin:', '');
+            this.addPluginStep(pluginKey);
         } else {
-            this.steps.push(step);
+            this.addStep(dragData);
         }
         
-        this.renderPipeline();
-        this.selectStep(step.id);
-        this.updateStepCount();
-        this.updateLastSaved();
+        // Clean up
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            pipelineSteps.classList.remove('drag-active', 'drag-over');
+        }
         
-        console.log(`✅ Added ${type} step at index ${index}`);
+        // Reset processing flag after a delay
+        setTimeout(() => {
+            this.isProcessingDrop = false;
+        }, 100);
     }
 
-    addPluginStepAtIndex(pluginKey, index) {
-        const plugin = this.pluginCatalog[pluginKey];
-        if (!plugin) {
-            console.error('Plugin not found:', pluginKey);
+    handleTemplateClick(e) {
+        e.preventDefault();
+        
+        const template = e.currentTarget.dataset.template;
+        const pattern = e.currentTarget.dataset.pattern;
+        
+        if (template) {
+            console.log('📋 Template clicked:', template);
+            this.loadTemplate(template);
+        } else if (pattern) {
+            console.log('🎨 Pattern clicked:', pattern);
+            this.loadPattern(pattern);
+        }
+    }
+
+    // FIXED: Add step functionality with proper index handling
+    addStep(stepType, index = -1) {
+        if (!stepType) {
+            console.warn('⚠️ No step type provided');
             return;
         }
         
-        const step = this.createStep('plugin');
-        step.properties.label = `${plugin.name} Step`;
-        step.properties.selected_plugin = pluginKey;
+        console.log(`➕ Adding step: ${stepType} at index: ${index}`);
         
-        // Set default plugin configuration
-        const defaultConfig = {};
-        Object.entries(plugin.config || {}).forEach(([key, config]) => {
-            if (config.default !== undefined) {
-                defaultConfig[key] = config.default;
-            }
-        });
-        
-        step.properties.plugins = {
-            [pluginKey]: defaultConfig
-        };
+        const step = this.createStep(stepType);
         
         if (index >= 0 && index <= this.steps.length) {
             this.steps.splice(index, 0, step);
@@ -309,202 +406,196 @@ if (document.readyState === 'loading') {
             this.steps.push(step);
         }
         
+        this.stepCounter++;
         this.renderPipeline();
         this.selectStep(step.id);
         this.updateStepCount();
         
-        console.log(`🔌 Added plugin step: ${pluginKey}`);
+        console.log(`✅ Added ${stepType} step with ID: ${step.id}`);
+    }
+
+    addStepAtIndex(stepType, index) {
+        this.addStep(stepType, index);
+    }
+
+    addPluginStep(pluginKey) {
+        console.log(`🔌 Adding plugin step: ${pluginKey}`);
+        
+        const plugin = this.pluginCatalog[pluginKey];
+        if (!plugin) {
+            console.warn(`⚠️ Plugin not found: ${pluginKey}`);
+            return;
+        }
+        
+        const step = this.createStep('command'); // Plugin steps are command steps with plugins
+        step.properties.label = `${plugin.name} Step`;
+        step.properties.plugins = { [pluginKey]: {} };
+        
+        // Set default plugin configuration
+        if (plugin.config) {
+            step.properties.plugins[pluginKey] = {};
+            Object.entries(plugin.config).forEach(([key, config]) => {
+                step.properties.plugins[pluginKey][key] = config.default || '';
+            });
+        }
+        
+        this.steps.push(step);
+        this.stepCounter++;
+        this.renderPipeline();
+        this.selectStep(step.id);
+        this.updateStepCount();
+        
+        console.log(`✅ Added plugin step: ${pluginKey}`);
+    }
+
+    addPluginStepAtIndex(pluginKey, index) {
+        console.log(`🔌 Adding plugin step: ${pluginKey} at index: ${index}`);
+        
+        const plugin = this.pluginCatalog[pluginKey];
+        if (!plugin) {
+            console.warn(`⚠️ Plugin not found: ${pluginKey}`);
+            return;
+        }
+        
+        const step = this.createStep('command');
+        step.properties.label = `${plugin.name} Step`;
+        step.properties.plugins = { [pluginKey]: {} };
+        
+        if (plugin.config) {
+            step.properties.plugins[pluginKey] = {};
+            Object.entries(plugin.config).forEach(([key, config]) => {
+                step.properties.plugins[pluginKey][key] = config.default || '';
+            });
+        }
+        
+        if (index >= 0 && index <= this.steps.length) {
+            this.steps.splice(index, 0, step);
+        } else {
+            this.steps.push(step);
+        }
+        
+        this.stepCounter++;
+        this.renderPipeline();
+        this.selectStep(step.id);
+        this.updateStepCount();
     }
 
     createStep(type) {
-        const stepId = `step-${++this.stepCounter}`;
-        const baseProperties = {
-            label: `${type.charAt(0).toUpperCase() + type.slice(1)} Step`,
-            key: stepId,
-            depends_on: [],
-            allow_dependency_failure: false
-        };
-
-        const stepTypeConfigs = {
-            command: {
-                command: 'echo "Configure your command"',
-                agents: {},
-                env: {},
-                timeout_in_minutes: 60,
-                retry: { automatic: false },
-                plugins: {},
-                artifact_paths: '',
-                branches: '',
-                if: '',
-                unless: '',
-                soft_fail: false,
-                priority: 0
-            },
-            wait: {
-                continue_on_failure: false,
-                if: '',
-                unless: ''
-            },
-            block: {
-                prompt: 'Please confirm',
-                blocked_state: 'passed',
-                fields: [],
-                branches: '',
-                if: '',
-                unless: ''
-            },
-            input: {
-                prompt: 'Please provide input',
-                fields: [],
-                branches: '',
-                if: '',
-                unless: ''
-            },
-            trigger: {
-                trigger: '',
-                build: {
-                    message: '',
-                    commit: 'HEAD',
-                    branch: 'main',
-                    env: {},
-                    meta_data: {}
-                },
-                async: true,
-                branches: '',
-                if: '',
-                unless: ''
-            },
-            group: {
-                group: 'Group Name',
-                steps: [],
-                notify: []
-            },
-            annotation: {
-                context: 'default',
-                style: 'info',
-                body: 'Annotation text',
-                append: false
-            },
-            plugin: {
-                selected_plugin: '',
-                plugins: {},
-                agents: {},
-                env: {},
-                timeout_in_minutes: 60,
-                retry: { automatic: false },
-                artifact_paths: '',
-                branches: '',
-                if: '',
-                unless: '',
-                soft_fail: false,
-                priority: 0
-            },
-            notify: {
-                email: '',
-                basecamp_campfire: '',
-                slack: '',
-                webhook: '',
-                pagerduty: '',
-                if: '',
-                unless: ''
-            },
-            'pipeline-upload': {
-                pipeline: '.buildkite/pipeline.yml',
-                replace: false,
-                if: '',
-                unless: ''
-            }
-        };
-
-        return {
+        const stepId = `step-${this.stepCounter + 1}`;
+        
+        const baseStep = {
             id: stepId,
             type: type,
-            properties: { ...baseProperties, ...(stepTypeConfigs[type] || {}) }
+            properties: {
+                label: this.getDefaultLabel(type),
+                key: stepId.replace('step-', 'step'),
+                depends_on: [],
+                if: '',
+                unless: '',
+                branches: '',
+                allow_dependency_failure: false
+            }
         };
+
+        // Add type-specific properties
+        switch (type) {
+            case 'command':
+                Object.assign(baseStep.properties, {
+                    command: '',
+                    agents: {},
+                    env: {},
+                    plugins: {},
+                    artifact_paths: '',
+                    timeout_in_minutes: 0,
+                    retry: { automatic: { limit: 0 } },
+                    soft_fail: false,
+                    priority: 0
+                });
+                break;
+                
+            case 'wait':
+                Object.assign(baseStep.properties, {
+                    continue_on_failure: false
+                });
+                break;
+                
+            case 'block':
+                Object.assign(baseStep.properties, {
+                    prompt: 'Release to production?',
+                    blocked_state: 'passed',
+                    fields: []
+                });
+                break;
+                
+            case 'input':
+                Object.assign(baseStep.properties, {
+                    prompt: 'Please provide input',
+                    fields: []
+                });
+                break;
+                
+            case 'trigger':
+                Object.assign(baseStep.properties, {
+                    trigger: 'downstream-pipeline',
+                    build: {},
+                    async: false
+                });
+                break;
+                
+            case 'group':
+                Object.assign(baseStep.properties, {
+                    steps: []
+                });
+                break;
+                
+            case 'annotation':
+                Object.assign(baseStep.properties, {
+                    body: 'Build completed successfully',
+                    style: 'info',
+                    context: 'default'
+                });
+                break;
+                
+            default:
+                Object.assign(baseStep.properties, {
+                    command: `echo "Step: ${type}"`
+                });
+        }
+
+        return baseStep;
     }
 
-    // FIXED: Proper step selection
-    selectStep(stepId) {
-        this.selectedStep = stepId;
+    getDefaultLabel(type) {
+        const labels = {
+            'command': 'Run Command',
+            'wait': 'Wait for Dependencies',
+            'block': 'Manual Gate',
+            'input': 'Collect Input',
+            'trigger': 'Trigger Pipeline',
+            'group': 'Group Steps',
+            'annotation': 'Add Annotation',
+            'plugin': 'Plugin Step',
+            'notify': 'Send Notification',
+            'pipeline-upload': 'Upload Pipeline'
+        };
         
-        // Update visual selection
-        document.querySelectorAll('.pipeline-step').forEach(step => {
-            if (step.dataset.stepId === stepId) {
-                step.classList.add('selected');
-            } else {
-                step.classList.remove('selected');
-            }
-        });
-        
-        this.renderProperties();
-        console.log('👆 Selected step:', stepId);
+        return labels[type] || 'Pipeline Step';
     }
 
-    removeStep(stepId) {
-        const index = this.steps.findIndex(s => s.id === stepId);
-        if (index !== -1) {
-            this.steps.splice(index, 1);
-            if (this.selectedStep === stepId) {
-                this.selectedStep = null;
-            }
-            this.renderPipeline();
-            this.renderProperties();
-            this.updateStepCount();
-            console.log('🗑️ Removed step:', stepId);
-        }
-    }
-
-    duplicateStep(stepId) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (step) {
-            const newStep = {
-                id: `step-${++this.stepCounter}`,
-                type: step.type,
-                properties: JSON.parse(JSON.stringify(step.properties))
-            };
-            newStep.properties.label = `${newStep.properties.label} (Copy)`;
-            newStep.properties.key = newStep.id;
-            
-            const index = this.steps.findIndex(s => s.id === stepId);
-            this.steps.splice(index + 1, 0, newStep);
-            this.renderPipeline();
-            this.selectStep(newStep.id);
-            this.updateStepCount();
-            
-            console.log('📄 Duplicated step:', stepId, '→', newStep.id);
-        }
-    }
-
-    moveStepUp(index) {
-        if (index > 0) {
-            [this.steps[index], this.steps[index - 1]] = [this.steps[index - 1], this.steps[index]];
-            this.renderPipeline();
-            // Re-select the moved step
-            if (this.selectedStep) {
-                this.selectStep(this.selectedStep);
-            }
-        }
-    }
-
-    moveStepDown(index) {
-        if (index < this.steps.length - 1) {
-            [this.steps[index], this.steps[index + 1]] = [this.steps[index + 1], this.steps[index]];
-            this.renderPipeline();
-            // Re-select the moved step
-            if (this.selectedStep) {
-                this.selectStep(this.selectedStep);
-            }
-        }
-    }
-
-    // Rendering - FIXED
+    // FIXED: Proper pipeline rendering with step actions
     renderPipeline() {
         const container = document.getElementById('pipeline-steps');
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Pipeline steps container not found');
+            return;
+        }
+
+        // Clear existing content
+        container.innerHTML = '';
 
         if (this.steps.length === 0) {
             container.innerHTML = `
-                <div class="empty-pipeline">
+                <div id="empty-state" class="empty-pipeline">
                     <i class="fas fa-stream"></i>
                     <h3>Start Building Your Pipeline</h3>
                     <p>Drag step types from the sidebar to build your pipeline</p>
@@ -513,83 +604,100 @@ if (document.readyState === 'loading') {
             return;
         }
 
-        container.innerHTML = this.steps.map((step, index) => {
-            const stepHtml = this.createStepElement(step, index);
-            return stepHtml;
-        }).join('');
+        // Render steps
+        this.steps.forEach((step, index) => {
+            const stepElement = this.createStepElement(step, index);
+            container.appendChild(stepElement);
+        });
 
-        // Ensure selected step remains selected after render
-        if (this.selectedStep) {
-            const selectedElement = container.querySelector(`[data-step-id="${this.selectedStep}"]`);
-            if (selectedElement) {
-                selectedElement.classList.add('selected');
-            }
-        }
+        console.log(`🔄 Rendered ${this.steps.length} steps`);
     }
 
     createStepElement(step, index) {
-        const indicators = this.getStepIndicators(step);
-        const stepDescription = this.getStepDescription(step);
-        const icon = this.getStepIcon(step.type);
+        const stepEl = document.createElement('div');
+        stepEl.className = `pipeline-step ${step.type}`;
+        stepEl.dataset.stepId = step.id;
+        stepEl.dataset.stepIndex = index;
         
-        return `
-            <div class="pipeline-step ${step.id === this.selectedStep ? 'selected' : ''}" 
-                 data-step-id="${step.id}">
-                <div class="step-content-wrapper">
-                    <div class="step-header">
-                        <div class="step-icon">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="step-title">
-                            <div class="step-label">${step.properties.label || 'Unnamed Step'}</div>
-                            <div class="step-type-label">${step.type}</div>
-                        </div>
+        if (this.selectedStep === step.id) {
+            stepEl.classList.add('selected');
+        }
+
+        stepEl.innerHTML = `
+            <div class="step-header">
+                <div class="step-info">
+                    <div class="step-type-badge">
+                        <i class="fas ${this.getStepIcon(step.type)}"></i>
+                        ${step.type}
                     </div>
-                    <div class="step-content">
-                        ${stepDescription}
-                    </div>
-                    ${indicators.length > 0 ? `
-                        <div class="step-indicators">
-                            ${indicators.join('')}
-                        </div>
-                    ` : ''}
+                    <div class="step-label">${step.properties.label || 'Untitled Step'}</div>
+                    <div class="step-description">${this.getStepDescription(step)}</div>
                 </div>
                 <div class="step-actions">
-                    <button class="step-action" onclick="event.stopPropagation(); pipelineBuilder.moveStepUp(${index})" 
-                            title="Move Up" ${index === 0 ? 'disabled' : ''}>
-                        <i class="fas fa-arrow-up"></i>
+                    <button class="step-action configure" title="Configure Step" data-action="configure" data-step-id="${step.id}">
+                        <i class="fas fa-cog"></i>
                     </button>
-                    <button class="step-action" onclick="event.stopPropagation(); pipelineBuilder.moveStepDown(${index})" 
-                            title="Move Down" ${index === this.steps.length - 1 ? 'disabled' : ''}>
-                        <i class="fas fa-arrow-down"></i>
-                    </button>
-                    <button class="step-action" onclick="event.stopPropagation(); pipelineBuilder.duplicateStep('${step.id}')" 
-                            title="Duplicate">
+                    <button class="step-action duplicate" title="Duplicate Step" data-action="duplicate" data-step-id="${step.id}">
                         <i class="fas fa-copy"></i>
                     </button>
-                    <button class="step-action delete" onclick="event.stopPropagation(); pipelineBuilder.removeStep('${step.id}')" 
-                            title="Delete">
+                    <button class="step-action delete" title="Delete Step" data-action="delete" data-step-id="${step.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
+            ${this.renderStepDetails(step)}
         `;
+
+        // Add event listeners - FIXED: Proper event handling
+        stepEl.addEventListener('click', (e) => {
+            // Don't select if clicking on action buttons
+            if (!e.target.closest('.step-action')) {
+                this.selectStep(step.id);
+            }
+        });
+
+        // Action button handlers - FIXED: All buttons working
+        stepEl.addEventListener('click', (e) => {
+            const action = e.target.closest('[data-action]');
+            if (!action) return;
+            
+            e.stopPropagation();
+            const actionType = action.dataset.action;
+            const stepId = action.dataset.stepId;
+            
+            console.log(`🎯 Step action: ${actionType} for step: ${stepId}`);
+            
+            switch (actionType) {
+                case 'configure':
+                    this.selectStep(stepId);
+                    break;
+                case 'duplicate':
+                    this.duplicateStep(stepId);
+                    break;
+                case 'delete':
+                    this.deleteStep(stepId);
+                    break;
+            }
+        });
+
+        return stepEl;
     }
 
     getStepIcon(type) {
         const icons = {
-            command: 'fa-terminal',
-            wait: 'fa-hourglass-half',
-            block: 'fa-hand-paper',
-            input: 'fa-keyboard',
-            trigger: 'fa-play',
-            group: 'fa-layer-group',
-            annotation: 'fa-sticky-note',
-            plugin: 'fa-plug',
-            notify: 'fa-bell',
+            'command': 'fa-terminal',
+            'wait': 'fa-hourglass-half',
+            'block': 'fa-hand-paper',
+            'input': 'fa-keyboard',
+            'trigger': 'fa-arrow-right',
+            'group': 'fa-layer-group',
+            'annotation': 'fa-sticky-note',
+            'plugin': 'fa-plug',
+            'notify': 'fa-bell',
             'pipeline-upload': 'fa-upload'
         };
-        return icons[type] || 'fa-circle';
+        
+        return icons[type] || 'fa-cog';
     }
 
     getStepDescription(step) {
@@ -597,76 +705,113 @@ if (document.readyState === 'loading') {
             case 'command':
                 return step.properties.command || 'No command specified';
             case 'wait':
-                return 'Wait for all previous steps to complete';
+                return 'Wait for previous steps to complete';
             case 'block':
                 return step.properties.prompt || 'Manual approval required';
             case 'input':
                 return step.properties.prompt || 'User input required';
             case 'trigger':
-                return step.properties.trigger || 'No pipeline specified';
+                return `Trigger: ${step.properties.trigger || 'downstream-pipeline'}`;
             case 'group':
-                return `Group with ${step.properties.steps?.length || 0} step(s)`;
+                return `Group with ${step.properties.steps ? step.properties.steps.length : 0} steps`;
             case 'annotation':
-                return step.properties.body || 'No annotation text';
-            case 'plugin':
-                const plugins = Object.keys(step.properties.plugins || {});
-                return plugins.length > 0 ? `Using: ${plugins.join(', ')}` : 'No plugin selected';
-            case 'notify':
-                const channels = [];
-                if (step.properties.email) channels.push('Email');
-                if (step.properties.slack) channels.push('Slack');
-                if (step.properties.webhook) channels.push('Webhook');
-                return channels.length > 0 ? `Notify: ${channels.join(', ')}` : 'No notification channels';
-            case 'pipeline-upload':
-                return step.properties.pipeline || 'No pipeline file specified';
+                return step.properties.body || 'Build annotation';
             default:
-                return 'Configure this step';
+                return 'Pipeline step';
         }
     }
 
-    getStepIndicators(step) {
-        const indicators = [];
+    renderStepDetails(step) {
+        const details = [];
+        
+        if (step.properties.key) {
+            details.push(`<div class="step-property"><span class="property-key">Key:</span><span class="property-value">${step.properties.key}</span></div>`);
+        }
         
         if (step.properties.depends_on && step.properties.depends_on.length > 0) {
-            indicators.push(`
-                <span class="step-indicator indicator-depends">
-                    <i class="fas fa-link"></i>
-                    ${step.properties.depends_on.length} dep${step.properties.depends_on.length > 1 ? 's' : ''}
-                </span>
-            `);
+            details.push(`<div class="step-property"><span class="property-key">Depends On:</span><span class="property-value">${step.properties.depends_on.join(', ')}</span></div>`);
         }
         
-        if (step.properties.if || step.properties.unless) {
-            indicators.push(`
-                <span class="step-indicator indicator-condition">
-                    <i class="fas fa-code-branch"></i>
-                    conditional
-                </span>
-            `);
+        if (step.properties.if) {
+            details.push(`<div class="step-property"><span class="property-key">Condition:</span><span class="property-value">${step.properties.if}</span></div>`);
         }
         
-        if (step.type === 'plugin' && Object.keys(step.properties.plugins || {}).length > 0) {
-            indicators.push(`
-                <span class="step-indicator indicator-plugin">
-                    <i class="fas fa-plug"></i>
-                    ${Object.keys(step.properties.plugins).length} plugin${Object.keys(step.properties.plugins).length > 1 ? 's' : ''}
-                </span>
-            `);
+        if (step.properties.agents && Object.keys(step.properties.agents).length > 0) {
+            const agentStr = Object.entries(step.properties.agents).map(([k, v]) => `${k}=${v}`).join(', ');
+            details.push(`<div class="step-property"><span class="property-key">Agents:</span><span class="property-value">${agentStr}</span></div>`);
         }
         
-        if (step.properties.retry?.automatic) {
-            indicators.push(`
-                <span class="step-indicator indicator-retry">
-                    <i class="fas fa-redo"></i>
-                    retry
-                </span>
-            `);
+        if (details.length === 0) {
+            return '';
         }
         
-        return indicators;
+        return `<div class="step-details">${details.join('')}</div>`;
     }
 
-    // Properties Panel
+    selectStep(stepId) {
+        this.selectedStep = stepId;
+        
+        // Update visual selection
+        document.querySelectorAll('.pipeline-step').forEach(el => {
+            el.classList.toggle('selected', el.dataset.stepId === stepId);
+        });
+        
+        // Update properties panel
+        this.renderProperties();
+        
+        console.log(`👆 Selected step: ${stepId}`);
+    }
+
+    duplicateStep(stepId) {
+        const step = this.steps.find(s => s.id === stepId);
+        if (!step) return;
+        
+        const duplicated = JSON.parse(JSON.stringify(step));
+        duplicated.id = `step-${this.stepCounter + 1}`;
+        duplicated.properties.key = duplicated.id.replace('step-', 'step');
+        duplicated.properties.label = `${duplicated.properties.label} (Copy)`;
+        
+        const originalIndex = this.steps.findIndex(s => s.id === stepId);
+        this.steps.splice(originalIndex + 1, 0, duplicated);
+        this.stepCounter++;
+        
+        this.renderPipeline();
+        this.selectStep(duplicated.id);
+        this.updateStepCount();
+        
+        console.log(`📋 Duplicated step: ${stepId} → ${duplicated.id}`);
+    }
+
+    deleteStep(stepId) {
+        if (confirm('Are you sure you want to delete this step?')) {
+            const index = this.steps.findIndex(s => s.id === stepId);
+            if (index >= 0) {
+                this.steps.splice(index, 1);
+                
+                // Clear selection if deleted step was selected
+                if (this.selectedStep === stepId) {
+                    this.selectedStep = null;
+                }
+                
+                // Remove dependencies on this step
+                const stepKey = this.steps.find(s => s.id === stepId)?.properties.key;
+                if (stepKey) {
+                    this.steps.forEach(step => {
+                        if (step.properties.depends_on) {
+                            step.properties.depends_on = step.properties.depends_on.filter(dep => dep !== stepKey);
+                        }
+                    });
+                }
+                
+                this.renderPipeline();
+                this.renderProperties();
+                this.updateStepCount();
+                
+                console.log(`🗑️ Deleted step: ${stepId}`);
+            }
+        }
+    }
+
     renderProperties() {
         const container = document.getElementById('properties-content');
         if (!container) return;
@@ -675,7 +820,22 @@ if (document.readyState === 'loading') {
             container.innerHTML = `
                 <div class="no-selection">
                     <i class="fas fa-mouse-pointer"></i>
-                    <p>Select a step to view and edit its properties</p>
+                    <h3>Select a step to view and edit its properties</h3>
+                    <p>Click on any step in the pipeline to configure its settings</p>
+                    
+                    <div class="properties-help">
+                        <h4>Available Properties</h4>
+                        <ul>
+                            <li><strong>Label:</strong> Display name for the step</li>
+                            <li><strong>Command:</strong> Shell command to execute</li>
+                            <li><strong>Key:</strong> Unique identifier for dependencies</li>
+                            <li><strong>Agents:</strong> Agent targeting requirements</li>
+                            <li><strong>Environment:</strong> Environment variables</li>
+                            <li><strong>Plugins:</strong> Buildkite plugins to use</li>
+                            <li><strong>Dependencies:</strong> Step dependencies</li>
+                            <li><strong>Conditions:</strong> Conditional execution rules</li>
+                        </ul>
+                    </div>
                 </div>
             `;
             return;
@@ -684,1028 +844,834 @@ if (document.readyState === 'loading') {
         const step = this.steps.find(s => s.id === this.selectedStep);
         if (!step) return;
 
-        const stepIndex = this.steps.findIndex(s => s.id === this.selectedStep);
-
-        container.innerHTML = `
-            <div class="properties-content">
-                <div class="properties-header">
-                    <h4>
-                        <i class="fas ${this.getStepIcon(step.type)}"></i>
-                        ${step.type.charAt(0).toUpperCase() + step.type.slice(1)} Step
-                    </h4>
-                    <div class="step-actions">
-                        <button class="btn btn-icon" onclick="pipelineBuilder.moveStepUp(${stepIndex})" 
-                                title="Move Up" ${stepIndex === 0 ? 'disabled' : ''}>
-                            <i class="fas fa-arrow-up"></i>
-                        </button>
-                        <button class="btn btn-icon" onclick="pipelineBuilder.moveStepDown(${stepIndex})" 
-                                title="Move Down" ${stepIndex === this.steps.length - 1 ? 'disabled' : ''}>
-                            <i class="fas fa-arrow-down"></i>
-                        </button>
-                        <button class="btn btn-icon" onclick="pipelineBuilder.duplicateStep('${step.id}')" 
-                                title="Duplicate">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <button class="btn btn-icon btn-danger" onclick="pipelineBuilder.removeStep('${step.id}')" 
-                                title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <form id="properties-form" onsubmit="return false;">
-                    ${this.generatePropertyForm(step)}
-                </form>
-            </div>
-        `;
-
-        // Add event listeners for property updates
-        this.setupPropertyEventListeners();
+        container.innerHTML = this.generatePropertyForm(step);
+        this.setupPropertyFormListeners(step);
     }
 
     generatePropertyForm(step) {
-        let formHtml = '';
-        
-        // Basic properties
-        formHtml += this.generateBasicPropertyForm(step);
-        
-        // Type-specific properties
-        if (step.type !== 'wait' && step.type !== 'annotation') {
-            formHtml += this.generateAdvancedPropertyForm(step);
-        }
-        
-        // Dependencies
-        formHtml += this.generateDependencyForm(step);
-        
-        return formHtml;
-    }
+        let form = `
+            <div class="property-section">
+                <h4><i class="fas fa-info-circle"></i> Basic Properties</h4>
+                <div class="property-group">
+                    <label for="step-label">Label</label>
+                    <input type="text" id="step-label" value="${step.properties.label || ''}" placeholder="Step display name">
+                    <small>The name that will appear in the Buildkite interface</small>
+                </div>
+                <div class="property-group">
+                    <label for="step-key">Key</label>
+                    <input type="text" id="step-key" value="${step.properties.key || ''}" placeholder="step-key">
+                    <small>Unique identifier used for dependencies and job targeting</small>
+                </div>
+            </div>
+        `;
 
-    generateBasicPropertyForm(step) {
-        let basicFields = '';
-        
+        // Type-specific properties
         switch (step.type) {
             case 'command':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Run Tests" />
-                    </div>
-                    <div class="property-group">
-                        <label for="command">Command</label>
-                        <textarea name="command" rows="4" placeholder="echo 'Hello, World!'">${step.properties.command || ''}</textarea>
-                        <small>Shell command(s) to execute</small>
-                    </div>
-                    <div class="property-group">
-                        <label for="key">Step Key</label>
-                        <input type="text" name="key" value="${step.properties.key || ''}" placeholder="unique-step-key" />
-                        <small>Unique identifier for dependencies</small>
-                    </div>
-                `;
+                form += this.generateCommandStepForm(step);
                 break;
             case 'wait':
-                basicFields = `
-                    <div class="property-checkbox">
-                        <input type="checkbox" id="continue_on_failure" name="continue_on_failure" 
-                               ${step.properties.continue_on_failure ? 'checked' : ''} />
-                        <label for="continue_on_failure">Continue on failure</label>
-                    </div>
-                `;
+                form += this.generateWaitStepForm(step);
                 break;
             case 'block':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Block Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deploy to Production?" />
-                    </div>
-                    <div class="property-group">
-                        <label for="prompt">Prompt Message</label>
-                        <input type="text" name="prompt" value="${step.properties.prompt || ''}" placeholder="Please confirm deployment" />
-                    </div>
-                    <div class="property-group">
-                        <label for="blocked_state">Blocked State</label>
-                        <select name="blocked_state">
-                            <option value="passed" ${step.properties.blocked_state === 'passed' ? 'selected' : ''}>Passed</option>
-                            <option value="failed" ${step.properties.blocked_state === 'failed' ? 'selected' : ''}>Failed</option>
-                            <option value="running" ${step.properties.blocked_state === 'running' ? 'selected' : ''}>Running</option>
-                        </select>
-                    </div>
-                `;
+                form += this.generateBlockStepForm(step);
                 break;
             case 'input':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Input Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deployment Parameters" />
-                    </div>
-                    <div class="property-group">
-                        <label for="prompt">Prompt Message</label>
-                        <input type="text" name="prompt" value="${step.properties.prompt || ''}" placeholder="Please provide input" />
-                    </div>
-                `;
+                form += this.generateInputStepForm(step);
                 break;
             case 'trigger':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Trigger Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deploy Pipeline" />
-                    </div>
-                    <div class="property-group">
-                        <label for="trigger">Pipeline to Trigger</label>
-                        <input type="text" name="trigger" value="${step.properties.trigger || ''}" placeholder="deploy-pipeline" />
-                        <small>Pipeline slug to trigger</small>
-                    </div>
-                    <div class="property-checkbox">
-                        <input type="checkbox" id="async" name="async" ${step.properties.async ? 'checked' : ''} />
-                        <label for="async">Run asynchronously</label>
-                    </div>
-                `;
-                break;
-            case 'annotation':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="body">Annotation Text</label>
-                        <textarea name="body" rows="4" placeholder="Markdown supported...">${step.properties.body || ''}</textarea>
-                        <small>Supports Markdown formatting</small>
-                    </div>
-                    <div class="property-group">
-                        <label for="context">Context</label>
-                        <input type="text" name="context" value="${step.properties.context || 'default'}" placeholder="default" />
-                    </div>
-                    <div class="property-group">
-                        <label for="style">Style</label>
-                        <select name="style">
-                            <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
-                            <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
-                            <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
-                            <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
-                        </select>
-                    </div>
-                    <div class="property-checkbox">
-                        <input type="checkbox" id="append" name="append" ${step.properties.append ? 'checked' : ''} />
-                        <label for="append">Append to existing annotations</label>
-                    </div>
-                `;
-                break;
-            case 'plugin':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Build Docker Image" />
-                    </div>
-                    ${this.generatePluginSelector(step)}
-                `;
+                form += this.generateTriggerStepForm(step);
                 break;
             case 'group':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="group">Group Name</label>
-                        <input type="text" name="group" value="${step.properties.group || ''}" placeholder="e.g., Test Suite" />
-                    </div>
-                    <p class="property-help">Configure group steps in the visual editor</p>
-                `;
+                form += this.generateGroupStepForm(step);
                 break;
-            case 'notify':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="email">Email</label>
-                        <input type="text" name="email" value="${step.properties.email || ''}" placeholder="team@example.com" />
-                    </div>
-                    <div class="property-group">
-                        <label for="slack">Slack Channel/User</label>
-                        <input type="text" name="slack" value="${step.properties.slack || ''}" placeholder="#channel or @user" />
-                    </div>
-                    <div class="property-group">
-                        <label for="webhook">Webhook URL</label>
-                        <input type="text" name="webhook" value="${step.properties.webhook || ''}" placeholder="https://..." />
-                    </div>
-                `;
+            case 'annotation':
+                form += this.generateAnnotationStepForm(step);
                 break;
-            case 'pipeline-upload':
-                basicFields = `
-                    <div class="property-group">
-                        <label for="pipeline">Pipeline File</label>
-                        <input type="text" name="pipeline" value="${step.properties.pipeline || ''}" placeholder=".buildkite/pipeline.yml" />
-                        <small>Path to pipeline YAML file</small>
-                    </div>
-                    <div class="property-checkbox">
-                        <input type="checkbox" id="replace" name="replace" ${step.properties.replace ? 'checked' : ''} />
-                        <label for="replace">Replace Pipeline (vs append)</label>
-                        <small>Replace the current pipeline instead of appending steps</small>
-                    </div>
-                `;
-                break;
-            default:
-                basicFields = `
-                    <div class="property-group">
-                        <label for="label">Step Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="Step name" />
-                    </div>
-                `;
         }
 
-        return `
-            <div class="property-section">
-                <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
-                ${basicFields}
-            </div>
-        `;
+        // Common properties
+        form += this.generateCommonPropertiesForm(step);
+
+        return form;
     }
 
-    generateAdvancedPropertyForm(step) {
+    generateCommandStepForm(step) {
         return `
             <div class="property-section">
-                <h4><i class="fas fa-server"></i> Execution Environment</h4>
-                
+                <h4><i class="fas fa-terminal"></i> Command Configuration</h4>
                 <div class="property-group">
-                    <label for="agents">Agent Targeting (JSON)</label>
-                    <textarea name="agents" placeholder='{"queue": "default", "os": "linux"}' rows="3">${JSON.stringify(step.properties.agents || {}, null, 2)}</textarea>
-                    <small>JSON object specifying agent requirements</small>
+                    <label for="step-command">Command</label>
+                    <textarea id="step-command" placeholder="echo 'Hello World'">${step.properties.command || ''}</textarea>
+                    <small>Shell command(s) to execute. Use | for multiple commands</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="env">Environment Variables (JSON)</label>
-                    <textarea name="env" placeholder='{"NODE_ENV": "test", "DEBUG": "true"}' rows="4">${JSON.stringify(step.properties.env || {}, null, 2)}</textarea>
-                    <small>JSON object of environment variables</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="timeout_in_minutes">Timeout (minutes)</label>
-                    <input type="number" name="timeout_in_minutes" value="${step.properties.timeout_in_minutes || 60}" 
-                           placeholder="60" min="1" max="1440" />
+                    <label for="step-timeout">Timeout (minutes)</label>
+                    <input type="number" id="step-timeout" value="${step.properties.timeout_in_minutes || 0}" min="0">
+                    <small>Maximum time before the step times out (0 for no timeout)</small>
                 </div>
             </div>
-
+            
             <div class="property-section">
-                <h4><i class="fas fa-code-branch"></i> Conditional Execution</h4>
-                
+                <h4><i class="fas fa-server"></i> Agent Configuration</h4>
                 <div class="property-group">
-                    <label for="branches">Branch Pattern</label>
-                    <input type="text" name="branches" value="${step.properties.branches || ''}" 
-                           placeholder="main develop feature/*" />
-                    <small>Space-separated branch patterns</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="if">If Condition</label>
-                    <input type="text" name="if" value="${step.properties.if || ''}" 
-                           placeholder='build.branch == "main" && build.pull_request.id == null' />
-                    <small>Conditional expression (evaluates to true to run)</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="unless">Unless Condition</label>
-                    <input type="text" name="unless" value="${step.properties.unless || ''}" 
-                           placeholder='build.pull_request.draft == true' />
-                    <small>Conditional expression (evaluates to true to skip)</small>
-                </div>
-            </div>
-        `;
-    }
-
-    generateDependencyForm(step) {
-        const availableSteps = this.steps
-            .filter(s => s.id !== step.id && s.properties.key)
-            .map(s => ({ id: s.properties.key, label: s.properties.label }));
-
-        return `
-            <div class="property-section">
-                <h4><i class="fas fa-link"></i> Dependencies</h4>
-                
-                <div class="property-group">
-                    <label>Depends On</label>
-                    <div class="dependency-list">
-                        ${availableSteps.length > 0 ? availableSteps.map(s => `
-                            <div class="property-checkbox">
-                                <input type="checkbox" id="dep-${s.id}" value="${s.id}" 
-                                       ${step.properties.depends_on?.includes(s.id) ? 'checked' : ''} 
-                                       onchange="pipelineBuilder.updateDependencies('${step.id}')" />
-                                <label for="dep-${s.id}">${s.label} (${s.id})</label>
-                            </div>
-                        `).join('') : '<p class="text-muted">No other steps with keys available</p>'}
-                    </div>
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" id="allow_dependency_failure" name="allow_dependency_failure" 
-                           ${step.properties.allow_dependency_failure ? 'checked' : ''} />
-                    <label for="allow_dependency_failure">Allow dependency failure</label>
-                    <small>Continue even if dependencies fail</small>
-                </div>
-            </div>
-        `;
-    }
-
-    generatePluginForm(step) {
-        const props = step.properties;
-        const hasPlugins = props.plugins && Object.keys(props.plugins).length > 0;
-        
-        return `
-            <div class="property-section">
-                <h4><i class="fas fa-plug"></i> Plugin Configuration</h4>
-                
-                <div class="property-group">
-                    <label for="label">Step Label *</label>
-                    <input type="text" name="label" value="${props.label || ''}" placeholder="e.g., Docker Build" />
-                </div>
-                
-                ${this.generatePluginSelector(step)}
-                
-                <div class="plugin-actions">
-                    <button type="button" class="btn btn-secondary btn-small" onclick="window.pipelineBuilder.showPluginCatalog()">
-                        <i class="fas fa-store"></i> Browse Plugin Catalog
+                    <label>Agent Targeting</label>
+                    <div id="agents-list">${this.renderKeyValueList(step.properties.agents || {}, 'agents')}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-agent">
+                        <i class="fas fa-plus"></i> Add Agent Rule
                     </button>
+                    <small>Target specific agents (e.g., queue=deploy, os=linux)</small>
+                </div>
+            </div>
+            
+            <div class="property-section">
+                <h4><i class="fas fa-cog"></i> Environment Variables</h4>
+                <div class="property-group">
+                    <label>Environment Variables</label>
+                    <div id="env-list">${this.renderKeyValueList(step.properties.env || {}, 'env')}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-env">
+                        <i class="fas fa-plus"></i> Add Variable
+                    </button>
+                    <small>Environment variables available during step execution</small>
+                </div>
+            </div>
+            
+            <div class="property-section">
+                <h4><i class="fas fa-plug"></i> Plugins</h4>
+                <div class="property-group">
+                    <label>Buildkite Plugins</label>
+                    <div id="plugins-list">${this.renderPluginsList(step.properties.plugins || {})}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-plugin">
+                        <i class="fas fa-plus"></i> Add Plugin
+                    </button>
+                    <small>Buildkite plugins to use with this step</small>
                 </div>
             </div>
         `;
     }
 
-    generateGenericForm(step) {
+    generateWaitStepForm(step) {
         return `
             <div class="property-section">
-                <h4><i class="fas fa-cog"></i> Step Configuration</h4>
-                
-                <div class="property-group">
-                    <label for="label">Step Label</label>
-                    <input type="text" name="label" value="${step.properties.label || ''}" placeholder="Step name" />
+                <h4><i class="fas fa-hourglass-half"></i> Wait Configuration</h4>
+                <div class="property-checkbox">
+                    <input type="checkbox" id="continue-on-failure" ${step.properties.continue_on_failure ? 'checked' : ''}>
+                    <label for="continue-on-failure">Continue on failure</label>
                 </div>
-                
-                <div class="property-group">
-                    <label for="key">Step Key</label>
-                    <input type="text" name="key" value="${step.properties.key || ''}" placeholder="unique-step-key" />
-                </div>
-                
-                <p class="property-help">
-                    This is a ${step.type} step. Additional configuration options may be available.
-                </p>
+                <small>Allow the pipeline to continue even if previous steps failed</small>
             </div>
         `;
     }
 
-    generatePluginSelector(step) {
-        const selectedPlugin = step.properties.selected_plugin;
-        const plugin = this.pluginCatalog[selectedPlugin];
-        
-        let html = `
-            <div class="property-group">
-                <label for="selected_plugin">Plugin</label>
-                <select name="selected_plugin" onchange="pipelineBuilder.updatePluginConfig('${step.id}', this.value)">
-                    <option value="">Select a plugin...</option>
-                    ${Object.entries(this.pluginCatalog).map(([key, p]) => `
-                        <option value="${key}" ${selectedPlugin === key ? 'selected' : ''}>${p.name}</option>
-                    `).join('')}
-                </select>
+    generateBlockStepForm(step) {
+        return `
+            <div class="property-section">
+                <h4><i class="fas fa-hand-paper"></i> Block Configuration</h4>
+                <div class="property-group">
+                    <label for="block-prompt">Prompt</label>
+                    <input type="text" id="block-prompt" value="${step.properties.prompt || ''}" placeholder="Release to production?">
+                    <small>Message shown to users when they need to unblock the step</small>
+                </div>
+                <div class="property-group">
+                    <label for="blocked-state">Blocked State</label>
+                    <select id="blocked-state">
+                        <option value="passed" ${step.properties.blocked_state === 'passed' ? 'selected' : ''}>Passed</option>
+                        <option value="failed" ${step.properties.blocked_state === 'failed' ? 'selected' : ''}>Failed</option>
+                        <option value="running" ${step.properties.blocked_state === 'running' ? 'selected' : ''}>Running</option>
+                    </select>
+                    <small>Build state to show while blocked</small>
+                </div>
             </div>
         `;
-        
-        if (selectedPlugin && plugin) {
-            html += `
-                <div class="plugin-config">
-                    <h5>${plugin.name} Configuration</h5>
-                    ${Object.entries(plugin.config).map(([key, config]) => {
-                        const value = step.properties.plugins[selectedPlugin]?.[key] || config.default || '';
-                        return `
-                            <div class="property-group">
-                                <label for="plugin-${key}">${config.label}</label>
-                                ${config.type === 'array' ? `
-                                    <input type="text" id="plugin-${key}" 
-                                           value="${Array.isArray(value) ? value.join(', ') : ''}" 
-                                           placeholder="Comma-separated values" 
-                                           onchange="pipelineBuilder.updatePluginField('${step.id}', '${selectedPlugin}', '${key}', this.value, 'array')" />
-                                ` : `
-                                    <input type="text" id="plugin-${key}" 
-                                           value="${value}" 
-                                           onchange="pipelineBuilder.updatePluginField('${step.id}', '${selectedPlugin}', '${key}', this.value)" />
-                                `}
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-        }
-        
-        return html;
     }
 
-    // Property Update Handlers
-    setupPropertyEventListeners() {
-        const form = document.getElementById('properties-form');
-        if (!form) return;
-
-        // Handle all input changes
-        form.addEventListener('input', (e) => {
-            if (e.target.name) {
-                this.updateStepProperty(e.target.name, e.target.value, e.target.type);
-            }
-        });
-
-        form.addEventListener('change', (e) => {
-            if (e.target.name) {
-                this.updateStepProperty(e.target.name, e.target.value, e.target.type);
-            }
-        });
-    }
-
-    updateStepProperty(name, value, type) {
-        if (!this.selectedStep) return;
-        
-        const step = this.steps.find(s => s.id === this.selectedStep);
-        if (!step) return;
-
-        // Handle different input types
-        if (type === 'checkbox') {
-            value = document.querySelector(`[name="${name}"]`).checked;
-        } else if (name === 'agents' || name === 'env') {
-            // Parse JSON fields
-            try {
-                value = JSON.parse(value || '{}');
-            } catch (e) {
-                console.warn('Invalid JSON for', name);
-                return;
-            }
-        } else if (name === 'timeout_in_minutes' || name === 'priority') {
-            value = parseInt(value) || 0;
-        }
-
-        // Update the property
-        step.properties[name] = value;
-        
-        // Re-render pipeline to update display
-        this.renderPipeline();
-        this.updateLastSaved();
-    }
-
-    updateDependencies(stepId) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step) return;
-
-        const checkedDeps = Array.from(document.querySelectorAll('.dependency-list input:checked'))
-            .map(input => input.value);
-        
-        step.properties.depends_on = checkedDeps;
-        this.renderPipeline();
-        this.updateLastSaved();
-    }
-
-    updatePluginConfig(stepId, pluginKey) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step) return;
-
-        step.properties.selected_plugin = pluginKey;
-        
-        if (pluginKey) {
-            const plugin = this.pluginCatalog[pluginKey];
-            if (plugin) {
-                const defaultConfig = {};
-                Object.entries(plugin.config).forEach(([key, config]) => {
-                    if (config.default !== undefined) {
-                        defaultConfig[key] = config.default;
-                    }
-                });
-                step.properties.plugins = { [pluginKey]: defaultConfig };
-            }
-        } else {
-            step.properties.plugins = {};
-        }
-        
-        this.renderProperties();
-        this.renderPipeline();
-    }
-
-    updatePluginField(stepId, pluginKey, fieldKey, value, fieldType) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step) return;
-
-        if (!step.properties.plugins[pluginKey]) {
-            step.properties.plugins[pluginKey] = {};
-        }
-
-        if (fieldType === 'array') {
-            step.properties.plugins[pluginKey][fieldKey] = value.split(',').map(v => v.trim()).filter(v => v);
-        } else {
-            step.properties.plugins[pluginKey][fieldKey] = value;
-        }
-
-        this.renderPipeline();
-        this.updateLastSaved();
-    }
-
-    // Additional form generators for all step types
-    generateInputForm(step) {
-        const props = step.properties;
+    generateInputStepForm(step) {
         return `
             <div class="property-section">
                 <h4><i class="fas fa-keyboard"></i> Input Configuration</h4>
-                
                 <div class="property-group">
-                    <label for="label">Step Label *</label>
-                    <input type="text" name="label" value="${props.label || ''}" placeholder="e.g., Release Version" />
+                    <label for="input-prompt">Prompt</label>
+                    <input type="text" id="input-prompt" value="${step.properties.prompt || ''}" placeholder="Please provide input">
+                    <small>Message shown to users requesting input</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="prompt">Prompt Message</label>
-                    <textarea name="prompt" placeholder="Please enter the release version" rows="3">${props.prompt || ''}</textarea>
-                    <small>Message shown when requesting input</small>
+                    <label>Input Fields</label>
+                    <div id="fields-list">${this.renderFieldsList(step.properties.fields || [])}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-field">
+                        <i class="fas fa-plus"></i> Add Field
+                    </button>
+                    <small>Input fields to collect from users</small>
                 </div>
-                
-                <div class="property-group">
-                    <label for="key">Step Key</label>
-                    <input type="text" name="key" value="${props.key || ''}" placeholder="e.g., version-input" />
-                </div>
-                
-                ${this.generateFieldBuilder(step)}
             </div>
         `;
     }
 
-    generateTriggerForm(step) {
-        const props = step.properties;
+    generateTriggerStepForm(step) {
         return `
             <div class="property-section">
-                <h4><i class="fas fa-play"></i> Trigger Configuration</h4>
-                
+                <h4><i class="fas fa-arrow-right"></i> Trigger Configuration</h4>
                 <div class="property-group">
-                    <label for="label">Step Label *</label>
-                    <input type="text" name="label" value="${props.label || ''}" placeholder="e.g., Deploy to Production" />
+                    <label for="trigger-pipeline">Pipeline</label>
+                    <input type="text" id="trigger-pipeline" value="${step.properties.trigger || ''}" placeholder="downstream-pipeline">
+                    <small>Name or slug of the pipeline to trigger</small>
                 </div>
-                
-                <div class="property-group">
-                    <label for="trigger">Pipeline to Trigger *</label>
-                    <input type="text" name="trigger" value="${props.trigger || ''}" placeholder="my-org/my-pipeline" />
-                    <small>Format: organization/pipeline-slug</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="key">Step Key</label>
-                    <input type="text" name="key" value="${props.key || ''}" placeholder="e.g., trigger-deploy" />
-                </div>
-                
                 <div class="property-checkbox">
-                    <input type="checkbox" name="async" ${props.async ? 'checked' : ''} />
-                    <label for="async">Asynchronous (don't wait for completion)</label>
+                    <input type="checkbox" id="trigger-async" ${step.properties.async ? 'checked' : ''}>
+                    <label for="trigger-async">Asynchronous</label>
                 </div>
-                
-                <div class="property-group">
-                    <label for="build">Build Parameters (JSON)</label>
-                    <textarea name="build" placeholder='{"branch": "main", "env": {"NODE_ENV": "production"}}' rows="4">${JSON.stringify(props.build || {}, null, 2)}</textarea>
-                    <small>JSON object with build parameters</small>
-                </div>
+                <small>Don't wait for the triggered pipeline to complete</small>
             </div>
         `;
     }
 
-    generateGroupForm(step) {
-        const props = step.properties;
+    generateGroupStepForm(step) {
         return `
             <div class="property-section">
                 <h4><i class="fas fa-layer-group"></i> Group Configuration</h4>
-                
-                <div class="property-group">
-                    <label for="group">Group Name *</label>
-                    <input type="text" name="group" value="${props.group || ''}" placeholder="e.g., Tests" />
-                </div>
-                
-                <div class="property-group">
-                    <label for="label">Group Label</label>
-                    <input type="text" name="label" value="${props.label || ''}" placeholder="Optional display label" />
-                </div>
-                
-                <div class="property-group">
-                    <label for="key">Group Key</label>
-                    <input type="text" name="key" value="${props.key || ''}" placeholder="tests-group" />
-                    <small>Unique identifier for this group</small>
-                </div>
-                
                 <div class="property-group">
                     <label>Group Steps</label>
-                    <div class="group-steps-info">
-                        <p>This group contains ${props.steps?.length || 0} step(s)</p>
-                        <small>Group steps can be managed after creation</small>
-                    </div>
+                    <div id="group-steps-list">${this.renderGroupStepsList(step.properties.steps || [])}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-group-step">
+                        <i class="fas fa-plus"></i> Add Step to Group
+                    </button>
+                    <small>Steps that belong to this group</small>
                 </div>
             </div>
         `;
     }
 
-    generateAnnotationForm(step) {
-        const props = step.properties;
+    generateAnnotationStepForm(step) {
         return `
             <div class="property-section">
                 <h4><i class="fas fa-sticky-note"></i> Annotation Configuration</h4>
-                
                 <div class="property-group">
-                    <label for="body">Annotation Body *</label>
-                    <textarea name="body" placeholder="Build completed successfully! :tada:" rows="6">${props.body || ''}</textarea>
-                    <small>Supports Markdown and emoji</small>
+                    <label for="annotation-body">Body</label>
+                    <textarea id="annotation-body" placeholder="Build completed successfully">${step.properties.body || ''}</textarea>
+                    <small>Content of the annotation (supports Markdown)</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="style">Annotation Style</label>
-                    <select name="style">
-                        <option value="info" ${props.style === 'info' ? 'selected' : ''}>Info</option>
-                        <option value="success" ${props.style === 'success' ? 'selected' : ''}>Success</option>
-                        <option value="warning" ${props.style === 'warning' ? 'selected' : ''}>Warning</option>
-                        <option value="error" ${props.style === 'error' ? 'selected' : ''}>Error</option>
+                    <label for="annotation-style">Style</label>
+                    <select id="annotation-style">
+                        <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
+                        <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
+                        <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
+                        <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
                     </select>
+                    <small>Visual style of the annotation</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="context">Context</label>
-                    <input type="text" name="context" value="${props.context || 'default'}" placeholder="default" />
-                    <small>Groups related annotations together</small>
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="append" ${props.append ? 'checked' : ''} />
-                    <label for="append">Append to existing annotations</label>
+                    <label for="annotation-context">Context</label>
+                    <input type="text" id="annotation-context" value="${step.properties.context || ''}" placeholder="default">
+                    <small>Unique identifier for the annotation</small>
                 </div>
             </div>
         `;
     }
 
-    generateNotifyForm(step) {
-        const props = step.properties;
+    generateCommonPropertiesForm(step) {
         return `
             <div class="property-section">
-                <h4><i class="fas fa-bell"></i> Notification Configuration</h4>
-                
+                <h4><i class="fas fa-sitemap"></i> Dependencies & Conditions</h4>
                 <div class="property-group">
-                    <label for="email">Email Addresses</label>
-                    <input type="text" name="email" value="${props.email || ''}" placeholder="team@example.com, manager@example.com" />
-                    <small>Comma-separated email addresses</small>
+                    <label>Dependencies</label>
+                    <div id="dependencies-list">${this.renderDependenciesList(step.properties.depends_on || [])}</div>
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-dependency">
+                        <i class="fas fa-plus"></i> Add Dependency
+                    </button>
+                    <small>Steps that must complete before this step runs</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="slack">Slack Channel/User</label>
-                    <input type="text" name="slack" value="${props.slack || ''}" placeholder="#channel or @user" />
+                    <label for="step-if">If Condition</label>
+                    <input type="text" id="step-if" value="${step.properties.if || ''}" placeholder="build.branch == 'main'">
+                    <small>Only run this step if condition is true</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="webhook">Webhook URL</label>
-                    <input type="text" name="webhook" value="${props.webhook || ''}" placeholder="https://example.com/webhook" />
+                    <label for="step-unless">Unless Condition</label>
+                    <input type="text" id="step-unless" value="${step.properties.unless || ''}" placeholder="build.pull_request.draft == true">
+                    <small>Skip this step if condition is true</small>
                 </div>
-                
                 <div class="property-group">
-                    <label for="pagerduty">PagerDuty Service Key</label>
-                    <input type="text" name="pagerduty" value="${props.pagerduty || ''}" placeholder="Service key" />
-                </div>
-                
-                <div class="property-group">
-                    <label for="basecamp_campfire">Basecamp Campfire URL</label>
-                    <input type="text" name="basecamp_campfire" value="${props.basecamp_campfire || ''}" placeholder="https://basecamp.com/..." />
+                    <label for="step-branches">Branches</label>
+                    <input type="text" id="step-branches" value="${step.properties.branches || ''}" placeholder="main master">
+                    <small>Only run on specific branches (space-separated)</small>
                 </div>
             </div>
         `;
     }
 
-    generatePipelineUploadForm(step) {
-        const props = step.properties;
-        return `
-            <div class="property-section">
-                <h4><i class="fas fa-upload"></i> Pipeline Upload Configuration</h4>
-                
-                <div class="property-group">
-                    <label for="pipeline">Pipeline File *</label>
-                    <input type="text" name="pipeline" value="${props.pipeline || ''}" placeholder=".buildkite/pipeline.yml" />
-                    <small>Path to pipeline YAML file</small>
-                </div>
-                
-                <div class="property-checkbox">
-                    <input type="checkbox" name="replace" ${props.replace ? 'checked' : ''} />
-                    <label for="replace">Replace current pipeline</label>
-                    <small>Replace the entire pipeline instead of appending steps</small>
-                </div>
-            </div>
-        `;
-    }
-
-    generateFieldBuilder(step) {
-        const fields = step.properties.fields || [];
+    renderKeyValueList(obj, type) {
+        const entries = Object.entries(obj);
+        if (entries.length === 0) {
+            return '<p class="empty-list">No entries yet</p>';
+        }
         
-        return `
-            <div class="property-subsection">
-                <h5>Input Fields</h5>
-                
-                <div class="fields-list">
-                    ${fields.map((field, index) => `
-                        <div class="field-item">
-                            <input type="text" 
-                                   value="${field.text || ''}" 
-                                   placeholder="Field label"
-                                   onchange="pipelineBuilder.updateField('${step.id}', ${index}, 'text', this.value)" />
-                            <input type="text" 
-                                   value="${field.key || ''}" 
-                                   placeholder="Field key"
-                                   onchange="pipelineBuilder.updateField('${step.id}', ${index}, 'key', this.value)" />
-                            <select onchange="pipelineBuilder.updateField('${step.id}', ${index}, 'type', this.value)">
-                                <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text</option>
-                                <option value="select" ${field.type === 'select' ? 'selected' : ''}>Select</option>
-                            </select>
-                            <button class="btn btn-small btn-danger" 
-                                    onclick="pipelineBuilder.removeField('${step.id}', ${index})">
-                                <i class="fas fa-times"></i>
-                            </button>
+        return entries.map(([key, value], index) => `
+            <div class="key-value-pair">
+                <input type="text" class="key-input" value="${key}" placeholder="Key" data-index="${index}" data-type="${type}">
+                <input type="text" class="value-input" value="${value}" placeholder="Value" data-index="${index}" data-type="${type}">
+                <button type="button" class="btn btn-secondary btn-small remove-pair" data-index="${index}" data-type="${type}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    renderPluginsList(plugins) {
+        const entries = Object.entries(plugins);
+        if (entries.length === 0) {
+            return '<p class="empty-list">No plugins configured</p>';
+        }
+        
+        return entries.map(([pluginName, config], index) => `
+            <div class="plugin-entry">
+                <div class="plugin-header">
+                    <strong>${pluginName}</strong>
+                    <button type="button" class="btn btn-secondary btn-small remove-plugin" data-plugin="${pluginName}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="plugin-config">
+                    ${Object.entries(config || {}).map(([key, value]) => `
+                        <div class="key-value-pair">
+                            <input type="text" class="plugin-key" value="${key}" placeholder="Config Key" data-plugin="${pluginName}">
+                            <input type="text" class="plugin-value" value="${value}" placeholder="Config Value" data-plugin="${pluginName}">
                         </div>
                     `).join('')}
-                </div>
-                
-                <div class="field-actions">
-                    <button type="button" class="btn btn-small btn-secondary" 
-                            onclick="pipelineBuilder.addField('${step.id}', 'text')">
-                        <i class="fas fa-plus"></i> Add Text Field
-                    </button>
-                    <button type="button" class="btn btn-small btn-secondary" 
-                            onclick="pipelineBuilder.addField('${step.id}', 'select')">
-                        <i class="fas fa-plus"></i> Add Select Field
+                    <button type="button" class="btn btn-secondary btn-small add-plugin-config" data-plugin="${pluginName}">
+                        <i class="fas fa-plus"></i> Add Config
                     </button>
                 </div>
             </div>
-        `;
+        `).join('');
     }
 
-    // Field management methods
-    addField(stepId, fieldType = 'text') {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step || (step.type !== 'block' && step.type !== 'input')) return;
-        
-        if (!step.properties.fields) {
-            step.properties.fields = [];
+    renderDependenciesList(dependencies) {
+        if (dependencies.length === 0) {
+            return '<p class="empty-list">No dependencies</p>';
         }
         
-        const field = {
-            key: `field_${Date.now()}`,
-            text: 'New Field',
-            required: false,
-            default: '',
-            type: fieldType
+        return dependencies.map((dep, index) => `
+            <div class="dependency-item">
+                <select class="dependency-select" data-index="${index}">
+                    <option value="">Select step...</option>
+                    ${this.steps.map(step => `
+                        <option value="${step.properties.key}" ${dep === step.properties.key ? 'selected' : ''}>
+                            ${step.properties.label} (${step.properties.key})
+                        </option>
+                    `).join('')}
+                </select>
+                <button type="button" class="btn btn-secondary btn-small remove-dependency" data-index="${index}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    renderFieldsList(fields) {
+        if (fields.length === 0) {
+            return '<p class="empty-list">No input fields</p>';
+        }
+        
+        return fields.map((field, index) => `
+            <div class="field-item">
+                <input type="text" class="field-key" value="${field.key || ''}" placeholder="Field key" data-index="${index}">
+                <input type="text" class="field-hint" value="${field.hint || ''}" placeholder="Field hint" data-index="${index}">
+                <button type="button" class="btn btn-secondary btn-small remove-field" data-index="${index}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    renderGroupStepsList(steps) {
+        if (steps.length === 0) {
+            return '<p class="empty-list">No steps in group</p>';
+        }
+        
+        return steps.map((step, index) => `
+            <div class="group-step-item">
+                <span>${step.label || step.type}</span>
+                <button type="button" class="btn btn-secondary btn-small remove-group-step" data-index="${index}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    setupPropertyFormListeners(step) {
+        const container = document.getElementById('properties-content');
+        if (!container) return;
+
+        // Basic properties
+        this.setupBasicPropertyListeners(step, container);
+        
+        // Type-specific listeners
+        switch (step.type) {
+            case 'command':
+                this.setupCommandStepListeners(step, container);
+                break;
+            case 'wait':
+                this.setupWaitStepListeners(step, container);
+                break;
+            case 'block':
+                this.setupBlockStepListeners(step, container);
+                break;
+            case 'input':
+                this.setupInputStepListeners(step, container);
+                break;
+            case 'trigger':
+                this.setupTriggerStepListeners(step, container);
+                break;
+            case 'annotation':
+                this.setupAnnotationStepListeners(step, container);
+                break;
+        }
+
+        // Common properties
+        this.setupCommonPropertyListeners(step, container);
+    }
+
+    setupBasicPropertyListeners(step, container) {
+        const labelInput = container.querySelector('#step-label');
+        const keyInput = container.querySelector('#step-key');
+        
+        if (labelInput) {
+            labelInput.addEventListener('input', (e) => {
+                step.properties.label = e.target.value;
+                this.renderPipeline();
+            });
+        }
+        
+        if (keyInput) {
+            keyInput.addEventListener('input', (e) => {
+                step.properties.key = e.target.value;
+                this.renderPipeline();
+            });
+        }
+    }
+
+    setupCommandStepListeners(step, container) {
+        const commandInput = container.querySelector('#step-command');
+        const timeoutInput = container.querySelector('#step-timeout');
+        
+        if (commandInput) {
+            commandInput.addEventListener('input', (e) => {
+                step.properties.command = e.target.value;
+            });
+        }
+        
+        if (timeoutInput) {
+            timeoutInput.addEventListener('input', (e) => {
+                step.properties.timeout_in_minutes = parseInt(e.target.value) || 0;
+            });
+        }
+
+        // Key-value pair listeners
+        this.setupKeyValueListeners(step, container, 'agents');
+        this.setupKeyValueListeners(step, container, 'env');
+        this.setupPluginListeners(step, container);
+    }
+
+    setupWaitStepListeners(step, container) {
+        const continueOnFailure = container.querySelector('#continue-on-failure');
+        
+        if (continueOnFailure) {
+            continueOnFailure.addEventListener('change', (e) => {
+                step.properties.continue_on_failure = e.target.checked;
+            });
+        }
+    }
+
+    setupBlockStepListeners(step, container) {
+        const promptInput = container.querySelector('#block-prompt');
+        const blockedStateSelect = container.querySelector('#blocked-state');
+        
+        if (promptInput) {
+            promptInput.addEventListener('input', (e) => {
+                step.properties.prompt = e.target.value;
+                this.renderPipeline();
+            });
+        }
+        
+        if (blockedStateSelect) {
+            blockedStateSelect.addEventListener('change', (e) => {
+                step.properties.blocked_state = e.target.value;
+            });
+        }
+    }
+
+    setupInputStepListeners(step, container) {
+        const promptInput = container.querySelector('#input-prompt');
+        
+        if (promptInput) {
+            promptInput.addEventListener('input', (e) => {
+                step.properties.prompt = e.target.value;
+                this.renderPipeline();
+            });
+        }
+
+        this.setupFieldsListeners(step, container);
+    }
+
+    setupTriggerStepListeners(step, container) {
+        const triggerInput = container.querySelector('#trigger-pipeline');
+        const asyncCheckbox = container.querySelector('#trigger-async');
+        
+        if (triggerInput) {
+            triggerInput.addEventListener('input', (e) => {
+                step.properties.trigger = e.target.value;
+                this.renderPipeline();
+            });
+        }
+        
+        if (asyncCheckbox) {
+            asyncCheckbox.addEventListener('change', (e) => {
+                step.properties.async = e.target.checked;
+            });
+        }
+    }
+
+    setupAnnotationStepListeners(step, container) {
+        const bodyInput = container.querySelector('#annotation-body');
+        const styleSelect = container.querySelector('#annotation-style');
+        const contextInput = container.querySelector('#annotation-context');
+        
+        if (bodyInput) {
+            bodyInput.addEventListener('input', (e) => {
+                step.properties.body = e.target.value;
+                this.renderPipeline();
+            });
+        }
+        
+        if (styleSelect) {
+            styleSelect.addEventListener('change', (e) => {
+                step.properties.style = e.target.value;
+            });
+        }
+        
+        if (contextInput) {
+            contextInput.addEventListener('input', (e) => {
+                step.properties.context = e.target.value;
+            });
+        }
+    }
+
+    setupCommonPropertyListeners(step, container) {
+        const ifInput = container.querySelector('#step-if');
+        const unlessInput = container.querySelector('#step-unless');
+        const branchesInput = container.querySelector('#step-branches');
+        
+        if (ifInput) {
+            ifInput.addEventListener('input', (e) => {
+                step.properties.if = e.target.value;
+            });
+        }
+        
+        if (unlessInput) {
+            unlessInput.addEventListener('input', (e) => {
+                step.properties.unless = e.target.value;
+            });
+        }
+        
+        if (branchesInput) {
+            branchesInput.addEventListener('input', (e) => {
+                step.properties.branches = e.target.value;
+            });
+        }
+
+        this.setupDependenciesListeners(step, container);
+    }
+
+    setupKeyValueListeners(step, container, type) {
+        // Add button
+        const addBtn = container.querySelector(`[data-action="add-${type}"]`);
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                if (!step.properties[type]) {
+                    step.properties[type] = {};
+                }
+                step.properties[type][''] = '';
+                this.renderProperties();
+            });
+        }
+
+        // Key/value inputs
+        container.addEventListener('input', (e) => {
+            if (e.target.dataset.type === type) {
+                const index = parseInt(e.target.dataset.index);
+                const entries = Object.entries(step.properties[type] || {});
+                
+                if (e.target.classList.contains('key-input')) {
+                    const oldKey = entries[index][0];
+                    const value = entries[index][1];
+                    delete step.properties[type][oldKey];
+                    step.properties[type][e.target.value] = value;
+                } else if (e.target.classList.contains('value-input')) {
+                    const key = entries[index][0];
+                    step.properties[type][key] = e.target.value;
+                }
+            }
+        });
+
+        // Remove buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-pair')?.dataset.type === type) {
+                const index = parseInt(e.target.closest('.remove-pair').dataset.index);
+                const entries = Object.entries(step.properties[type] || {});
+                const keyToRemove = entries[index][0];
+                delete step.properties[type][keyToRemove];
+                this.renderProperties();
+            }
+        });
+    }
+
+    setupPluginListeners(step, container) {
+        // Add plugin button
+        const addPluginBtn = container.querySelector('[data-action="add-plugin"]');
+        if (addPluginBtn) {
+            addPluginBtn.addEventListener('click', () => {
+                const pluginName = prompt('Enter plugin name:');
+                if (pluginName) {
+                    if (!step.properties.plugins) {
+                        step.properties.plugins = {};
+                    }
+                    step.properties.plugins[pluginName] = {};
+                    this.renderProperties();
+                }
+            });
+        }
+
+        // Remove plugin buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-plugin')) {
+                const pluginName = e.target.closest('.remove-plugin').dataset.plugin;
+                delete step.properties.plugins[pluginName];
+                this.renderProperties();
+            }
+        });
+
+        // Add plugin config buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.add-plugin-config')) {
+                const pluginName = e.target.closest('.add-plugin-config').dataset.plugin;
+                if (!step.properties.plugins[pluginName]) {
+                    step.properties.plugins[pluginName] = {};
+                }
+                step.properties.plugins[pluginName][''] = '';
+                this.renderProperties();
+            }
+        });
+
+        // Plugin config inputs
+        container.addEventListener('input', (e) => {
+            if (e.target.classList.contains('plugin-key') || e.target.classList.contains('plugin-value')) {
+                const pluginName = e.target.dataset.plugin;
+                const config = step.properties.plugins[pluginName];
+                
+                // Rebuild config object
+                const newConfig = {};
+                const configContainer = e.target.closest('.plugin-config');
+                const pairs = configContainer.querySelectorAll('.key-value-pair');
+                
+                pairs.forEach(pair => {
+                    const keyInput = pair.querySelector('.plugin-key');
+                    const valueInput = pair.querySelector('.plugin-value');
+                    if (keyInput.value) {
+                        newConfig[keyInput.value] = valueInput.value;
+                    }
+                });
+                
+                step.properties.plugins[pluginName] = newConfig;
+            }
+        });
+    }
+
+    setupDependenciesListeners(step, container) {
+        // Add dependency button
+        const addBtn = container.querySelector('[data-action="add-dependency"]');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                if (!step.properties.depends_on) {
+                    step.properties.depends_on = [];
+                }
+                step.properties.depends_on.push('');
+                this.renderProperties();
+            });
+        }
+
+        // Dependency selects
+        container.addEventListener('change', (e) => {
+            if (e.target.classList.contains('dependency-select')) {
+                const index = parseInt(e.target.dataset.index);
+                step.properties.depends_on[index] = e.target.value;
+            }
+        });
+
+        // Remove buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-dependency')) {
+                const index = parseInt(e.target.closest('.remove-dependency').dataset.index);
+                step.properties.depends_on.splice(index, 1);
+                this.renderProperties();
+            }
+        });
+    }
+
+    setupFieldsListeners(step, container) {
+        // Add field button
+        const addBtn = container.querySelector('[data-action="add-field"]');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                if (!step.properties.fields) {
+                    step.properties.fields = [];
+                }
+                step.properties.fields.push({ key: '', hint: '' });
+                this.renderProperties();
+            });
+        }
+
+        // Field inputs
+        container.addEventListener('input', (e) => {
+            if (e.target.classList.contains('field-key') || e.target.classList.contains('field-hint')) {
+                const index = parseInt(e.target.dataset.index);
+                const field = step.properties.fields[index];
+                
+                if (e.target.classList.contains('field-key')) {
+                    field.key = e.target.value;
+                } else {
+                    field.hint = e.target.value;
+                }
+            }
+        });
+
+        // Remove buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-field')) {
+                const index = parseInt(e.target.closest('.remove-field').dataset.index);
+                step.properties.fields.splice(index, 1);
+                this.renderProperties();
+            }
+        });
+    }
+
+    setupPropertyEventListeners() {
+        // These are handled in the form-specific listeners above
+        console.log('✅ Property event listeners configured');
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts when typing in inputs
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            switch (e.key) {
+                case 'Delete':
+                case 'Backspace':
+                    if (this.selectedStep) {
+                        e.preventDefault();
+                        this.deleteStep(this.selectedStep);
+                    }
+                    break;
+                case 'Escape':
+                    this.selectedStep = null;
+                    this.renderPipeline();
+                    this.renderProperties();
+                    break;
+            }
+        });
+        
+        console.log('✅ Keyboard shortcuts configured');
+    }
+
+    updateStepCount() {
+        const stepCount = this.steps.length;
+        // Update any step count displays
+        console.log(`📊 Pipeline has ${stepCount} steps`);
+    }
+
+    // Template and pattern loading
+    loadTemplate(templateName) {
+        console.log(`📋 Loading template: ${templateName}`);
+        
+        const templates = {
+            'test-suite': [
+                { type: 'command', label: 'Install Dependencies', command: 'npm ci' },
+                { type: 'command', label: 'Lint Code', command: 'npm run lint', depends_on: ['install'] },
+                { type: 'command', label: 'Run Tests', command: 'npm test', depends_on: ['install'] },
+                { type: 'command', label: 'Coverage Report', command: 'npm run coverage', depends_on: ['test'] }
+            ],
+            'docker-build': [
+                { type: 'command', label: 'Build Docker Image', command: 'docker build -t myapp .' },
+                { type: 'command', label: 'Push to Registry', command: 'docker push myapp:latest', depends_on: ['build'] }
+            ],
+            'deployment-pipeline': [
+                { type: 'command', label: 'Build Application', command: 'npm run build' },
+                { type: 'block', label: 'Deploy to Staging', prompt: 'Deploy to staging environment?' },
+                { type: 'command', label: 'Deploy Staging', command: 'npm run deploy:staging', depends_on: ['staging-gate'] },
+                { type: 'block', label: 'Deploy to Production', prompt: 'Deploy to production?' },
+                { type: 'command', label: 'Deploy Production', command: 'npm run deploy:prod', depends_on: ['prod-gate'] }
+            ],
+            'quality-gates': [
+                { type: 'command', label: 'Security Scan', command: 'npm audit' },
+                { type: 'command', label: 'Code Quality', command: 'sonar-scanner' },
+                { type: 'command', label: 'Performance Tests', command: 'npm run perf' }
+            ]
         };
         
-        if (fieldType === 'select') {
-            field.options = ['Option 1', 'Option 2'];
-        }
-        
-        step.properties.fields.push(field);
-        this.renderProperties();
-    }
-
-    removeField(stepId, fieldIndex) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step || !step.properties.fields) return;
-        
-        step.properties.fields.splice(fieldIndex, 1);
-        this.renderProperties();
-    }
-
-    updateField(stepId, fieldIndex, property, value) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step || !step.properties.fields || !step.properties.fields[fieldIndex]) return;
-        
-        step.properties.fields[fieldIndex][property] = value;
-        this.updateLastSaved();
-    }
-
-    // Plugin catalog functionality
-    showPluginCatalog() {
-        if (window.mainInit) {
-            window.mainInit.showPluginCatalog();
-        } else {
-            console.warn('Plugin catalog not available through main initializer');
-            alert('Plugin Catalog\n\nAvailable plugins:\n' + 
-                  Object.entries(this.pluginCatalog).map(([key, p]) => `• ${p.name}: ${p.description}`).join('\n'));
-        }
-    }
-
-    // Validation methods
-    validateStepDependencies() {
-        const issues = [];
-        const availableKeys = this.getAvailableStepKeys();
-        
-        this.steps.forEach(step => {
-            if (step.properties.depends_on && step.properties.depends_on.length > 0) {
-                step.properties.depends_on.forEach(dep => {
-                    if (!availableKeys.includes(dep)) {
-                        issues.push(`Step "${step.properties.label || step.id}" depends on non-existent step "${dep}"`);
-                    }
-                });
-            }
-        });
-        
-        return issues;
-    }
-
-    validatePipeline() {
-        const errors = [];
-        const warnings = [];
-        
-        // Check for empty pipeline
-        if (this.steps.length === 0) {
-            errors.push('Pipeline has no steps');
-        }
-        
-        // Validate each step
-        this.steps.forEach((step, index) => {
-            const stepName = step.properties.label || `Step ${index + 1} (${step.type})`;
-            
-            // Check for missing labels
-            if (!step.properties.label) {
-                warnings.push(`${stepName} has no label`);
-            }
-            
-            // Type-specific validation
-            switch (step.type) {
-                case 'command':
-                    if (!step.properties.command) {
-                        errors.push(`Command step "${stepName}" has no command`);
-                    }
-                    break;
-                case 'trigger':
-                    if (!step.properties.trigger) {
-                        errors.push(`Trigger step "${stepName}" has no pipeline specified`);
-                    }
-                    break;
-                case 'block':
-                case 'input':
-                    if (!step.properties.prompt) {
-                        warnings.push(`${step.type} step "${stepName}" has no prompt`);
-                    }
-                    break;
-            }
-            
-            // Check dependencies
-            const depIssues = this.validateStepDependencies();
-            errors.push(...depIssues);
-            
-            // Check for duplicate keys
-            const keys = this.steps.map(s => s.properties.key).filter(k => k);
-            const duplicateKeys = keys.filter((key, idx) => keys.indexOf(key) !== idx);
-            duplicateKeys.forEach(key => {
-                errors.push(`Duplicate step key: "${key}"`);
-            });
-        });
-        
-        // Show results
-        let message = 'Pipeline Validation Results:\n\n';
-        
-        if (errors.length === 0 && warnings.length === 0) {
-            message += '✅ Pipeline is valid!';
-        } else {
-            if (errors.length > 0) {
-                message += '❌ Errors:\n';
-                errors.forEach(error => {
-                    message += `  • ${error}\n`;
-                });
-            }
-            
-            if (warnings.length > 0) {
-                if (errors.length > 0) message += '\n';
-                message += '⚠️ Warnings:\n';
-                warnings.forEach(warning => {
-                    message += `  • ${warning}\n`;
-                });
-            }
-        }
-        
-        alert(message);
-        console.log('🔍 Validation complete:', { errors, warnings });
-    }
-
-    // Additional helper methods
-    getAvailableStepKeys() {
-        return this.steps
-            .filter(step => step.properties.key)
-            .map(step => step.properties.key);
-    }
-
-    findStepByKey(key) {
-        return this.steps.find(step => step.properties.key === key);
-    }
-
-    // Keyboard shortcuts handler
-    handleKeyboard(e) {
-        // Delete selected step
-        if (e.key === 'Delete' && this.selectedStep && !this.isInputFocused()) {
-            e.preventDefault();
-            this.removeStep(this.selectedStep);
-        }
-        
-        // Escape to deselect
-        if (e.key === 'Escape') {
-            this.selectStep(null);
-        }
-        
-        // Arrow keys for navigation
-        if (e.key === 'ArrowUp' && this.selectedStep && !this.isInputFocused()) {
-            e.preventDefault();
-            this.selectPreviousStep();
-        }
-        
-        if (e.key === 'ArrowDown' && this.selectedStep && !this.isInputFocused()) {
-            e.preventDefault();
-            this.selectNextStep();
-        }
-        
-        // Enter to edit selected step
-        if (e.key === 'Enter' && this.selectedStep && !this.isInputFocused()) {
-            e.preventDefault();
-            document.getElementById('properties-content')?.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        // 'A' to add new step
-        if (e.key === 'a' && !this.isInputFocused()) {
-            e.preventDefault();
-            this.addStep('command');
-        }
-        
-        // 'D' to duplicate selected step
-        if (e.key === 'd' && this.selectedStep && !this.isInputFocused()) {
-            e.preventDefault();
-            this.duplicateStep(this.selectedStep);
-        }
-        
-        // 'Ctrl+S' to save/export
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            this.exportYAML();
-        }
-        
-        // 'Ctrl+E' to load example
-        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-            e.preventDefault();
-            this.loadExample();
-        }
-    }
-
-    selectPreviousStep() {
-        const currentIndex = this.steps.findIndex(s => s.id === this.selectedStep);
-        if (currentIndex > 0) {
-            this.selectStep(this.steps[currentIndex - 1].id);
-        }
-    }
-
-    selectNextStep() {
-        const currentIndex = this.steps.findIndex(s => s.id === this.selectedStep);
-        if (currentIndex < this.steps.length - 1 && currentIndex !== -1) {
-            this.selectStep(this.steps[currentIndex + 1].id);
-        }
-    }
-
-    // Additional plugin methods
-    updatePluginSelection(pluginKey) {
-        if (!this.selectedStep) return;
-        
-        const step = this.steps.find(s => s.id === this.selectedStep);
-        if (!step || step.type !== 'plugin') return;
-        
-        this.updatePluginConfig(step.id, pluginKey);
-    }
-
-    // Utility Methods
-    updateStepCount() {
-        const countElement = document.getElementById('step-count');
-        if (countElement) {
-            countElement.textContent = this.steps.length;
-        }
-    }
-
-    updateLastSaved() {
-        const lastSavedElement = document.getElementById('last-saved');
-        if (lastSavedElement) {
-            const now = new Date();
-            lastSavedElement.textContent = now.toLocaleTimeString();
-        }
-    }
-
-    clearPipeline() {
-        if (this.steps.length === 0) return;
-        
-        if (confirm('Are you sure you want to clear the entire pipeline?')) {
+        const template = templates[templateName];
+        if (template) {
+            // Clear existing steps
             this.steps = [];
-            this.selectedStep = null;
             this.stepCounter = 0;
+            
+            // Add template steps
+            template.forEach(stepTemplate => {
+                const step = this.createStep(stepTemplate.type);
+                Object.assign(step.properties, stepTemplate);
+                step.properties.key = `step-${this.stepCounter + 1}`;
+                this.steps.push(step);
+                this.stepCounter++;
+            });
+            
             this.renderPipeline();
             this.renderProperties();
             this.updateStepCount();
-            console.log('🧹 Pipeline cleared');
+            
+            console.log(`✅ Loaded template: ${templateName} with ${template.length} steps`);
         }
     }
 
-    loadExample() {
-        if (this.steps.length > 0) {
-            if (!confirm('This will replace your current pipeline. Continue?')) {
-                return;
-            }
-        }
+    loadPattern(patternName) {
+        console.log(`🎨 Loading pattern: ${patternName}`);
+        this.loadTemplate(patternName); // For now, patterns are the same as templates
+    }
 
-        // Example pipeline
+    clearPipeline() {
+        console.log('🧹 Clearing pipeline...');
+        this.steps = [];
+        this.stepCounter = 0;
+        this.selectedStep = null;
+        this.renderPipeline();
+        this.renderProperties();
+        this.updateStepCount();
+        console.log('✅ Pipeline cleared');
+    }
+
+    loadExample() {
+        console.log('📁 Loading example pipeline...');
+        
         const exampleSteps = [
             {
                 id: 'step-1',
                 type: 'command',
                 properties: {
-                    label: '📦 Install Dependencies',
+                    label: 'Install Dependencies',
                     command: 'npm ci',
                     key: 'install',
                     agents: { queue: 'default' },
-                    env: {},
+                    env: { NODE_ENV: 'test' },
                     timeout_in_minutes: 10,
                     retry: { automatic: { limit: 2 } },
                     plugins: {},
@@ -1723,15 +1689,19 @@ if (document.readyState === 'loading') {
                 id: 'step-2',
                 type: 'command',
                 properties: {
-                    label: '🧪 Run Tests',
+                    label: 'Run Tests',
                     command: 'npm test',
                     key: 'test',
                     agents: { queue: 'default' },
                     env: { NODE_ENV: 'test' },
                     timeout_in_minutes: 15,
-                    retry: { automatic: false },
-                    plugins: {},
-                    artifact_paths: 'coverage/**/*',
+                    retry: { automatic: { limit: 1 } },
+                    plugins: {
+                        'junit-annotate': {
+                            artifacts: 'test-results/*.xml'
+                        }
+                    },
+                    artifact_paths: 'test-results/*',
                     branches: '',
                     if: '',
                     unless: '',
@@ -1745,13 +1715,13 @@ if (document.readyState === 'loading') {
                 id: 'step-3',
                 type: 'command',
                 properties: {
-                    label: '🔨 Build Application',
+                    label: 'Build Application',
                     command: 'npm run build',
                     key: 'build',
                     agents: { queue: 'default' },
                     env: { NODE_ENV: 'production' },
-                    timeout_in_minutes: 20,
-                    retry: { automatic: false },
+                    timeout_in_minutes: 10,
+                    retry: { automatic: { limit: 1 } },
                     plugins: {},
                     artifact_paths: 'dist/**/*',
                     branches: '',
@@ -1767,8 +1737,8 @@ if (document.readyState === 'loading') {
                 id: 'step-4',
                 type: 'block',
                 properties: {
-                    label: '🚀 Deploy to Production?',
-                    prompt: 'Deploy this build to production?',
+                    label: 'Deploy to Production',
+                    prompt: 'Deploy to production?',
                     key: 'deploy-gate',
                     blocked_state: 'passed',
                     fields: [],
@@ -1809,7 +1779,6 @@ if (document.readyState === 'loading') {
         this.renderPipeline();
         this.renderProperties();
         this.updateStepCount();
-        this.updateLastSaved();
         
         console.log('📋 Loaded example pipeline with complete configuration');
     }
@@ -1836,23 +1805,36 @@ if (document.readyState === 'loading') {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(yaml).then(() => {
                     alert('YAML copied to clipboard!');
+                    console.log('📋 YAML copied to clipboard');
                 });
             } else {
-                console.error('❌ Unable to export YAML');
+                console.log('📄 Generated YAML:', yaml);
+                alert('YAML generated - check console for details');
             }
         }
     }
-}
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!window.pipelineBuilder) {
-            window.pipelineBuilder = new PipelineBuilder();
+    validatePipeline() {
+        if (!window.yamlGenerator) {
+            console.error('❌ YAML generator not available for validation');
+            alert('Validation not available - YAML generator missing');
+            return;
         }
-    });
-} else {
-    if (!window.pipelineBuilder) {
-        window.pipelineBuilder = new PipelineBuilder();
+        
+        const yaml = window.yamlGenerator.generateYAML(this.steps);
+        const result = window.yamlGenerator.validateYAML(yaml);
+        
+        if (result.valid) {
+            alert('✅ Pipeline is valid!');
+            console.log('✅ Pipeline validation: PASSED');
+        } else {
+            alert('❌ Pipeline validation failed:\n\n' + result.errors.join('\n'));
+            console.error('❌ Pipeline validation: FAILED', result.errors);
+        }
+        
+        return result;
     }
 }
+
+// Export for global use
+window.PipelineBuilder = PipelineBuilder;

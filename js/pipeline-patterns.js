@@ -1,32 +1,25 @@
 // js/pipeline-patterns.js
-/**
- * Pipeline Patterns for Common Buildkite Workflows
- * Provides pre-built patterns for common CI/CD scenarios
- */
+// Pipeline patterns and templates functionality
 
 class PipelinePatterns {
     constructor() {
-        this.patterns = this.initializePatterns();
-    }
-
-    initializePatterns() {
-        return {
+        this.patterns = {
             'ci-cd-basic': {
-                name: 'Basic CI/CD',
-                description: 'Standard test, build, and deploy workflow',
+                name: 'Basic CI/CD Pipeline',
+                description: 'Standard continuous integration and deployment workflow',
                 steps: [
                     {
                         type: 'command',
                         properties: {
-                            label: 'Install Dependencies',
-                            command: 'npm install',
+                            label: '📦 Install Dependencies',
+                            command: 'npm ci',
                             key: 'install'
                         }
                     },
                     {
                         type: 'command',
                         properties: {
-                            label: 'Run Tests',
+                            label: '🧪 Run Tests',
                             command: 'npm test',
                             key: 'test',
                             depends_on: ['install']
@@ -35,209 +28,136 @@ class PipelinePatterns {
                     {
                         type: 'command',
                         properties: {
-                            label: 'Build Application',
+                            label: '🔨 Build Application',
                             command: 'npm run build',
                             key: 'build',
                             depends_on: ['test']
                         }
                     },
                     {
-                        type: 'wait'
+                        type: 'wait',
+                        properties: {
+                            label: 'Wait for approval'
+                        }
                     },
                     {
                         type: 'block',
                         properties: {
                             label: 'Deploy to Production',
-                            prompt: 'Ready to deploy to production?',
-                            key: 'deploy-gate'
+                            block: ':rocket: Deploy to Production',
+                            fields: [
+                                {
+                                    key: 'deploy_confirm',
+                                    text: 'Type DEPLOY to confirm',
+                                    required: true
+                                }
+                            ]
                         }
                     },
                     {
                         type: 'command',
                         properties: {
-                            label: 'Deploy',
-                            command: 'npm run deploy',
-                            key: 'deploy',
-                            depends_on: ['deploy-gate']
+                            label: '🚀 Deploy',
+                            command: 'npm run deploy:production',
+                            key: 'deploy'
                         }
                     }
                 ]
             },
-            
-            'docker-workflow': {
-                name: 'Docker Workflow',
-                description: 'Build and deploy Docker containers',
-                steps: [
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Build Docker Image',
-                            command: 'docker build -t my-app:${BUILDKITE_COMMIT} .',
-                            key: 'docker-build'
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Run Tests in Container',
-                            command: 'docker run --rm my-app:${BUILDKITE_COMMIT} npm test',
-                            key: 'docker-test',
-                            depends_on: ['docker-build']
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Security Scan',
-                            command: 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy my-app:${BUILDKITE_COMMIT}',
-                            key: 'security-scan',
-                            depends_on: ['docker-build']
-                        }
-                    },
-                    {
-                        type: 'wait'
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Push to Registry',
-                            command: 'docker push my-app:${BUILDKITE_COMMIT}',
-                            key: 'docker-push',
-                            if: 'build.branch == "main"'
-                        }
-                    }
-                ]
-            },
-            
             'microservices': {
-                name: 'Microservices',
+                name: 'Microservices Pipeline',
                 description: 'Build and test multiple services in parallel',
                 steps: [
                     {
-                        type: 'command',
+                        type: 'group',
                         properties: {
-                            label: 'Build Service A',
-                            command: 'cd service-a && npm install && npm run build',
-                            key: 'service-a-build'
+                            label: 'Build Services',
+                            group: 'Services',
+                            key: 'services-group',
+                            steps: [
+                                {
+                                    type: 'command',
+                                    properties: {
+                                        label: '🔨 Build Service A',
+                                        command: 'cd services/a && npm run build',
+                                        key: 'build-service-a'
+                                    }
+                                },
+                                {
+                                    type: 'command',
+                                    properties: {
+                                        label: '🔨 Build Service B',
+                                        command: 'cd services/b && npm run build',
+                                        key: 'build-service-b'
+                                    }
+                                },
+                                {
+                                    type: 'command',
+                                    properties: {
+                                        label: '🔨 Build Service C',
+                                        command: 'cd services/c && npm run build',
+                                        key: 'build-service-c'
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        type: 'wait',
+                        properties: {
+                            label: 'Wait for all services'
                         }
                     },
                     {
                         type: 'command',
                         properties: {
-                            label: 'Build Service B',
-                            command: 'cd service-b && npm install && npm run build',
-                            key: 'service-b-build'
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Build Service C',
-                            command: 'cd service-c && npm install && npm run build',
-                            key: 'service-c-build'
-                        }
-                    },
-                    {
-                        type: 'wait'
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Integration Tests',
+                            label: '🧪 Integration Tests',
                             command: 'npm run test:integration',
-                            key: 'integration-test',
-                            depends_on: ['service-a-build', 'service-b-build', 'service-c-build']
+                            key: 'integration-tests'
                         }
                     }
                 ]
             },
-            
             'matrix-testing': {
-                name: 'Matrix Testing',
+                name: 'Matrix Testing Pipeline',
                 description: 'Test across multiple environments and versions',
                 steps: [
                     {
                         type: 'command',
                         properties: {
-                            label: 'Test Node ${NODE_VERSION} on ${OS}',
+                            label: '🧪 Matrix Tests',
                             command: 'npm test',
                             key: 'matrix-test',
                             matrix: {
                                 setup: {
-                                    NODE_VERSION: ['16', '18', '20'],
-                                    OS: ['ubuntu', 'windows', 'macos']
-                                }
+                                    os: ['ubuntu-latest', 'windows-latest', 'macos-latest'],
+                                    node: ['16', '18', '20'],
+                                    database: ['postgres', 'mysql', 'mongodb']
+                                },
+                                adjustments: [
+                                    {
+                                        with: {
+                                            os: 'windows-latest',
+                                            node: '16'
+                                        },
+                                        soft_fail: true
+                                    }
+                                ]
                             }
                         }
                     },
                     {
-                        type: 'wait'
-                    },
-                    {
-                        type: 'command',
+                        type: 'wait',
                         properties: {
-                            label: 'Collect Test Results',
-                            command: 'npm run test:report',
-                            key: 'test-report'
-                        }
-                    }
-                ]
-            },
-            
-            'staged-deployment': {
-                name: 'Staged Deployment',
-                description: 'Deploy through multiple environments with approvals',
-                steps: [
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Build Application',
-                            command: 'npm run build',
-                            key: 'build'
+                            label: 'Wait for matrix completion'
                         }
                     },
                     {
                         type: 'command',
                         properties: {
-                            label: 'Deploy to Staging',
-                            command: 'npm run deploy:staging',
-                            key: 'deploy-staging',
-                            depends_on: ['build']
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Run Smoke Tests',
-                            command: 'npm run test:smoke',
-                            key: 'smoke-test',
-                            depends_on: ['deploy-staging']
-                        }
-                    },
-                    {
-                        type: 'block',
-                        properties: {
-                            label: 'Approve Production Deploy',
-                            prompt: 'Staging tests passed. Deploy to production?',
-                            key: 'prod-approval'
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Deploy to Production',
-                            command: 'npm run deploy:production',
-                            key: 'deploy-production',
-                            depends_on: ['prod-approval']
-                        }
-                    },
-                    {
-                        type: 'command',
-                        properties: {
-                            label: 'Post-Deploy Verification',
-                            command: 'npm run verify:production',
-                            key: 'verify-production',
-                            depends_on: ['deploy-production']
+                            label: '📊 Coverage Report',
+                            command: 'npm run coverage:report',
+                            key: 'coverage'
                         }
                     }
                 ]
@@ -245,61 +165,51 @@ class PipelinePatterns {
         };
     }
 
-    applyPattern(patternKey) {
-        console.log(`Applying pattern: ${patternKey}`);
-        
+    getPattern(patternKey) {
+        return this.patterns[patternKey];
+    }
+
+    getAllPatterns() {
+        return Object.entries(this.patterns).map(([key, pattern]) => ({
+            key,
+            name: pattern.name,
+            description: pattern.description,
+            stepCount: pattern.steps.length
+        }));
+    }
+
+    applyPattern(patternKey, pipelineBuilder) {
         const pattern = this.patterns[patternKey];
         if (!pattern) {
-            console.error(`Pattern not found: ${patternKey}`);
-            alert(`Pattern "${patternKey}" not found!`);
-            return;
+            console.error('Pattern not found:', patternKey);
+            return false;
         }
 
-        if (!window.pipelineBuilder) {
-            console.error('Pipeline builder not available');
-            alert('Pipeline builder not available!');
-            return;
+        try {
+            // Clear existing pipeline
+            pipelineBuilder.steps = [];
+            pipelineBuilder.stepCounter = 0;
+
+            // Add pattern steps
+            pattern.steps.forEach(stepData => {
+                const step = {
+                    id: `step-${++pipelineBuilder.stepCounter}`,
+                    type: stepData.type,
+                    properties: JSON.parse(JSON.stringify(stepData.properties))
+                };
+                pipelineBuilder.steps.push(step);
+            });
+
+            // Refresh UI
+            pipelineBuilder.renderPipeline();
+            pipelineBuilder.updateStepCount();
+
+            console.log(`✅ Applied pattern: ${pattern.name}`);
+            return true;
+        } catch (error) {
+            console.error('Error applying pattern:', error);
+            return false;
         }
-
-        // Clear existing steps
-        const shouldClear = window.pipelineBuilder.steps.length === 0 || 
-                           confirm('This will replace your current pipeline. Continue?');
-        
-        if (!shouldClear) {
-            return;
-        }
-
-        // Clear current pipeline
-        window.pipelineBuilder.steps = [];
-
-        // Add pattern steps
-        pattern.steps.forEach(stepTemplate => {
-            const step = window.pipelineBuilder.createStep(stepTemplate.type);
-            
-            // Copy all properties from template
-            Object.assign(step.properties, stepTemplate.properties);
-            
-            window.pipelineBuilder.steps.push(step);
-        });
-
-        // Re-render pipeline
-        window.pipelineBuilder.renderPipeline();
-        
-        console.log(`✅ Applied pattern: ${pattern.name}`);
-        alert(`Applied pattern: ${pattern.name}\n\n${pattern.description}`);
-    }
-
-    getPatternDescription(patternKey) {
-        const pattern = this.patterns[patternKey];
-        return pattern ? pattern.description : 'Pattern not found';
-    }
-
-    listPatterns() {
-        return Object.keys(this.patterns).map(key => ({
-            key,
-            name: this.patterns[key].name,
-            description: this.patterns[key].description
-        }));
     }
 }
 
