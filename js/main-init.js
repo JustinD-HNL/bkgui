@@ -363,8 +363,12 @@ class MainInitializer {
             switch (methodName) {
                 case 'showPluginCatalog':
                     window.pipelineBuilder.showPluginCatalog = function() {
-                        console.log('🔌 Plugin catalog functionality not available');
-                        alert('Plugin catalog functionality coming soon!');
+                        console.log('🔌 Opening fallback plugin catalog...');
+                        const catalog = this.pluginCatalog || window.pipelineBuilder.pluginCatalog || {};
+                        const pluginList = Object.entries(catalog)
+                            .map(([key, plugin]) => `${plugin.name}: ${plugin.description}`)
+                            .join('\n');
+                        alert(pluginList ? `Available Plugins:\n\n${pluginList}` : 'No plugins available');
                     };
                     break;
                     
@@ -954,8 +958,13 @@ class MainInitializer {
                 case 'plugin-catalog':
                     if (window.pipelineBuilder && window.pipelineBuilder.showPluginCatalog) {
                         window.pipelineBuilder.showPluginCatalog();
+                    } else if (window.pipelineBuilder && window.pipelineBuilder.pluginCatalog) {
+                        const pluginList = Object.entries(window.pipelineBuilder.pluginCatalog)
+                            .map(([key, plugin]) => `${plugin.name}: ${plugin.description}`)
+                            .join('\n');
+                        alert(pluginList ? `Available Plugins:\n\n${pluginList}` : 'No plugins available');
                     } else {
-                        alert('Plugin catalog functionality coming soon!');
+                        alert('No plugin catalog available');
                     }
                     break;
                     

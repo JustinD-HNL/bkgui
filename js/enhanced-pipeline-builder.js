@@ -1290,7 +1290,68 @@ class PipelineBuilder {
 
     showPluginCatalog() {
         console.log('🔌 Opening plugin catalog...');
-        alert('Plugin catalog functionality coming soon!');
+        const modal = document.getElementById('plugin-catalog-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.renderPluginCatalog();
+        } else {
+            const catalog = this.pluginCatalog || {};
+            const pluginList = Object.entries(catalog)
+                .map(([key, plugin]) => `${plugin.name}: ${plugin.description}`)
+                .join('\n');
+            alert(pluginList ? `Available Plugins:\n\n${pluginList}` : 'No plugins available');
+        }
+    }
+
+    renderPluginCatalog() {
+        const container = document.getElementById('plugin-catalog-content');
+        if (!container) return;
+
+        const pluginHtml = Object.entries(this.pluginCatalog).map(([key, plugin]) => `
+            <div class="plugin-card">
+                <h4>${plugin.name}</h4>
+                <p>${plugin.description}</p>
+                <div class="plugin-config">
+                    ${Object.entries(plugin.config || {}).map(([configKey, config]) =>
+                        `<span class="config-item">${config.label}: ${config.type}</span>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-primary btn-small" onclick="pipelineBuilder.addPluginToSelectedStep('${key}')">
+                    Add to Step
+                </button>
+            </div>
+        `).join('');
+
+        container.innerHTML = pluginHtml;
+    }
+
+    addPluginToSelectedStep(pluginKey) {
+        if (this.selectedStep) {
+            this.addQuickPlugin(this.selectedStep, pluginKey);
+            const modal = document.getElementById('plugin-catalog-modal');
+            if (modal) modal.classList.add('hidden');
+        } else {
+            alert('Please select a step first');
+        }
+    }
+
+    addQuickPlugin(stepId, pluginKey) {
+        const step = this.steps.find(s => s.id === stepId);
+        const plugin = this.pluginCatalog[pluginKey];
+
+        if (!step || !plugin) return;
+
+        if (!step.properties.plugins) step.properties.plugins = {};
+
+        const defaultConfig = {};
+        Object.entries(plugin.config || {}).forEach(([key, config]) => {
+            if (config.default !== undefined) {
+                defaultConfig[key] = config.default;
+            }
+        });
+
+        step.properties.plugins[pluginKey] = defaultConfig;
+        this.renderProperties();
     }
 
     // Utility methods
