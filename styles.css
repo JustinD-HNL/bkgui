@@ -652,10 +652,12 @@ body {
     gap: 0.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
+    pointer-events: none; /* hidden actions should not block clicks */
 }
 
 .pipeline-step:hover .step-actions {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .step-action {
@@ -1489,6 +1491,7 @@ kbd {
     
     .step-actions {
         opacity: 1; /* Always show on mobile */
+        pointer-events: auto;
     }
 }
 
@@ -2623,10 +2626,12 @@ kbd {
     right: 0.25rem;
     z-index: 10;
     flex-shrink: 0;
+    pointer-events: none;
 }
 
 .pipeline-step:hover .step-actions {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .step-action {
@@ -3031,6 +3036,7 @@ kbd {
         opacity: 1; /* Always show on mobile */
         gap: 0.125rem;
         margin-left: 0.5rem;
+        pointer-events: auto;
     }
     
     .step-action {

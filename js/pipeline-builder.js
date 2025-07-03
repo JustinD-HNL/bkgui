@@ -2461,13 +2461,28 @@ class PipelineBuilder {
 
     showValidationResults() {
         const issues = this.validatePipeline();
-        
-        if (issues.length === 0) {
-            alert('✅ Pipeline validation passed! No issues found.');
-        } else {
-            alert(`❌ Pipeline validation found ${issues.length} issue(s):\n\n${issues.join('\n')}`);
+        const modal = document.getElementById('validation-modal');
+        const container = document.getElementById('validation-results');
+
+        if (!modal || !container) {
+            console.error('Validation modal elements missing');
+            return;
         }
-        
+
+        let html = '';
+        if (issues.length === 0) {
+            html = `<div class="validation-success">✅ Pipeline validation passed! No issues found.</div>`;
+        } else {
+            html = `
+                <div class="validation-errors">
+                    <strong>${issues.length} issue(s) found:</strong>
+                    <ul>${issues.map(i => `<li>${i}</li>`).join('')}</ul>
+                </div>`;
+        }
+
+        container.innerHTML = html;
+        modal.classList.remove('hidden');
+
         console.log('🔍 Pipeline validation:', issues.length === 0 ? 'PASSED' : 'FAILED', issues);
     }
 
