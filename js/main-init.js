@@ -1027,7 +1027,7 @@ class MainInitializer {
             if (window.pipelineBuilder && window.pipelineBuilder.addPluginStep) {
                 window.pipelineBuilder.addPluginStep(pluginKey);
             } else {
-                alert(`Adding ${pluginKey} plugin - functionality coming soon!`);
+                console.warn(`Add plugin functionality for ${pluginKey} not available`);
             }
         });
         
