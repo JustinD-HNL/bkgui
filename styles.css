@@ -2574,7 +2574,7 @@ kbd {
     align-items: center;
     margin-bottom: 0.75rem;
     position: relative; /* FIXED: Establish positioning context */
-    padding-right: 3rem; /* space for action buttons */
+    padding-right: 12rem; /* give room for action buttons */
 }
 
 .step-info {

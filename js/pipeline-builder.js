@@ -1897,20 +1897,7 @@ class PipelineBuilder {
             modal.classList.remove('hidden');
             this.initializeMatrixBuilder(stepId);
         } else {
-            // Fallback: show input prompt
-            const step = this.steps.find(s => s.id === stepId);
-            if (step) {
-                const matrixString = prompt('Enter matrix configuration (JSON):', JSON.stringify(step.properties.matrix || {}, null, 2));
-                if (matrixString) {
-                    try {
-                        step.properties.matrix = JSON.parse(matrixString);
-                        this.renderProperties();
-                        this.updateLastSaved();
-                    } catch (e) {
-                        alert('Invalid JSON format');
-                    }
-                }
-            }
+            console.warn('Matrix builder modal not found');
         }
     }
 
@@ -2060,11 +2047,7 @@ class PipelineBuilder {
             modal.classList.remove('hidden');
             this.renderPluginCatalog();
         } else {
-            // Fallback: show available plugins
-            const pluginList = Object.entries(this.pluginCatalog)
-                .map(([key, plugin]) => `${plugin.name}: ${plugin.description}`)
-                .join('\n');
-            alert(`Available Plugins:\n\n${pluginList}`);
+            console.warn('Plugin catalog modal not found');
         }
     }
 
@@ -2093,11 +2076,10 @@ class PipelineBuilder {
     addPluginToSelectedStep(pluginKey) {
         if (this.selectedStep) {
             this.addQuickPlugin(this.selectedStep, pluginKey);
-            // Close modal
             const modal = document.getElementById('plugin-catalog-modal');
             if (modal) modal.classList.add('hidden');
         } else {
-            alert('Please select a step first');
+            console.warn('Select a step before adding a plugin');
         }
     }
 
@@ -2115,7 +2097,7 @@ class PipelineBuilder {
             container.innerHTML = html;
             modal.classList.remove('hidden');
         } else {
-            alert('Step templates modal not available');
+            console.warn('Step templates modal not found');
         }
     }
 
