@@ -1,9 +1,9 @@
 // js/app.js
-// Main Application Initialization with ALL functionality
+// Main Application Event Handlers and UI Setup
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Starting Buildkite Pipeline Builder...');
+    console.log('🚀 Starting Buildkite Pipeline Builder UI setup...');
     
     // Note: Pipeline builder is now initialized by main-init.js
     // This file focuses on specific UI event handlers
@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupModalHandlers();
     setupValidationButton();
     
-    console.log('✅ Buildkite Pipeline Builder ready with ALL features!');
+    console.log('✅ Buildkite Pipeline Builder UI ready!');
 });
 
 function setupHeaderButtons() {
@@ -107,11 +107,10 @@ function setupQuickActionButtons() {
 function handleStepTemplates() {
     if (window.mainInitializer && window.mainInitializer.showStepTemplates) {
         window.mainInitializer.showStepTemplates();
-    } else if (typeof showTemplates === 'function') {
-        showTemplates();
+    } else if (typeof showModal === 'function') {
+        showModal('step-templates-modal');
     } else {
         console.warn('Step templates functionality not available');
-        showModal('step-templates-modal');
     }
 }
 
@@ -120,9 +119,10 @@ function handlePluginCatalog() {
         window.mainInitializer.showPluginCatalog();
     } else if (window.pipelineBuilder && window.pipelineBuilder.showPluginCatalog) {
         window.pipelineBuilder.showPluginCatalog();
+    } else if (typeof showModal === 'function') {
+        showModal('plugin-catalog-modal');
     } else {
         console.warn('Plugin catalog functionality not available');
-        showModal('plugin-catalog-modal');
     }
 }
 
@@ -139,6 +139,8 @@ function handleMatrixBuilder() {
 function handleDependencyGraph() {
     if (window.mainInitializer && window.mainInitializer.showDependencyManager) {
         window.mainInitializer.showDependencyManager();
+    } else if (window.dependencyGraph && window.dependencyGraph.showDependencyGraph) {
+        window.dependencyGraph.showDependencyGraph();
     } else if (typeof showModal === 'function') {
         showModal('dependency-graph-modal');
     } else {
@@ -159,8 +161,6 @@ function handlePipelineValidation() {
         window.mainInitializer.validatePipeline();
     } else if (window.pipelineBuilder && window.pipelineBuilder.validatePipeline) {
         window.pipelineBuilder.validatePipeline();
-    } else if (typeof validatePipeline === 'function') {
-        validatePipeline();
     } else {
         console.warn('Pipeline validation functionality not available');
         alert('Pipeline validation is not available');
@@ -168,8 +168,16 @@ function handlePipelineValidation() {
 }
 
 function handlePipelinePreview() {
-    if (typeof previewPipeline === 'function') {
-        previewPipeline();
+    if (window.pipelineBuilder && window.pipelineBuilder.exportYAML) {
+        // Generate YAML and show in modal
+        const yaml = window.pipelineBuilder.generateYAML();
+        const yamlOutput = document.getElementById('yaml-output');
+        if (yamlOutput) {
+            yamlOutput.value = yaml;
+        }
+        if (typeof showModal === 'function') {
+            showModal('yaml-preview-modal');
+        }
     } else {
         console.warn('Pipeline preview functionality not available');
         alert('Pipeline preview is not available');
@@ -193,8 +201,8 @@ function setupTemplateHandlers() {
         const patternItem = e.target.closest('[data-pattern]');
         if (patternItem) {
             const patternKey = patternItem.dataset.pattern;
-            if (typeof loadPattern === 'function') {
-                loadPattern(patternKey);
+            if (window.loadPattern && typeof window.loadPattern === 'function') {
+                window.loadPattern(patternKey);
             } else {
                 console.warn(`Pattern loading not available: ${patternKey}`);
             }
@@ -238,6 +246,39 @@ function setupCommandPalette() {
     const input = palette.querySelector('.command-palette-input');
     const results = palette.querySelector('.command-palette-results');
     
+    // Helper functions for safe method calls
+    const addStepSafely = (type) => {
+        if (window.pipelineBuilder && window.pipelineBuilder.addStep) {
+            window.pipelineBuilder.addStep(type);
+        } else {
+            console.warn('Add step functionality not available');
+        }
+    };
+    
+    const exportYAMLSafely = () => {
+        if (window.pipelineBuilder && window.pipelineBuilder.exportYAML) {
+            window.pipelineBuilder.exportYAML();
+        } else {
+            console.warn('Export YAML functionality not available');
+        }
+    };
+    
+    const clearPipelineSafely = () => {
+        if (window.pipelineBuilder && window.pipelineBuilder.clearPipeline) {
+            window.pipelineBuilder.clearPipeline();
+        } else {
+            console.warn('Clear pipeline functionality not available');
+        }
+    };
+    
+    const loadExampleSafely = () => {
+        if (window.pipelineBuilder && window.pipelineBuilder.loadExample) {
+            window.pipelineBuilder.loadExample();
+        } else {
+            console.warn('Load example functionality not available');
+        }
+    };
+    
     // Command list - FIXED: Use proper method references
     const commands = [
         { name: 'Add Command Step', icon: 'fa-terminal', action: () => addStepSafely('command') },
@@ -269,129 +310,130 @@ function setupCommandPalette() {
         selectedIndex = 0;
         
         results.innerHTML = filtered.map((cmd, index) => `
-            <div class="command-item ${index === selectedIndex ? 'selected' : ''}" data-index="${index}">
+            <div class="command-item ${index === selectedIndex ? 'active' : ''}" data-index="${index}">
                 <i class="fas ${cmd.icon}"></i>
                 <span>${cmd.name}</span>
             </div>
         `).join('');
         
-        // Add click handlers
+        // Click handlers
         results.querySelectorAll('.command-item').forEach((item, index) => {
             item.addEventListener('click', () => {
-                const command = filtered[index];
-                if (command && command.action) {
-                    command.action();
-                    hideCommandPalette();
-                }
+                filtered[index].action();
+                closeCommandPalette();
             });
         });
     }
     
-    // Show/hide command palette
+    // Show command palette
     function showCommandPalette() {
         palette.classList.remove('hidden');
+        input.value = '';
         input.focus();
-        input.select();
         updateResults('');
     }
     
-    function hideCommandPalette() {
+    // Close command palette
+    function closeCommandPalette() {
         palette.classList.add('hidden');
     }
     
     // Event handlers
     if (input) {
-        input.addEventListener('input', (e) => {
-            updateResults(e.target.value);
-        });
+        input.addEventListener('input', (e) => updateResults(e.target.value));
         
         input.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideCommandPalette();
-            } else if (e.key === 'Enter') {
-                const selected = results.querySelector('.command-item.selected');
-                if (selected) {
-                    selected.click();
-                }
+            const items = results.querySelectorAll('.command-item');
+            
+            switch(e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                    updateResults(input.value);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateResults(input.value);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    const filtered = commands.filter(cmd => 
+                        cmd.name.toLowerCase().includes(input.value.toLowerCase())
+                    );
+                    if (filtered[selectedIndex]) {
+                        filtered[selectedIndex].action();
+                        closeCommandPalette();
+                    }
+                    break;
+                case 'Escape':
+                    closeCommandPalette();
+                    break;
             }
         });
     }
     
-    // Keyboard shortcut
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-            e.preventDefault();
-            showCommandPalette();
-        }
-        
-        if (e.key === 'Escape') {
-            hideCommandPalette();
-        }
-    });
+    // Close button
+    const closeBtn = palette.querySelector('.command-palette-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeCommandPalette);
+    }
+    
+    // Make functions globally available
+    window.showCommandPalette = showCommandPalette;
+    window.closeCommandPalette = closeCommandPalette;
     
     console.log('✅ Command palette configured');
 }
 
-// Safe method wrappers
-function addStepSafely(type) {
-    if (window.pipelineBuilder && window.pipelineBuilder.addStep) {
-        window.pipelineBuilder.addStep(type);
-    } else {
-        console.warn(`Cannot add ${type} step - pipeline builder not available`);
-    }
-}
-
-function exportYAMLSafely() {
-    if (window.pipelineBuilder && window.pipelineBuilder.exportYAML) {
-        window.pipelineBuilder.exportYAML();
-    } else {
-        console.warn('Export YAML not available');
-    }
-}
-
-function clearPipelineSafely() {
-    if (window.pipelineBuilder && window.pipelineBuilder.clearPipeline) {
-        window.pipelineBuilder.clearPipeline();
-    } else {
-        console.warn('Clear pipeline not available');
-    }
-}
-
-function loadExampleSafely() {
-    if (window.pipelineBuilder && window.pipelineBuilder.loadExample) {
-        window.pipelineBuilder.loadExample();
-    } else {
-        console.warn('Load example not available');
-    }
-}
-
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
-        // Command palette
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-            e.preventDefault();
-            const palette = document.getElementById('command-palette');
-            if (palette) {
-                palette.classList.toggle('hidden');
-            }
-        }
+        // Check for Ctrl/Cmd key
+        const isCtrlCmd = e.ctrlKey || e.metaKey;
         
-        // Quick actions
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 'e':
-                    e.preventDefault();
-                    exportYAMLSafely();
-                    break;
-                case 'r':
-                    e.preventDefault();
-                    clearPipelineSafely();
-                    break;
-                case 'l':
-                    e.preventDefault();
-                    loadExampleSafely();
-                    break;
-            }
+        if (!isCtrlCmd) return;
+        
+        switch(e.key.toLowerCase()) {
+            case 'k':
+                e.preventDefault();
+                if (window.showCommandPalette) {
+                    window.showCommandPalette();
+                }
+                break;
+            case 's':
+                e.preventDefault();
+                if (window.pipelineBuilder && window.pipelineBuilder.exportYAML) {
+                    window.pipelineBuilder.exportYAML();
+                }
+                break;
+            case 'n':
+                e.preventDefault();
+                if (window.pipelineBuilder && window.pipelineBuilder.clearPipeline) {
+                    window.pipelineBuilder.clearPipeline();
+                }
+                break;
+            case 'e':
+                e.preventDefault();
+                if (window.pipelineBuilder && window.pipelineBuilder.loadExample) {
+                    window.pipelineBuilder.loadExample();
+                }
+                break;
+            case 'p':
+                e.preventDefault();
+                handlePluginCatalog();
+                break;
+            case 'm':
+                e.preventDefault();
+                handleMatrixBuilder();
+                break;
+            case 't':
+                e.preventDefault();
+                handleStepTemplates();
+                break;
+            case 'g':
+                e.preventDefault();
+                handleDependencyGraph();
+                break;
         }
     });
     
@@ -399,67 +441,49 @@ function setupKeyboardShortcuts() {
 }
 
 function setupModalHandlers() {
-    // Close modal functionality
-    document.addEventListener('click', (e) => {
-        // Close button
-        if (e.target.closest('.modal-close') || e.target.closest('[data-close-modal]')) {
-            const modal = e.target.closest('.modal');
+    // Show modal helper function
+    function showModal(modalId) {
+        if (window.showModal) {
+            window.showModal(modalId);
+        } else {
+            const modal = document.getElementById(modalId);
             if (modal) {
-                modal.classList.add('hidden');
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
             }
         }
-        
-        // Backdrop click
-        if (e.target.classList.contains('modal')) {
-            e.target.classList.add('hidden');
-        }
-    });
+    }
     
-    // Escape key to close modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
+    // Close modal helper function  
+    function closeModal(modalId) {
+        if (window.closeModal) {
+            window.closeModal(modalId);
+        } else {
+            const modal = document.getElementById(modalId);
+            if (modal) {
                 modal.classList.add('hidden');
-            });
+                document.body.style.overflow = '';
+            }
         }
-    });
+    }
+    
+    // Make globally available if not already
+    if (!window.showModal) {
+        window.showModal = showModal;
+    }
+    if (!window.closeModal) {
+        window.closeModal = closeModal;
+    }
     
     console.log('✅ Modal handlers configured');
 }
 
 function setupValidationButton() {
-    const validateBtn = document.getElementById('validate-pipeline');
+    // Already handled by quick action buttons, but ensure validation button works
+    const validateBtn = document.querySelector('[onclick*="validatePipeline"]');
     if (validateBtn) {
-        validateBtn.addEventListener('click', () => {
-            handlePipelineValidation();
-        });
+        validateBtn.onclick = () => handlePipelineValidation();
     }
     
     console.log('✅ Validation button configured');
 }
-
-// Helper functions that might be called by other scripts
-function showModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.remove('hidden');
-        console.log(`📋 Opened modal: ${modalId}`);
-    } else {
-        console.warn(`Modal not found: ${modalId}`);
-    }
-}
-
-function hideModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.classList.add('hidden');
-        console.log(`📋 Closed modal: ${modalId}`);
-    }
-}
-
-// Global helper functions for backward compatibility
-window.showModal = showModal;
-window.hideModal = hideModal;
-window.showTemplates = handleStepTemplates;
-window.validatePipeline = handlePipelineValidation;
-window.previewPipeline = handlePipelinePreview;

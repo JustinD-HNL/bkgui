@@ -1,7 +1,7 @@
-// js/enhanced-pipeline-builder.js - COMPLETE VERSION with all features
+// js/enhanced-pipeline-builder.js
+// Complete Enhanced Pipeline Builder with all advanced features
 /**
- * Enhanced Pipeline Builder - Complete functionality
- * FIXES: Proper event handling while maintaining ALL original features
+ * Enhanced Pipeline Builder - Extends base with matrix builds, advanced configs, validation
  */
 
 class EnhancedPipelineBuilder extends PipelineBuilder {
@@ -42,7 +42,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         console.log('✅ Enhanced Pipeline Builder initialized with complete features');
     }
 
-    // Enhanced property form generation with ALL sections
+    // Override base property form generation with enhanced sections
     generatePropertyForm(step) {
         let formHtml = '';
         
@@ -112,6 +112,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                         <input type="checkbox" id="continue_on_failure" name="continue_on_failure" 
                                ${step.properties.continue_on_failure ? 'checked' : ''} />
                         <label for="continue_on_failure">Continue on failure</label>
+                        <small>Allow pipeline to continue even if previous steps failed</small>
                     </div>
                 `;
                 break;
@@ -119,18 +120,19 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 basicFields = `
                     <div class="property-group">
                         <label for="label">Block Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deploy to Production?" />
+                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deploy to Production" />
                     </div>
                     <div class="property-group">
                         <label for="prompt">Prompt Message</label>
-                        <input type="text" name="prompt" value="${step.properties.prompt || ''}" placeholder="Please confirm deployment" />
+                        <input type="text" name="prompt" value="${step.properties.prompt || ''}" placeholder="Deploy to production?" />
+                        <small>Question shown to users</small>
                     </div>
                     <div class="property-group">
                         <label for="blocked_state">Blocked State</label>
                         <select name="blocked_state">
-                            <option value="passed" ${step.properties.blocked_state === 'passed' ? 'selected' : ''}>Passed</option>
-                            <option value="failed" ${step.properties.blocked_state === 'failed' ? 'selected' : ''}>Failed</option>
-                            <option value="running" ${step.properties.blocked_state === 'running' ? 'selected' : ''}>Running</option>
+                            <option value="passed" ${step.properties.blocked_state === 'passed' ? 'selected' : ''}>Passed (green)</option>
+                            <option value="failed" ${step.properties.blocked_state === 'failed' ? 'selected' : ''}>Failed (red)</option>
+                            <option value="running" ${step.properties.blocked_state === 'running' ? 'selected' : ''}>Running (yellow)</option>
                         </select>
                     </div>
                     ${this.generateFieldBuilder(step)}
@@ -140,11 +142,11 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 basicFields = `
                     <div class="property-group">
                         <label for="label">Input Label</label>
-                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Deployment Parameters" />
+                        <input type="text" name="label" value="${step.properties.label || ''}" placeholder="e.g., Release Version" />
                     </div>
                     <div class="property-group">
-                        <label for="prompt">Prompt Message</label>
-                        <input type="text" name="prompt" value="${step.properties.prompt || ''}" placeholder="Please provide input" />
+                        <label for="prompt">Input Prompt</label>
+                        <textarea name="prompt" rows="2" placeholder="Please enter the release version">${step.properties.prompt || ''}</textarea>
                     </div>
                     ${this.generateFieldBuilder(step)}
                 `;
@@ -157,12 +159,13 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     </div>
                     <div class="property-group">
                         <label for="trigger">Pipeline to Trigger</label>
-                        <input type="text" name="trigger" value="${step.properties.trigger || ''}" placeholder="deploy-pipeline" />
+                        <input type="text" name="trigger" value="${step.properties.trigger || ''}" placeholder="my-deploy-pipeline" />
                         <small>Pipeline slug to trigger</small>
                     </div>
                     <div class="property-checkbox">
                         <input type="checkbox" id="async" name="async" ${step.properties.async ? 'checked' : ''} />
-                        <label for="async">Run asynchronously</label>
+                        <label for="async">Asynchronous trigger</label>
+                        <small>Don't wait for triggered pipeline to complete</small>
                     </div>
                     ${this.generateTriggerBuildSection(step)}
                 `;
@@ -170,13 +173,9 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
             case 'annotation':
                 basicFields = `
                     <div class="property-group">
-                        <label for="body">Annotation Text</label>
-                        <textarea name="body" rows="4" placeholder="Markdown supported...">${step.properties.body || ''}</textarea>
-                        <small>Supports Markdown formatting</small>
-                    </div>
-                    <div class="property-group">
-                        <label for="context">Context</label>
-                        <input type="text" name="context" value="${step.properties.context || 'default'}" placeholder="default" />
+                        <label for="body">Annotation Body</label>
+                        <textarea name="body" rows="6" placeholder="## Build Results&#10;✅ All tests passed!">${step.properties.body || ''}</textarea>
+                        <small>Markdown supported</small>
                     </div>
                     <div class="property-group">
                         <label for="style">Style</label>
@@ -240,69 +239,48 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     </div>
                     <div class="property-checkbox">
                         <input type="checkbox" id="replace" name="replace" ${step.properties.replace ? 'checked' : ''} />
-                        <label for="replace">Replace Pipeline (vs append)</label>
+                        <label for="replace">Replace current pipeline</label>
+                        <small>Replace the entire pipeline with the uploaded file</small>
                     </div>
                 `;
                 break;
         }
-
+        
         return `
             <div class="property-section">
-                <h4><i class="fas fa-cog"></i> Basic Configuration</h4>
+                <h4><i class="fas fa-info-circle"></i> Basic Properties</h4>
                 ${basicFields}
             </div>
         `;
     }
 
     generateExecutionEnvironmentSection(step) {
-        if (step.type === 'wait' || step.type === 'annotation') {
-            return '';
-        }
-
         const props = step.properties;
         
         return `
             <div class="property-section">
                 <h4><i class="fas fa-server"></i> Execution Environment</h4>
                 
-                <div class="property-group">
-                    <label for="agents">Agent Targeting (JSON)</label>
-                    <textarea name="agents" placeholder='{"queue": "default", "os": "linux"}' rows="3">${JSON.stringify(props.agents || {}, null, 2)}</textarea>
-                    <small>JSON object specifying agent requirements</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="env">Environment Variables (JSON)</label>
-                    <textarea name="env" placeholder='{"NODE_ENV": "test", "DEBUG": "true"}' rows="4">${JSON.stringify(props.env || {}, null, 2)}</textarea>
-                    <small>JSON object of environment variables</small>
-                </div>
-                
-                ${step.type === 'command' || step.type === 'plugin' ? `
-                    <div class="property-group">
-                        <label for="timeout_in_minutes">Timeout (minutes)</label>
-                        <input type="number" name="timeout_in_minutes" value="${props.timeout_in_minutes || 60}" 
-                               placeholder="60" min="1" max="1440" />
-                        <small>Maximum execution time in minutes</small>
+                <div class="property-subsection">
+                    <h5>Agent Targeting</h5>
+                    <div class="agent-builder">
+                        ${this.generateAgentBuilder(props.agents || {})}
                     </div>
-                    
+                </div>
+                
+                <div class="property-subsection">
+                    <h5>Environment Variables</h5>
+                    <div class="env-builder">
+                        ${this.generateEnvBuilder(props.env || {})}
+                    </div>
+                </div>
+                
+                ${step.type === 'command' ? `
                     <div class="property-group">
                         <label for="parallelism">Parallelism</label>
                         <input type="number" name="parallelism" value="${props.parallelism || 1}" 
-                               placeholder="1" min="1" max="100" />
+                               min="1" max="100" placeholder="1" />
                         <small>Number of parallel jobs to run</small>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label for="concurrency">Concurrency Group</label>
-                        <input type="text" name="concurrency" value="${props.concurrency || ''}" 
-                               placeholder="deployment" />
-                        <small>Limit concurrent builds in this group</small>
-                    </div>
-                    
-                    <div class="property-group">
-                        <label for="concurrency_limit">Concurrency Limit</label>
-                        <input type="number" name="concurrency_limit" value="${props.concurrency_limit || 1}" 
-                               placeholder="1" min="1" max="100" />
                     </div>
                 ` : ''}
             </div>
@@ -317,132 +295,116 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                 <h4><i class="fas fa-code-branch"></i> Conditional Execution</h4>
                 
                 <div class="property-group">
+                    <label for="if">If Expression</label>
+                    <input type="text" name="if" value="${props.if || ''}" 
+                           placeholder="build.branch == 'main' && build.tag != null" />
+                    <small>JavaScript expression that must evaluate to true</small>
+                </div>
+                
+                <div class="property-group">
+                    <label for="unless">Unless Expression</label>
+                    <input type="text" name="unless" value="${props.unless || ''}" 
+                           placeholder="build.pull_request.id != null" />
+                    <small>Skip if this expression evaluates to true</small>
+                </div>
+                
+                <div class="property-group">
                     <label for="branches">Branch Pattern</label>
                     <input type="text" name="branches" value="${props.branches || ''}" 
-                           placeholder="main develop feature/*" />
-                    <small>Space-separated branch patterns</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="if">If Condition</label>
-                    <input type="text" name="if" value="${props.if || ''}" 
-                           placeholder='build.branch == "main" && build.pull_request.id == null' />
-                    <small>Run step if this expression evaluates to true</small>
-                </div>
-                
-                <div class="property-group">
-                    <label for="unless">Unless Condition</label>
-                    <input type="text" name="unless" value="${props.unless || ''}" 
-                           placeholder='build.pull_request.draft == true' />
-                    <small>Skip step if this expression evaluates to true</small>
-                </div>
-                
-                <div class="conditional-examples">
-                    <h5>Common Conditions:</h5>
-                    <ul>
-                        <li><code>build.branch == "main"</code> - Main branch only</li>
-                        <li><code>build.pull_request.id != null</code> - Pull requests only</li>
-                        <li><code>build.tag != null</code> - Tagged builds only</li>
-                        <li><code>build.source == "schedule"</code> - Scheduled builds only</li>
-                    </ul>
+                           placeholder="main develop feature/* !hotfix/*" />
+                    <small>Branch patterns (space-separated, ! for exclusion)</small>
                 </div>
             </div>
         `;
     }
 
     generateDependencySection(step) {
-        const availableSteps = this.steps
-            .filter(s => s.id !== step.id && s.properties.key)
-            .map(s => ({ id: s.properties.key, label: s.properties.label }));
-
+        const props = step.properties;
+        
         return `
             <div class="property-section">
-                <h4><i class="fas fa-link"></i> Dependencies</h4>
+                <h4><i class="fas fa-project-diagram"></i> Dependencies</h4>
                 
-                <div class="property-group">
-                    <label>Depends On Steps</label>
-                    <div class="dependency-list">
-                        ${availableSteps.length > 0 ? availableSteps.map(s => `
-                            <div class="property-checkbox">
-                                <input type="checkbox" id="dep-${s.id}" value="${s.id}" 
-                                       ${step.properties.depends_on?.includes(s.id) ? 'checked' : ''} 
-                                       onchange="pipelineBuilder.updateDependencies('${step.id}')" />
-                                <label for="dep-${s.id}">${s.label} (${s.id})</label>
-                            </div>
-                        `).join('') : '<p class="text-muted">No other steps with keys available</p>'}
-                    </div>
+                <div class="dependency-builder">
+                    ${this.generateDependencyBuilder(props.depends_on || [])}
                 </div>
                 
                 <div class="property-checkbox">
                     <input type="checkbox" id="allow_dependency_failure" name="allow_dependency_failure" 
-                           ${step.properties.allow_dependency_failure ? 'checked' : ''} />
+                           ${props.allow_dependency_failure ? 'checked' : ''} />
                     <label for="allow_dependency_failure">Allow dependency failure</label>
-                    <small>Continue even if dependencies fail</small>
+                    <small>Run even if dependencies fail</small>
                 </div>
             </div>
         `;
     }
 
     generateRetrySection(step) {
-        const retry = step.properties.retry || { automatic: false };
-        const automatic = retry.automatic || false;
-        const manual = retry.manual || { allowed: true };
+        const retry = step.properties.retry || {};
+        const automatic = retry.automatic || {};
+        const manual = retry.manual || {};
         
         return `
             <div class="property-section">
                 <h4><i class="fas fa-redo"></i> Retry Configuration</h4>
                 
-                <div class="property-checkbox">
-                    <input type="checkbox" id="retry-automatic" 
-                           ${automatic ? 'checked' : ''} 
-                           onchange="pipelineBuilder.toggleRetryAutomatic('${step.id}')" />
-                    <label for="retry-automatic">Enable automatic retry</label>
-                </div>
-                
-                ${automatic ? `
-                    <div class="retry-config">
+                <div class="property-subsection">
+                    <h5>Automatic Retry</h5>
+                    <div class="property-checkbox">
+                        <input type="checkbox" id="retry_automatic" 
+                               ${automatic !== false ? 'checked' : ''}
+                               onchange="pipelineBuilder.toggleRetryAutomatic('${step.id}')" />
+                        <label for="retry_automatic">Enable automatic retry</label>
+                    </div>
+                    
+                    ${automatic !== false ? `
                         <div class="property-group">
-                            <label for="retry-limit">Retry Limit</label>
-                            <input type="number" id="retry-limit" value="${automatic.limit || 3}" 
-                                   min="1" max="10" 
+                            <label for="retry_limit">Retry Limit</label>
+                            <input type="number" name="retry_limit" value="${automatic.limit || 3}" 
+                                   min="0" max="10" 
                                    onchange="pipelineBuilder.updateRetryLimit('${step.id}', this.value)" />
                         </div>
                         
                         <div class="property-group">
-                            <label for="retry-exit-status">Exit Status Pattern</label>
-                            <input type="text" id="retry-exit-status" value="${automatic.exit_status || '*'}" 
-                                   placeholder="* or specific codes like 1,2,255"
+                            <label for="retry_exit_status">Exit Status Pattern</label>
+                            <input type="text" name="retry_exit_status" value="${automatic.exit_status || '*'}" 
+                                   placeholder="* or 1,2,128"
                                    onchange="pipelineBuilder.updateRetryExitStatus('${step.id}', this.value)" />
-                            <small>Exit codes that trigger retry (* = any non-zero)</small>
+                            <small>Exit codes to retry (* for all)</small>
                         </div>
-                    </div>
-                ` : ''}
+                    ` : ''}
+                </div>
                 
-                <div class="property-checkbox">
-                    <input type="checkbox" id="retry-manual" 
-                           ${manual.allowed !== false ? 'checked' : ''} 
-                           onchange="pipelineBuilder.toggleRetryManual('${step.id}')" />
-                    <label for="retry-manual">Allow manual retry</label>
+                <div class="property-subsection">
+                    <h5>Manual Retry</h5>
+                    <div class="property-checkbox">
+                        <input type="checkbox" id="retry_manual_allowed" 
+                               ${manual.allowed ? 'checked' : ''}
+                               onchange="pipelineBuilder.toggleRetryManual('${step.id}')" />
+                        <label for="retry_manual_allowed">Allow manual retry</label>
+                    </div>
                 </div>
             </div>
         `;
     }
 
     generateArtifactsSection(step) {
+        const props = step.properties;
+        
         return `
             <div class="property-section">
                 <h4><i class="fas fa-archive"></i> Artifacts</h4>
                 
                 <div class="property-group">
-                    <label for="artifact_paths">Artifact Paths</label>
+                    <label for="artifact_paths">Upload Paths</label>
                     <textarea name="artifact_paths" rows="3" 
-                              placeholder="build/logs/**/*\ntest-results/**/*.xml">${step.properties.artifact_paths || ''}</textarea>
-                    <small>Glob patterns for files to upload (one per line)</small>
+                              placeholder="build/logs/**/*&#10;coverage/**/*.html&#10;test-results/**/*.xml">${props.artifact_paths || ''}</textarea>
+                    <small>File patterns to upload (one per line)</small>
                 </div>
                 
                 <div class="property-checkbox">
                     <input type="checkbox" id="compress_artifacts" name="compress_artifacts" 
-                           ${step.properties.compress_artifacts ? 'checked' : ''} />
+                           ${props.compress_artifacts ? 'checked' : ''} />
                     <label for="compress_artifacts">Compress artifacts</label>
                 </div>
             </div>
@@ -496,34 +458,78 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                         ${(dimension.values || []).map((value, valueIndex) => `
                             <div class="matrix-value">
                                 <span>${value}</span>
-                                <button type="button" onclick="pipelineBuilder.removeMatrixValue('${stepId}', ${index}, ${valueIndex})">
+                                <button type="button" class="btn btn-small btn-ghost" 
+                                        onclick="pipelineBuilder.removeMatrixValue('${stepId}', ${index}, ${valueIndex})">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
                         `).join('')}
+                        <input type="text" placeholder="Add value..." 
+                               onkeydown="if(event.key==='Enter'){pipelineBuilder.addMatrixValue('${stepId}', ${index}, this.value);this.value='';}" />
                     </div>
-                    <input type="text" placeholder="Add value and press Enter" 
-                           onkeypress="if(event.key === 'Enter') { pipelineBuilder.addMatrixValue('${stepId}', ${index}, this.value); this.value = ''; }" />
                 </div>
             </div>
         `;
     }
 
-    generateNotificationSection(step) {
+    generateMatrixPreview(step) {
+        const matrix = step.properties.matrix || [];
+        const validDimensions = matrix.filter(d => d.name && d.values && d.values.length > 0);
+        
+        if (validDimensions.length === 0) {
+            return '<div class="matrix-preview-empty">No valid matrix configuration</div>';
+        }
+        
+        const combinations = this.generateMatrixCombinations(validDimensions);
+        
         return `
-            <div class="property-section">
+            <div class="matrix-preview">
+                <h5>Matrix Preview</h5>
+                <p>Will create ${combinations.length} job${combinations.length !== 1 ? 's' : ''} = ${combinations.length} job${combinations.length !== 1 ? 's' : ''}</p>
+                <ul>
+                    ${validDimensions.map(dim => `<li><strong>${dim.name}:</strong> ${dim.values.join(', ')}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    generateMatrixCombinations(dimensions) {
+        if (dimensions.length === 0) return [];
+        
+        let combinations = dimensions[0].values.map(value => ({ [dimensions[0].name]: value }));
+        
+        for (let i = 1; i < dimensions.length; i++) {
+            const newCombinations = [];
+            combinations.forEach(combo => {
+                dimensions[i].values.forEach(value => {
+                    newCombinations.push({ ...combo, [dimensions[i].name]: value });
+                });
+            });
+            combinations = newCombinations;
+        }
+        
+        return combinations;
+    }
+
+    generateNotificationSection(step) {
+        const props = step.properties;
+        
+        return `
+            <div class="property-section collapsed">
                 <h4><i class="fas fa-bell"></i> Notifications</h4>
                 
                 <div class="property-group">
-                    <label for="notify">Notify Conditions</label>
-                    <select name="notify" multiple size="4">
-                        <option value="success" ${step.properties.notify?.includes('success') ? 'selected' : ''}>On Success</option>
-                        <option value="failure" ${step.properties.notify?.includes('failure') ? 'selected' : ''}>On Failure</option>
-                        <option value="unstable" ${step.properties.notify?.includes('unstable') ? 'selected' : ''}>On Unstable</option>
-                        <option value="recovered" ${step.properties.notify?.includes('recovered') ? 'selected' : ''}>On Recovery</option>
+                    <label for="notify">Notification Configuration</label>
+                    <select name="notify" onchange="pipelineBuilder.updateNotification('${step.id}', this.value)">
+                        <option value="">No notifications</option>
+                        <option value="email">Email</option>
+                        <option value="slack">Slack</option>
+                        <option value="webhook">Webhook</option>
+                        <option value="pagerduty">PagerDuty</option>
                     </select>
-                    <small>Hold Ctrl/Cmd to select multiple</small>
                 </div>
+                
+                ${props.notify ? this.generateNotificationConfig(step, props.notify) : ''}
             </div>
         `;
     }
@@ -532,10 +538,17 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         const props = step.properties;
         
         return `
-            <div class="property-section">
-                <h4><i class="fas fa-sliders-h"></i> Advanced Options</h4>
+            <div class="property-section collapsed">
+                <h4><i class="fas fa-cog"></i> Advanced Options</h4>
                 
-                ${step.type === 'command' || step.type === 'plugin' ? `
+                ${step.type === 'command' ? `
+                    <div class="property-group">
+                        <label for="timeout_in_minutes">Timeout (minutes)</label>
+                        <input type="number" name="timeout_in_minutes" value="${props.timeout_in_minutes || ''}" 
+                               min="0" placeholder="No timeout" />
+                        <small>Maximum execution time before step is terminated</small>
+                    </div>
+                    
                     <div class="property-checkbox">
                         <input type="checkbox" id="soft_fail" name="soft_fail" 
                                ${props.soft_fail ? 'checked' : ''} />
@@ -563,6 +576,89 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
                     <input type="text" value="${step.id}" disabled />
                     <small>Auto-generated unique identifier</small>
                 </div>
+            </div>
+        `;
+    }
+
+    // Helper generators
+    generateAgentBuilder(agents) {
+        const entries = Object.entries(agents);
+        
+        return `
+            <div class="key-value-builder" id="agent-builder-${this.selectedStep}">
+                ${entries.length === 0 ? '<div class="empty-builder">No agent requirements specified</div>' : ''}
+                ${entries.map(([key, value], index) => `
+                    <div class="key-value-pair">
+                        <input type="text" value="${key}" placeholder="queue" 
+                               onchange="pipelineBuilder.updateAgent('${this.selectedStep}', ${index}, 'key', this.value)" />
+                        <input type="text" value="${value}" placeholder="default" 
+                               onchange="pipelineBuilder.updateAgent('${this.selectedStep}', ${index}, 'value', this.value)" />
+                        <button type="button" class="btn btn-small btn-danger" 
+                                onclick="pipelineBuilder.removeAgent('${this.selectedStep}', ${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')}
+                <button type="button" class="btn btn-small btn-secondary" 
+                        onclick="pipelineBuilder.addAgent('${this.selectedStep}')">
+                    <i class="fas fa-plus"></i> Add Agent Requirement
+                </button>
+            </div>
+        `;
+    }
+
+    generateEnvBuilder(env) {
+        const entries = Object.entries(env);
+        
+        return `
+            <div class="key-value-builder" id="env-builder-${this.selectedStep}">
+                ${entries.length === 0 ? '<div class="empty-builder">No environment variables set</div>' : ''}
+                ${entries.map(([key, value], index) => `
+                    <div class="key-value-pair">
+                        <input type="text" value="${key}" placeholder="KEY" 
+                               onchange="pipelineBuilder.updateEnv('${this.selectedStep}', ${index}, 'key', this.value)" />
+                        <input type="text" value="${value}" placeholder="value" 
+                               onchange="pipelineBuilder.updateEnv('${this.selectedStep}', ${index}, 'value', this.value)" />
+                        <button type="button" class="btn btn-small btn-danger" 
+                                onclick="pipelineBuilder.removeEnv('${this.selectedStep}', ${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')}
+                <button type="button" class="btn btn-small btn-secondary" 
+                        onclick="pipelineBuilder.addEnv('${this.selectedStep}')">
+                    <i class="fas fa-plus"></i> Add Environment Variable
+                </button>
+            </div>
+        `;
+    }
+
+    generateDependencyBuilder(dependencies) {
+        const availableSteps = this.steps.filter(s => s.properties.key && s.id !== this.selectedStep);
+        
+        return `
+            <div class="dependency-list" id="dependency-builder-${this.selectedStep}">
+                ${dependencies.length === 0 ? '<div class="empty-builder">No dependencies configured</div>' : ''}
+                ${dependencies.map((dep, index) => `
+                    <div class="dependency-item">
+                        <select onchange="pipelineBuilder.updateDependency('${this.selectedStep}', ${index}, this.value)">
+                            <option value="">Select a step...</option>
+                            ${availableSteps.map(s => `
+                                <option value="${s.properties.key}" ${dep === s.properties.key ? 'selected' : ''}>
+                                    ${s.properties.label || s.properties.key}
+                                </option>
+                            `).join('')}
+                        </select>
+                        <button type="button" class="btn btn-small btn-danger" 
+                                onclick="pipelineBuilder.removeDependency('${this.selectedStep}', ${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `).join('')}
+                <button type="button" class="btn btn-small btn-secondary" 
+                        onclick="pipelineBuilder.addDependency('${this.selectedStep}')">
+                    <i class="fas fa-plus"></i> Add Dependency
+                </button>
             </div>
         `;
     }
@@ -725,52 +821,6 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         alert(preview);
     }
 
-    generateMatrixCombinations(matrix) {
-        if (matrix.length === 0) return [];
-        
-        const dimensions = matrix.filter(d => d.name && d.values && d.values.length > 0);
-        if (dimensions.length === 0) return [];
-        
-        const combinations = [];
-        
-        function combine(index, current) {
-            if (index === dimensions.length) {
-                combinations.push({ ...current });
-                return;
-            }
-            
-            const dimension = dimensions[index];
-            dimension.values.forEach(value => {
-                current[dimension.name] = value;
-                combine(index + 1, current);
-            });
-        }
-        
-        combine(0, {});
-        return combinations;
-    }
-
-    generateMatrixPreview(step) {
-        if (!step.properties.matrix || step.properties.matrix.length === 0) {
-            return '';
-        }
-        
-        const validDimensions = step.properties.matrix.filter(d => d.name && d.values && d.values.length > 0);
-        if (validDimensions.length === 0) return '';
-        
-        const combinations = this.generateMatrixCombinations(step.properties.matrix);
-        
-        return `
-            <div class="matrix-preview">
-                <h5>Matrix Configuration</h5>
-                <p>${validDimensions.length} dimension${validDimensions.length !== 1 ? 's' : ''} = ${combinations.length} job${combinations.length !== 1 ? 's' : ''}</p>
-                <ul>
-                    ${validDimensions.map(dim => `<li><strong>${dim.name}:</strong> ${dim.values.join(', ')}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
     // Retry configuration methods
     toggleRetryAutomatic(stepId) {
         const step = this.steps.find(s => s.id === stepId);
@@ -894,7 +944,7 @@ class EnhancedPipelineBuilder extends PipelineBuilder {
         }
     }
 
-    // Validation method
+    // Enhanced validation method
     validatePipeline() {
         const errors = [];
         const warnings = [];
