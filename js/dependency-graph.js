@@ -1,9 +1,8 @@
 // js/dependency-graph.js
+// FIXED: Properly initialized dependency graph with visualization
 /**
  * Visual Dependency Graph and Enhanced Conditional Logic Builder
- * Completes the remaining features from the enhancement plan
- * 
- * FIXED: Complete implementation with proper initialization and event handling
+ * FIXED: Proper initialization with pipeline builder reference
  */
 
 class DependencyGraphManager {
@@ -27,7 +26,20 @@ class DependencyGraphManager {
         this.setupGraphModal();
         this.setupConditionalBuilder();
         this.setupDependencyManager();
+        
+        // Setup event handlers for dependency graph button
+        this.setupEventHandlers();
+        
         console.log('✅ Dependency Graph Manager initialized');
+    }
+
+    setupEventHandlers() {
+        // Listen for dependency graph button clicks
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="dependency-graph"]')) {
+                this.showDependencyGraph();
+            }
+        });
     }
 
     setupGraphModal() {
@@ -38,17 +50,17 @@ class DependencyGraphManager {
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-project-diagram"></i> Pipeline Dependency Graph</h3>
-                            <button class="modal-close">&times;</button>
+                            <button class="modal-close" onclick="window.closeModal && window.closeModal('dependency-graph-modal')">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="graph-controls">
-                                <button class="btn btn-secondary" data-action="reset-view">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" data-action="auto-layout">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.autoLayout()">
                                     <i class="fas fa-magic"></i> Auto Layout
                                 </button>
-                                <button class="btn btn-secondary" data-action="export-graph">
+                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
                                     <i class="fas fa-download"></i> Export SVG
                                 </button>
                                 <div class="graph-legend">
@@ -66,11 +78,9 @@ class DependencyGraphManager {
                                     </span>
                                 </div>
                             </div>
-                            <canvas id="dependency-canvas" width="800" height="600"></canvas>
-                            <div class="graph-info">
-                                <div id="node-details" class="node-details">
-                                    <h4>Select a step to view details</h4>
-                                </div>
+                            <div class="graph-container">
+                                <canvas id="dependency-canvas" width="800" height="600"></canvas>
+                                <div id="node-details" class="node-details"></div>
                             </div>
                         </div>
                     </div>
@@ -81,66 +91,42 @@ class DependencyGraphManager {
     }
 
     setupConditionalBuilder() {
-        // Add conditional logic builder modal
+        // Add conditional builder modal if it doesn't exist
         if (!document.getElementById('conditional-builder-modal')) {
             const modalHTML = `
                 <div id="conditional-builder-modal" class="modal hidden">
-                    <div class="modal-content large">
+                    <div class="modal-content">
                         <div class="modal-header">
                             <h3><i class="fas fa-code-branch"></i> Conditional Logic Builder</h3>
-                            <button class="modal-close">&times;</button>
+                            <button class="modal-close" onclick="window.closeModal && window.closeModal('conditional-builder-modal')">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="conditional-builder">
-                                <div class="condition-groups" id="condition-groups">
-                                    <div class="condition-group">
-                                        <div class="condition-header">
-                                            <h4>IF Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="if">
-                                                <i class="fas fa-plus"></i> Add Condition
-                                            </button>
-                                        </div>
-                                        <div id="if-conditions" class="conditions-list"></div>
-                                    </div>
-                                    
-                                    <div class="condition-group">
-                                        <div class="condition-header">
-                                            <h4>UNLESS Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="unless">
-                                                <i class="fas fa-plus"></i> Add Condition
-                                            </button>
-                                        </div>
-                                        <div id="unless-conditions" class="conditions-list"></div>
-                                    </div>
+                                <div class="condition-section">
+                                    <h4>If Conditions (AND)</h4>
+                                    <div id="if-conditions" class="conditions-list"></div>
+                                    <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('if')">
+                                        <i class="fas fa-plus"></i> Add Condition
+                                    </button>
+                                </div>
+                                
+                                <div class="condition-section">
+                                    <h4>Unless Conditions (OR)</h4>
+                                    <div id="unless-conditions" class="conditions-list"></div>
+                                    <button class="btn btn-secondary btn-small" onclick="window.dependencyGraph && window.dependencyGraph.addCondition('unless')">
+                                        <i class="fas fa-plus"></i> Add Condition
+                                    </button>
                                 </div>
                                 
                                 <div class="condition-preview">
-                                    <h4>Generated Condition</h4>
-                                    <pre id="condition-output"></pre>
-                                </div>
-                                
-                                <div class="condition-templates">
-                                    <h4>Quick Templates</h4>
-                                    <div class="template-buttons">
-                                        <button class="btn btn-outline" data-template="main-branch">
-                                            Main Branch Only
-                                        </button>
-                                        <button class="btn btn-outline" data-template="pull-request">
-                                            Pull Request Only
-                                        </button>
-                                        <button class="btn btn-outline" data-template="file-changes">
-                                            File Changes
-                                        </button>
-                                        <button class="btn btn-outline" data-template="env-var">
-                                            Environment Variable
-                                        </button>
-                                    </div>
+                                    <h4>Preview</h4>
+                                    <code id="condition-preview-text">No conditions set</code>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-actions">
-                            <button class="btn btn-secondary modal-close">Cancel</button>
-                            <button class="btn btn-primary" data-action="apply-conditions">Apply Conditions</button>
+                            <button class="btn btn-secondary" onclick="window.closeModal && window.closeModal('conditional-builder-modal')">Cancel</button>
+                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyConditions()">Apply</button>
                         </div>
                     </div>
                 </div>
@@ -150,84 +136,50 @@ class DependencyGraphManager {
     }
 
     setupDependencyManager() {
-        // Add dependency manager modal
+        // Add dependency manager modal if it doesn't exist
         if (!document.getElementById('dependency-manager-modal')) {
             const modalHTML = `
                 <div id="dependency-manager-modal" class="modal hidden">
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-sitemap"></i> Dependency Manager</h3>
-                            <button class="modal-close">&times;</button>
+                            <button class="modal-close" onclick="window.closeModal && window.closeModal('dependency-manager-modal')">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="dependency-manager">
-                                <div class="dependency-types">
-                                    <h4>Dependency Types</h4>
-                                    <div class="dependency-type-buttons">
-                                        <button class="btn btn-outline dependency-type-btn active" data-type="explicit">
-                                            <i class="fas fa-link"></i> Explicit Dependencies
-                                        </button>
-                                        <button class="btn btn-outline dependency-type-btn" data-type="file-based">
-                                            <i class="fas fa-file"></i> File-Based Dependencies
-                                        </button>
-                                        <button class="btn btn-outline dependency-type-btn" data-type="conditional">
-                                            <i class="fas fa-code-branch"></i> Conditional Dependencies
-                                        </button>
-                                    </div>
+                                <div class="dependency-tabs">
+                                    <button class="tab-btn active" onclick="window.dependencyGraph && window.dependencyGraph.showDependencyTab('step')">
+                                        Step Dependencies
+                                    </button>
+                                    <button class="tab-btn" onclick="window.dependencyGraph && window.dependencyGraph.showDependencyTab('conditional')">
+                                        Conditional Dependencies
+                                    </button>
+                                    <button class="tab-btn" onclick="window.dependencyGraph && window.dependencyGraph.showDependencyTab('soft')">
+                                        Soft Dependencies
+                                    </button>
                                 </div>
                                 
                                 <div class="dependency-content">
-                                    <div id="explicit-dependencies" class="dependency-section">
-                                        <div class="step-dependencies">
-                                            <h5>Step Dependencies</h5>
-                                            <div id="step-dependency-list"></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div id="file-based-dependencies" class="dependency-section" style="display: none;">
-                                        <div class="file-dependency-builder">
-                                            <h5>File Change Dependencies</h5>
-                                            <div class="file-patterns">
-                                                <div class="property-group">
-                                                    <label>Watch Patterns</label>
-                                                    <textarea placeholder="src/**/*.js&#10;tests/**/*.test.js&#10;package.json"></textarea>
-                                                    <small>File patterns that trigger this step when changed</small>
-                                                </div>
-                                                <div class="property-group">
-                                                    <label>Ignore Patterns</label>
-                                                    <textarea placeholder="*.md&#10;docs/**/*&#10;.gitignore"></textarea>
-                                                    <small>File patterns to ignore</small>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div id="step-dependencies" class="dependency-section active">
+                                        <h4>Step Dependencies</h4>
+                                        <div id="step-dependency-list"></div>
                                     </div>
                                     
                                     <div id="conditional-dependencies" class="dependency-section" style="display: none;">
-                                        <div class="conditional-dependency-builder">
-                                            <h5>Conditional Dependencies</h5>
-                                            <div class="conditional-rules">
-                                                <div class="property-group">
-                                                    <label>Condition</label>
-                                                    <select class="condition-type">
-                                                        <option value="branch">Branch Pattern</option>
-                                                        <option value="env">Environment Variable</option>
-                                                        <option value="metadata">Build Metadata</option>
-                                                        <option value="time">Time-based</option>
-                                                    </select>
-                                                </div>
-                                                <div class="property-group">
-                                                    <label>Rule</label>
-                                                    <input type="text" placeholder="main develop/*" />
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <h4>Conditional Dependencies</h4>
+                                        <p>Configure dependencies that only apply under certain conditions.</p>
+                                    </div>
+                                    
+                                    <div id="soft-dependencies" class="dependency-section" style="display: none;">
+                                        <h4>Soft Dependencies</h4>
+                                        <p>Configure dependencies that allow failure.</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-actions">
-                            <button class="btn btn-secondary modal-close">Cancel</button>
-                            <button class="btn btn-primary" data-action="apply-dependencies">Apply Dependencies</button>
+                            <button class="btn btn-secondary" onclick="window.closeModal && window.closeModal('dependency-manager-modal')">Cancel</button>
+                            <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyDependencies()">Apply Dependencies</button>
                         </div>
                     </div>
                 </div>
@@ -247,6 +199,11 @@ class DependencyGraphManager {
                 this.canvas = document.getElementById('dependency-canvas');
                 if (this.canvas) {
                     this.ctx = this.canvas.getContext('2d');
+                    
+                    // Set canvas size
+                    const container = this.canvas.parentElement;
+                    this.canvas.width = container.offsetWidth || 800;
+                    this.canvas.height = container.offsetHeight || 600;
                     
                     // Setup canvas events
                     this.setupCanvasEvents();
@@ -307,30 +264,36 @@ class DependencyGraphManager {
     generateEdges() {
         const steps = this.pipelineBuilder.steps || [];
         
-        steps.forEach((step, index) => {
-            // Implicit dependencies (sequential flow)
-            if (index > 0 && steps[index - 1].type !== 'wait') {
-                const sourceNode = this.nodes.find(n => n.id === steps[index - 1].id);
-                const targetNode = this.nodes.find(n => n.id === step.id);
-                
-                if (sourceNode && targetNode) {
-                    this.edges.push({
-                        source: sourceNode,
-                        target: targetNode,
-                        type: 'sequential',
-                        style: 'solid'
-                    });
-                }
+        steps.forEach((step) => {
+            // Explicit dependencies
+            if (step.properties && step.properties.depends_on && step.properties.depends_on.length > 0) {
+                step.properties.depends_on.forEach(depKey => {
+                    const sourceStep = steps.find(s => s.properties && s.properties.key === depKey);
+                    if (sourceStep) {
+                        const sourceNode = this.nodes.find(n => n.id === sourceStep.id);
+                        const targetNode = this.nodes.find(n => n.id === step.id);
+                        
+                        if (sourceNode && targetNode) {
+                            this.edges.push({
+                                source: sourceNode,
+                                target: targetNode,
+                                type: 'explicit',
+                                style: 'solid'
+                            });
+                        }
+                    }
+                });
             }
             
-            // Wait step dependencies
+            // Wait steps create implicit dependencies
             if (step.type === 'wait') {
-                // Wait steps depend on all previous steps
-                for (let i = 0; i < index; i++) {
+                const stepIndex = steps.findIndex(s => s.id === step.id);
+                // All steps before wait depend on it
+                for (let i = 0; i < stepIndex; i++) {
                     const sourceNode = this.nodes.find(n => n.id === steps[i].id);
                     const targetNode = this.nodes.find(n => n.id === step.id);
                     
-                    if (sourceNode && targetNode) {
+                    if (sourceNode && targetNode && !this.edgeExists(sourceNode, targetNode)) {
                         this.edges.push({
                             source: sourceNode,
                             target: targetNode,
@@ -340,102 +303,119 @@ class DependencyGraphManager {
                     }
                 }
             }
-            
-            // Explicit dependencies (if implemented)
-            if (step.properties && step.properties.depends_on) {
-                const dependencies = Array.isArray(step.properties.depends_on) 
-                    ? step.properties.depends_on 
-                    : [step.properties.depends_on];
-                    
-                dependencies.forEach(depId => {
-                    const sourceNode = this.nodes.find(n => n.step.properties && n.step.properties.key === depId);
-                    const targetNode = this.nodes.find(n => n.id === step.id);
-                    
-                    if (sourceNode && targetNode) {
-                        this.edges.push({
-                            source: sourceNode,
-                            target: targetNode,
-                            type: 'explicit',
-                            style: 'solid'
-                        });
-                    }
-                });
-            }
         });
     }
 
+    edgeExists(source, target) {
+        return this.edges.some(edge => 
+            edge.source.id === source.id && edge.target.id === target.id
+        );
+    }
+
     autoLayout() {
-        // Simple force-directed layout
-        const iterations = 50;
-        const repulsion = 5000;
-        const attraction = 0.1;
-        const damping = 0.9;
+        if (this.nodes.length === 0) return;
         
-        for (let iter = 0; iter < iterations; iter++) {
-            // Reset forces
-            this.nodes.forEach(node => {
-                node.fx = 0;
-                node.fy = 0;
-            });
+        // Simple hierarchical layout based on dependencies
+        const levels = this.calculateLevels();
+        const levelCounts = {};
+        
+        this.nodes.forEach(node => {
+            const level = levels[node.id] || 0;
+            if (!levelCounts[level]) levelCounts[level] = 0;
             
-            // Repulsion between nodes
-            for (let i = 0; i < this.nodes.length; i++) {
-                for (let j = i + 1; j < this.nodes.length; j++) {
-                    const node1 = this.nodes[i];
-                    const node2 = this.nodes[j];
-                    
-                    const dx = node1.x - node2.x;
-                    const dy = node1.y - node2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-                    
-                    const force = repulsion / (distance * distance);
-                    const fx = (dx / distance) * force;
-                    const fy = (dy / distance) * force;
-                    
-                    node1.fx += fx;
-                    node1.fy += fy;
-                    node2.fx -= fx;
-                    node2.fy -= fy;
-                }
+            node.x = 100 + levelCounts[level] * 150;
+            node.y = 100 + level * 120;
+            
+            levelCounts[level]++;
+        });
+        
+        // Center the graph
+        this.centerGraph();
+    }
+
+    calculateLevels() {
+        const levels = {};
+        const visited = new Set();
+        
+        // Find nodes with no dependencies (level 0)
+        this.nodes.forEach(node => {
+            const hasDependencies = this.edges.some(edge => edge.target.id === node.id);
+            if (!hasDependencies) {
+                levels[node.id] = 0;
+                visited.add(node.id);
             }
+        });
+        
+        // Calculate levels for remaining nodes
+        let changed = true;
+        while (changed) {
+            changed = false;
             
-            // Attraction along edges
-            this.edges.forEach(edge => {
-                const dx = edge.target.x - edge.source.x;
-                const dy = edge.target.y - edge.source.y;
-                const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-                
-                const force = distance * attraction;
-                const fx = (dx / distance) * force;
-                const fy = (dy / distance) * force;
-                
-                edge.source.fx += fx;
-                edge.source.fy += fy;
-                edge.target.fx -= fx;
-                edge.target.fy -= fy;
-            });
-            
-            // Apply forces
             this.nodes.forEach(node => {
-                node.x += node.fx * damping;
-                node.y += node.fy * damping;
+                if (visited.has(node.id)) return;
+                
+                const dependencies = this.edges
+                    .filter(edge => edge.target.id === node.id)
+                    .map(edge => edge.source.id);
+                
+                if (dependencies.every(depId => visited.has(depId))) {
+                    const maxLevel = Math.max(...dependencies.map(depId => levels[depId] || 0));
+                    levels[node.id] = maxLevel + 1;
+                    visited.add(node.id);
+                    changed = true;
+                }
             });
         }
+        
+        return levels;
+    }
+
+    centerGraph() {
+        if (this.nodes.length === 0) return;
+        
+        const bounds = this.getGraphBounds();
+        const canvasWidth = this.canvas.width;
+        const canvasHeight = this.canvas.height;
+        
+        this.panX = (canvasWidth - bounds.width) / 2 - bounds.minX;
+        this.panY = (canvasHeight - bounds.height) / 2 - bounds.minY;
+        this.scale = Math.min(
+            canvasWidth / (bounds.width + 100),
+            canvasHeight / (bounds.height + 100),
+            1.5
+        );
+    }
+
+    getGraphBounds() {
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        this.nodes.forEach(node => {
+            minX = Math.min(minX, node.x - node.width / 2);
+            minY = Math.min(minY, node.y - node.height / 2);
+            maxX = Math.max(maxX, node.x + node.width / 2);
+            maxY = Math.max(maxY, node.y + node.height / 2);
+        });
+        
+        return {
+            minX, minY, maxX, maxY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
     }
 
     renderGraph() {
         if (!this.ctx || !this.canvas) return;
         
-        const ctx = this.ctx;
-        const canvas = this.canvas;
-        
         // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Save context state
+        this.ctx.save();
         
         // Apply transformations
-        ctx.save();
-        ctx.scale(this.scale, this.scale);
-        ctx.translate(this.panX, this.panY);
+        this.ctx.translate(this.panX, this.panY);
+        this.ctx.scale(this.scale, this.scale);
         
         // Draw edges
         this.edges.forEach(edge => this.drawEdge(edge));
@@ -443,139 +423,131 @@ class DependencyGraphManager {
         // Draw nodes
         this.nodes.forEach(node => this.drawNode(node));
         
-        ctx.restore();
+        // Restore context state
+        this.ctx.restore();
     }
 
     drawNode(node) {
-        const ctx = this.ctx;
-        const { x, y, width, height, type, step } = node;
-        
-        // Node colors by type
         const colors = {
             command: '#667eea',
             wait: '#f6ad55',
             block: '#e53e3e',
             input: '#38a169',
             trigger: '#805ad5',
-            group: '#319795',
-            annotation: '#d69e2e',
-            plugin: '#e53e3e',
-            notify: '#9f7aea',
-            'pipeline-upload': '#2b6cb0'
+            group: '#3182ce',
+            annotation: '#d69e2e'
         };
         
-        const color = colors[type] || '#a0aec0';
+        const color = colors[node.type] || '#a0aec0';
         
         // Draw node background
-        ctx.fillStyle = node === this.selectedNode ? '#2d3748' : color;
-        ctx.fillRect(x - width/2, y - height/2, width, height);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(
+            node.x - node.width / 2,
+            node.y - node.height / 2,
+            node.width,
+            node.height
+        );
         
         // Draw node border
-        ctx.strokeStyle = node === this.selectedNode ? '#667eea' : '#ffffff';
-        ctx.lineWidth = node === this.selectedNode ? 3 : 1;
-        ctx.strokeRect(x - width/2, y - height/2, width, height);
+        this.ctx.strokeStyle = node === this.selectedNode ? '#2d3748' : '#ffffff';
+        this.ctx.lineWidth = node === this.selectedNode ? 3 : 2;
+        this.ctx.strokeRect(
+            node.x - node.width / 2,
+            node.y - node.height / 2,
+            node.width,
+            node.height
+        );
         
-        // Draw node text
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        // Draw node label
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
         
-        const label = (step.properties && step.properties.label) || step.type;
-        const maxWidth = width - 10;
-        const truncated = this.truncateText(label, maxWidth, ctx);
+        const label = (node.step.properties && node.step.properties.label) || node.step.type;
+        const maxWidth = node.width - 10;
         
-        ctx.fillText(truncated, x, y - 5);
-        ctx.fillText(type, x, y + 10);
+        // Truncate label if too long
+        let displayLabel = label;
+        while (this.ctx.measureText(displayLabel).width > maxWidth && displayLabel.length > 0) {
+            displayLabel = displayLabel.slice(0, -1);
+        }
+        if (displayLabel !== label) {
+            displayLabel += '...';
+        }
+        
+        this.ctx.fillText(displayLabel, node.x, node.y);
     }
 
     drawEdge(edge) {
-        const ctx = this.ctx;
-        const { source, target, type, style } = edge;
+        const { source, target, style } = edge;
         
-        // Edge colors by type
-        const colors = {
-            sequential: '#4a5568',
-            wait: '#f6ad55',
-            explicit: '#667eea'
-        };
+        // Calculate edge points
+        const startX = source.x;
+        const startY = source.y + source.height / 2;
+        const endX = target.x;
+        const endY = target.y - target.height / 2;
         
-        ctx.strokeStyle = colors[type] || '#a0aec0';
-        ctx.lineWidth = 2;
+        // Draw edge line
+        this.ctx.strokeStyle = edge.type === 'wait' ? '#f6ad55' : '#4a5568';
+        this.ctx.lineWidth = 2;
         
-        // Set line style
         if (style === 'dashed') {
-            ctx.setLineDash([5, 5]);
+            this.ctx.setLineDash([5, 5]);
         } else {
-            ctx.setLineDash([]);
+            this.ctx.setLineDash([]);
         }
         
-        // Draw line
-        ctx.beginPath();
-        ctx.moveTo(source.x, source.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.moveTo(startX, startY);
+        
+        // Draw curved line
+        const controlY = (startY + endY) / 2;
+        this.ctx.bezierCurveTo(startX, controlY, endX, controlY, endX, endY);
+        
+        this.ctx.stroke();
         
         // Draw arrowhead
-        this.drawArrowhead(source.x, source.y, target.x, target.y);
+        this.drawArrowhead(endX, endY, Math.atan2(endY - controlY, endX - endX));
     }
 
-    drawArrowhead(x1, y1, x2, y2) {
-        const ctx = this.ctx;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
+    drawArrowhead(x, y, angle) {
         const arrowLength = 10;
         const arrowAngle = Math.PI / 6;
         
-        // Calculate arrowhead position (slightly before target)
-        const dist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        const ratio = (dist - 30) / dist; // 30px before target
-        const arrowX = x1 + (x2 - x1) * ratio;
-        const arrowY = y1 + (y2 - y1) * ratio;
-        
-        ctx.beginPath();
-        ctx.moveTo(arrowX, arrowY);
-        ctx.lineTo(
-            arrowX - arrowLength * Math.cos(angle - arrowAngle),
-            arrowY - arrowLength * Math.sin(angle - arrowAngle)
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(
+            x - arrowLength * Math.cos(angle - arrowAngle),
+            y - arrowLength * Math.sin(angle - arrowAngle)
         );
-        ctx.moveTo(arrowX, arrowY);
-        ctx.lineTo(
-            arrowX - arrowLength * Math.cos(angle + arrowAngle),
-            arrowY - arrowLength * Math.sin(angle + arrowAngle)
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(
+            x - arrowLength * Math.cos(angle + arrowAngle),
+            y - arrowLength * Math.sin(angle + arrowAngle)
         );
-        ctx.stroke();
+        this.ctx.stroke();
     }
 
-    truncateText(text, maxWidth, ctx) {
-        if (ctx.measureText(text).width <= maxWidth) {
-            return text;
-        }
-        
-        let truncated = text;
-        while (ctx.measureText(truncated + '...').width > maxWidth && truncated.length > 0) {
-            truncated = truncated.slice(0, -1);
-        }
-        
-        return truncated + '...';
-    }
-
+    // Canvas event handlers
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / this.scale - this.panX;
-        const y = (e.clientY - rect.top) / this.scale - this.panY;
+        const x = (e.clientX - rect.left - this.panX) / this.scale;
+        const y = (e.clientY - rect.top - this.panY) / this.scale;
         
-        const clickedNode = this.getNodeAt(x, y);
-        if (clickedNode) {
-            this.selectedNode = clickedNode;
-            this.showNodeDetails(clickedNode);
+        // Check if clicking on a node
+        const node = this.getNodeAt(x, y);
+        if (node) {
+            this.selectedNode = node;
+            this.showNodeDetails(node);
+            this.renderGraph();
         } else {
-            this.selectedNode = null;
+            // Start panning
             this.isDragging = true;
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
         }
-        
-        this.renderGraph();
     }
 
     handleMouseMove(e) {
@@ -583,8 +555,8 @@ class DependencyGraphManager {
             const dx = e.clientX - this.lastMouseX;
             const dy = e.clientY - this.lastMouseY;
             
-            this.panX += dx / this.scale;
-            this.panY += dy / this.scale;
+            this.panX += dx;
+            this.panY += dy;
             
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
@@ -604,12 +576,12 @@ class DependencyGraphManager {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        const zoom = e.deltaY > 0 ? 0.9 : 1.1;
+        const zoom = e.deltaY < 0 ? 1.1 : 0.9;
         const newScale = Math.max(0.1, Math.min(3, this.scale * zoom));
         
         // Zoom towards cursor
-        this.panX = x / newScale - (x / this.scale - this.panX);
-        this.panY = y / newScale - (y / this.scale - this.panY);
+        this.panX = x - (x - this.panX) * (newScale / this.scale);
+        this.panY = y - (y - this.panY) * (newScale / this.scale);
         this.scale = newScale;
         
         this.renderGraph();
@@ -638,11 +610,11 @@ class DependencyGraphManager {
             <h4>${(step.properties && step.properties.label) || step.type}</h4>
             <p><strong>Type:</strong> ${step.type}</p>
             <p><strong>ID:</strong> ${step.id}</p>
+            ${step.properties && step.properties.key ? `<p><strong>Key:</strong> ${step.properties.key}</p>` : ''}
             ${step.properties && step.properties.command ? `<p><strong>Command:</strong> <code>${step.properties.command}</code></p>` : ''}
-            ${step.properties && step.properties.agents ? `<p><strong>Agents:</strong> ${step.properties.agents}</p>` : ''}
-            ${step.properties && step.properties.plugins && Object.keys(step.properties.plugins).length > 0 ? 
-                `<p><strong>Plugins:</strong> ${Object.keys(step.properties.plugins).join(', ')}</p>` : ''}
-            <button class="btn btn-secondary btn-small" onclick="pipelineBuilder && pipelineBuilder.selectStep && pipelineBuilder.selectStep('${step.id}'); window.closeModal && window.closeModal('dependency-graph-modal')">
+            ${step.properties && step.properties.depends_on && step.properties.depends_on.length > 0 ? 
+                `<p><strong>Dependencies:</strong> ${step.properties.depends_on.join(', ')}</p>` : ''}
+            <button class="btn btn-secondary btn-small" onclick="window.pipelineBuilder && window.pipelineBuilder.selectStep && window.pipelineBuilder.selectStep('${step.id}'); window.closeModal && window.closeModal('dependency-graph-modal')">
                 Edit Step
             </button>
         `;
@@ -653,65 +625,78 @@ class DependencyGraphManager {
         this.scale = 1;
         this.panX = 0;
         this.panY = 0;
+        this.centerGraph();
         this.renderGraph();
     }
 
     exportGraph() {
         console.log('📥 Exporting graph...');
-        // Create SVG representation
-        const svg = this.generateSVG();
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'pipeline-dependency-graph.svg';
-        a.click();
+        // Create a temporary canvas for export
+        const exportCanvas = document.createElement('canvas');
+        const bounds = this.getGraphBounds();
+        const padding = 50;
         
-        URL.revokeObjectURL(url);
+        exportCanvas.width = bounds.width + padding * 2;
+        exportCanvas.height = bounds.height + padding * 2;
+        
+        const exportCtx = exportCanvas.getContext('2d');
+        
+        // White background
+        exportCtx.fillStyle = '#ffffff';
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        
+        // Copy graph with proper positioning
+        exportCtx.save();
+        exportCtx.translate(padding - bounds.minX, padding - bounds.minY);
+        
+        // Temporarily switch context
+        const tempCtx = this.ctx;
+        const tempCanvas = this.canvas;
+        this.ctx = exportCtx;
+        this.canvas = exportCanvas;
+        
+        // Temporarily reset transformations
+        const tempPanX = this.panX;
+        const tempPanY = this.panY;
+        const tempScale = this.scale;
+        this.panX = 0;
+        this.panY = 0;
+        this.scale = 1;
+        
+        // Draw the graph
+        this.edges.forEach(edge => this.drawEdge(edge));
+        this.nodes.forEach(node => this.drawNode(node));
+        
+        // Restore original context and transformations
+        this.ctx = tempCtx;
+        this.canvas = tempCanvas;
+        this.panX = tempPanX;
+        this.panY = tempPanY;
+        this.scale = tempScale;
+        
+        exportCtx.restore();
+        
+        // Convert to blob and download
+        exportCanvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pipeline-dependency-graph.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     }
 
-    generateSVG() {
-        const width = 800;
-        const height = 600;
-        let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-        
-        // Add edges
-        this.edges.forEach(edge => {
-            const color = edge.type === 'wait' ? '#f6ad55' : '#4a5568';
-            const style = edge.style === 'dashed' ? 'stroke-dasharray="5,5"' : '';
-            svg += `<line x1="${edge.source.x}" y1="${edge.source.y}" x2="${edge.target.x}" y2="${edge.target.y}" stroke="${color}" stroke-width="2" ${style}/>`;
-        });
-        
-        // Add nodes
-        this.nodes.forEach(node => {
-            const colors = {
-                command: '#667eea',
-                wait: '#f6ad55',
-                block: '#e53e3e',
-                input: '#38a169',
-                trigger: '#805ad5'
-            };
-            const color = colors[node.type] || '#a0aec0';
-            
-            svg += `<rect x="${node.x - node.width/2}" y="${node.y - node.height/2}" width="${node.width}" height="${node.height}" fill="${color}" stroke="#ffffff"/>`;
-            svg += `<text x="${node.x}" y="${node.y}" text-anchor="middle" fill="white" font-family="Arial" font-size="12">${(node.step.properties && node.step.properties.label) || node.type}</text>`;
-        });
-        
-        svg += '</svg>';
-        return svg;
-    }
-
-    // Conditional Logic Builder Methods
+    // Conditional builder methods
     showConditionalBuilder() {
         console.log('🔀 Opening conditional builder...');
         const modal = document.getElementById('conditional-builder-modal');
         if (modal) {
             modal.classList.remove('hidden');
-            this.currentStep = this.pipelineBuilder.selectedStep;
+            this.currentStep = this.pipelineBuilder.selectedStep ? 
+                this.pipelineBuilder.steps.find(s => s.id === this.pipelineBuilder.selectedStep) : null;
             this.loadExistingConditions();
-        } else {
-            console.error('❌ Conditional builder modal not found');
         }
     }
 
@@ -724,92 +709,87 @@ class DependencyGraphManager {
         if (ifConditions) ifConditions.innerHTML = '';
         if (unlessConditions) unlessConditions.innerHTML = '';
         
-        // Load existing if condition
-        if (this.currentStep.properties && this.currentStep.properties.if) {
-            this.addCondition('if', this.currentStep.properties.if);
-        }
-        
-        // Load existing unless condition
-        if (this.currentStep.properties && this.currentStep.properties.unless) {
-            this.addCondition('unless', this.currentStep.properties.unless);
+        // Load existing conditions
+        if (this.currentStep.properties) {
+            if (this.currentStep.properties.if) {
+                // Parse and display if conditions
+                const conditions = this.currentStep.properties.if.split(' && ');
+                conditions.forEach(cond => this.addCondition('if', cond));
+            }
+            
+            if (this.currentStep.properties.unless) {
+                // Parse and display unless conditions
+                const conditions = this.currentStep.properties.unless.split(' || ');
+                conditions.forEach(cond => this.addCondition('unless', cond));
+            }
         }
         
         this.updateConditionPreview();
     }
 
-    addCondition(type, existingValue = '') {
-        console.log(`➕ Adding ${type} condition...`);
+    addCondition(type, existingCondition = '') {
         const container = document.getElementById(`${type}-conditions`);
         if (!container) return;
         
         const conditionId = `condition-${Date.now()}`;
-        
         const conditionHTML = `
             <div class="condition-item" id="${conditionId}">
-                <div class="condition-builder">
-                    <select class="condition-field" onchange="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()">
-                        <option value="build.branch">Branch</option>
-                        <option value="build.pull_request">Pull Request</option>
-                        <option value="build.env">Environment Variable</option>
-                        <option value="build.commit.message">Commit Message</option>
-                        <option value="build.author.email">Author Email</option>
-                        <option value="build.tag">Tag</option>
-                    </select>
-                    
-                    <select class="condition-operator" onchange="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()">
-                        <option value="==">equals</option>
-                        <option value="!=">not equals</option>
-                        <option value="=~">matches regex</option>
-                        <option value="!~">doesn't match regex</option>
-                        <option value="in">in list</option>
-                        <option value="not in">not in list</option>
-                    </select>
-                    
-                    <input type="text" class="condition-value" placeholder="Value" value="${existingValue}" oninput="window.dependencyGraph && window.dependencyGraph.updateConditionPreview()" />
-                    
-                    <button class="btn btn-outline btn-small" onclick="window.dependencyGraph && window.dependencyGraph.removeCondition('${conditionId}')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                
-                <div class="condition-examples">
-                    <small>Examples: main, develop/*, *.feature, user@company.com</small>
-                </div>
+                <select class="condition-field">
+                    <option value="build.branch">Branch</option>
+                    <option value="build.tag">Tag</option>
+                    <option value="build.pull_request.id">Pull Request</option>
+                    <option value="build.env">Environment Variable</option>
+                    <option value="build.message">Commit Message</option>
+                </select>
+                <select class="condition-operator">
+                    <option value="==">equals</option>
+                    <option value="!=">not equals</option>
+                    <option value="=~">matches</option>
+                    <option value="!~">not matches</option>
+                </select>
+                <input type="text" class="condition-value" placeholder="value" value="">
+                <button class="remove-btn" onclick="document.getElementById('${conditionId}').remove(); window.dependencyGraph && window.dependencyGraph.updateConditionPreview()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         `;
         
         container.insertAdjacentHTML('beforeend', conditionHTML);
-        this.updateConditionPreview();
-    }
-
-    removeCondition(conditionId) {
-        console.log(`➖ Removing condition: ${conditionId}`);
-        const element = document.getElementById(conditionId);
-        if (element) {
-            element.remove();
-            this.updateConditionPreview();
+        
+        // Parse existing condition if provided
+        if (existingCondition) {
+            // Simple parsing for common conditions
+            const match = existingCondition.match(/(.+?)\s*(==|!=|=~|!~)\s*"?(.+?)"?$/);
+            if (match) {
+                const conditionEl = document.getElementById(conditionId);
+                conditionEl.querySelector('.condition-field').value = match[1].trim();
+                conditionEl.querySelector('.condition-operator').value = match[2];
+                conditionEl.querySelector('.condition-value').value = match[3].trim();
+            }
         }
+        
+        this.updateConditionPreview();
     }
 
     updateConditionPreview() {
         const ifConditions = this.collectConditions('if');
         const unlessConditions = this.collectConditions('unless');
         
-        let conditionText = '';
+        const preview = document.getElementById('condition-preview-text');
+        if (!preview) return;
+        
+        let previewText = '';
         
         if (ifConditions.length > 0) {
-            conditionText += ifConditions.join(' && ');
+            previewText += `if: ${ifConditions.join(' && ')}`;
         }
         
         if (unlessConditions.length > 0) {
-            if (conditionText) conditionText += ' && ';
-            conditionText += '!(' + unlessConditions.join(' || ') + ')';
+            if (previewText) previewText += '\n';
+            previewText += `unless: ${unlessConditions.join(' || ')}`;
         }
         
-        const output = document.getElementById('condition-output');
-        if (output) {
-            output.textContent = conditionText || 'No conditions defined';
-        }
+        preview.textContent = previewText || 'No conditions set';
     }
 
     collectConditions(type) {
@@ -817,73 +797,24 @@ class DependencyGraphManager {
         if (!container) return [];
         
         const conditions = [];
-        
         container.querySelectorAll('.condition-item').forEach(item => {
             const field = item.querySelector('.condition-field').value;
             const operator = item.querySelector('.condition-operator').value;
             const value = item.querySelector('.condition-value').value;
             
-            if (value.trim()) {
+            if (value) {
+                // Format condition string
                 let condition = `${field} ${operator} `;
-                
-                if (operator.includes('in')) {
-                    condition += `[${value.split(',').map(v => `"${v.trim()}"`).join(', ')}]`;
+                if (operator === '=~' || operator === '!~') {
+                    condition += `/${value}/`;
                 } else {
                     condition += `"${value}"`;
                 }
-                
                 conditions.push(condition);
             }
         });
         
         return conditions;
-    }
-
-    applyConditionTemplate(template) {
-        console.log(`📋 Applying condition template: ${template}`);
-        const templates = {
-            'main-branch': {
-                type: 'if',
-                field: 'build.branch',
-                operator: '==',
-                value: 'main'
-            },
-            'pull-request': {
-                type: 'if',
-                field: 'build.pull_request',
-                operator: '!=',
-                value: 'null'
-            },
-            'file-changes': {
-                type: 'if',
-                field: 'build.env("CHANGED_FILES")',
-                operator: '=~',
-                value: '.*\\.(js|ts)$'
-            },
-            'env-var': {
-                type: 'if',
-                field: 'build.env("DEPLOY_ENV")',
-                operator: '==',
-                value: 'production'
-            }
-        };
-        
-        const templateConfig = templates[template];
-        if (templateConfig) {
-            this.addCondition(templateConfig.type);
-            
-            // Set the values in the last added condition
-            const container = document.getElementById(`${templateConfig.type}-conditions`);
-            const lastCondition = container.lastElementChild;
-            
-            if (lastCondition) {
-                lastCondition.querySelector('.condition-field').value = templateConfig.field;
-                lastCondition.querySelector('.condition-operator').value = templateConfig.operator;
-                lastCondition.querySelector('.condition-value').value = templateConfig.value;
-                
-                this.updateConditionPreview();
-            }
-        }
     }
 
     applyConditions() {
@@ -921,40 +852,32 @@ class DependencyGraphManager {
         }
     }
 
-    // Dependency Manager Methods
+    // Dependency manager methods
     showDependencyManager() {
         console.log('🔗 Opening dependency manager...');
         const modal = document.getElementById('dependency-manager-modal');
         if (modal) {
             modal.classList.remove('hidden');
-            this.setupDependencyTabs();
             this.loadStepDependencies();
-        } else {
-            console.error('❌ Dependency manager modal not found');
         }
     }
 
-    setupDependencyTabs() {
-        const buttons = document.querySelectorAll('.dependency-type-btn');
-        const sections = document.querySelectorAll('.dependency-section');
-        
-        buttons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Remove active class from all buttons and sections
-                buttons.forEach(b => b.classList.remove('active'));
-                sections.forEach(s => s.style.display = 'none');
-                
-                // Add active class to clicked button
-                button.classList.add('active');
-                
-                // Show corresponding section
-                const type = button.dataset.type;
-                const section = document.getElementById(`${type}-dependencies`);
-                if (section) {
-                    section.style.display = 'block';
-                }
-            });
+    showDependencyTab(tab) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
+        event.target.classList.add('active');
+        
+        // Update content sections
+        document.querySelectorAll('.dependency-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        
+        const section = document.getElementById(`${tab}-dependencies`);
+        if (section) {
+            section.style.display = 'block';
+        }
     }
 
     loadStepDependencies() {
@@ -1004,7 +927,7 @@ class DependencyGraphManager {
         if (step) {
             if (!step.properties) step.properties = {};
             const dependencies = input.value.split(',').map(dep => dep.trim()).filter(dep => dep);
-            step.properties.depends_on = dependencies.length > 0 ? dependencies : undefined;
+            step.properties.depends_on = dependencies.length > 0 ? dependencies : [];
         }
     }
 
