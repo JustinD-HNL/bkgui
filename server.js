@@ -11,7 +11,7 @@ console.log('🚀 Starting Buildkite Pipeline Builder Server...');
 console.log(`📦 Node.js version: ${process.version}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-// Security middleware with simplified CSP (no Firebase)
+// Security middleware with updated CSP (removed script-src-attr restriction)
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -21,6 +21,7 @@ app.use(helmet({
                 "'unsafe-inline'",
                 "https://cdnjs.cloudflare.com"
             ],
+            // Removed script-src-attr to allow event handlers
             styleSrc: [
                 "'self'", 
                 "'unsafe-inline'",
@@ -68,132 +69,45 @@ app.use(compression());
 
 // Add request logging for debugging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - User-Agent: ${req.get('User-Agent')?.substring(0, 100)}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
 
+// Parse JSON bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use(express.static(path.join(__dirname)));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
-    const health = {
+    res.json({ 
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: '1.0.3',
-        environment: process.env.NODE_ENV || 'development',
-        authentication: 'disabled',
-        cloudRun: {
-            service: process.env.K_SERVICE || 'Not on Cloud Run',
-            revision: process.env.K_REVISION || 'Not on Cloud Run'
-        },
-        memory: process.memoryUsage(),
-        uptime: process.uptime()
-    };
-
-    res.status(200).json(health);
-});
-
-// Test endpoint for debugging
-app.get('/api/test', (req, res) => {
-    res.json({
-        message: 'API test endpoint working',
-        timestamp: new Date().toISOString(),
-        requestId: Math.random().toString(36).substring(7),
-        authentication: 'disabled'
+        version: '2.0.0'
     });
 });
 
-// Static file serving
-app.use(express.static(path.join(__dirname), {
-    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
-    etag: true,
-    setHeaders: (res, filePath) => {
-        // Set proper MIME types
-        if (filePath.endsWith('.js')) {
-            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-        } else if (filePath.endsWith('.html')) {
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        } else if (filePath.endsWith('.css')) {
-            res.setHeader('Content-Type', 'text/css; charset=utf-8');
-        }
-        
-        // Add security headers
-        if (filePath.includes('index.html')) {
-            res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-            res.setHeader('X-Content-Type-Options', 'nosniff');
-        }
-    }
-}));
-
-// Enhanced error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Server Error:', err);
-    
-    const errorResponse = {
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? 
-            err.message : 'Something went wrong',
-        timestamp: new Date().toISOString(),
-        requestId: Math.random().toString(36).substring(7)
-    };
-    
-    if (process.env.NODE_ENV === 'development') {
-        errorResponse.stack = err.stack;
-    }
-    
-    res.status(500).json(errorResponse);
-});
-
-// Handle 404s
-app.use((req, res) => {
-    console.log(`404 - Not found: ${req.method} ${req.path}`);
-    
-    // For API routes, return JSON
-    if (req.path.startsWith('/api/')) {
-        return res.status(404).json({
-            error: 'Not found',
-            path: req.path,
-            timestamp: new Date().toISOString()
-        });
-    }
-    
-    // For all other routes, serve index.html (SPA support)
+// Catch-all route to serve index.html for client-side routing
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err.stack);
+    res.status(500).send('Something went wrong!');
+});
+
 // Start server
-const server = app.listen(PORT, () => {
-    console.log(`🚀 Buildkite Pipeline Builder running on port ${PORT}`);
-    console.log(`📱 Health check: http://localhost:${PORT}/health`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔓 Authentication: Disabled`);
-    console.log(`☁️  Cloud Run service: ${process.env.K_SERVICE || 'Not on Cloud Run'}`);
-    console.log(`🛡️  Security: Basic CSP (no Firebase dependencies)`);
-    console.log('✅ Server started successfully without authentication');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('📤 SIGTERM received, shutting down gracefully');
-    server.close(() => {
-        console.log('💤 Process terminated');
-        process.exit(0);
-    });
-});
-
-process.on('SIGINT', () => {
-    console.log('📤 SIGINT received, shutting down gracefully');
-    server.close(() => {
-        console.log('💤 Process terminated');
-        process.exit(0);
-    });
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    console.error('💥 Uncaught Exception:', err);
-    process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-    process.exit(1);
+app.listen(PORT, () => {
+    console.log(`
+    ✅ Server running successfully!
+    📍 Local: http://localhost:${PORT}
+    🌍 Network: http://0.0.0.0:${PORT}
+    🔥 Environment: ${process.env.NODE_ENV || 'development'}
+    
+    Ready to build Buildkite pipelines! 🚀
+    `);
 });

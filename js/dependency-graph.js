@@ -38,6 +38,28 @@ class DependencyGraphManager {
             if (e.target.closest('[data-action="dependency-graph"]')) {
                 this.showDependencyGraph();
             }
+            
+            // Handle modal button clicks
+            if (e.target.closest('[data-action="reset-view"]')) {
+                this.resetView();
+            }
+            
+            if (e.target.closest('[data-action="export-graph"]')) {
+                this.exportGraph();
+            }
+            
+            if (e.target.closest('[data-action="add-condition"]')) {
+                this.addCondition();
+            }
+            
+            if (e.target.closest('[data-action="apply-condition"]')) {
+                this.applyCondition();
+            }
+            
+            if (e.target.closest('[data-action="switch-dependency-type"]')) {
+                const type = e.target.closest('[data-action="switch-dependency-type"]').dataset.type;
+                this.switchDependencyType(type);
+            }
         });
     }
 
@@ -49,14 +71,14 @@ class DependencyGraphManager {
                     <div class="modal-content large">
                         <div class="modal-header">
                             <h3><i class="fas fa-project-diagram"></i> Pipeline Dependency Graph</h3>
-                            <button class="modal-close" onclick="window.closeModal && window.closeModal('dependency-graph-modal')">&times;</button>
+                            <button class="modal-close">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="graph-controls">
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.resetView()">
+                                <button class="btn btn-secondary" data-action="reset-view">
                                     <i class="fas fa-expand-arrows-alt"></i> Reset View
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.dependencyGraph && window.dependencyGraph.exportGraph()">
+                                <button class="btn btn-secondary" data-action="export-graph">
                                     <i class="fas fa-download"></i> Export as Image
                                 </button>
                             </div>
@@ -78,7 +100,7 @@ class DependencyGraphManager {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3><i class="fas fa-code-branch"></i> Conditional Logic Builder</h3>
-                            <button class="modal-close" onclick="window.closeModal && window.closeModal('conditional-builder-modal')">&times;</button>
+                            <button class="modal-close">&times;</button>
                         </div>
                         <div class="modal-body">
                             <div class="conditional-builder">
@@ -115,7 +137,7 @@ class DependencyGraphManager {
                                         
                                         <input type="text" id="condition-value" placeholder="value or pattern">
                                         
-                                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.addCondition()">
+                                        <button class="btn btn-primary" data-action="add-condition">
                                             Add to Expression
                                         </button>
                                     </div>
@@ -124,10 +146,10 @@ class DependencyGraphManager {
                                     <textarea id="condition-expression" rows="3"></textarea>
                                     
                                     <div class="modal-actions">
-                                        <button class="btn btn-primary" onclick="window.dependencyGraph && window.dependencyGraph.applyCondition()">
+                                        <button class="btn btn-primary" data-action="apply-condition">
                                             Apply Condition
                                         </button>
-                                        <button class="btn btn-secondary" onclick="window.closeModal && window.closeModal('conditional-builder-modal')">
+                                        <button class="btn btn-secondary modal-close">
                                             Cancel
                                         </button>
                                     </div>
@@ -142,105 +164,124 @@ class DependencyGraphManager {
     }
 
     setupDependencyManager() {
-        // The dependency manager modal is already in the HTML
-        // Just ensure event handlers are set up
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('dependency-type-btn')) {
-                const type = e.target.dataset.type;
-                this.switchDependencyType(type);
-            }
-        });
+        if (!document.getElementById('dependency-manager-modal')) {
+            const modalHTML = `
+                <div id="dependency-manager-modal" class="modal hidden">
+                    <div class="modal-content large">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-sitemap"></i> Manage Dependencies</h3>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="dependency-manager">
+                                <div class="dependency-tabs">
+                                    <button class="dependency-type-btn active" data-action="switch-dependency-type" data-type="explicit">
+                                        <i class="fas fa-link"></i> Explicit Dependencies
+                                    </button>
+                                    <button class="dependency-type-btn" data-action="switch-dependency-type" data-type="soft-fail">
+                                        <i class="fas fa-shield-alt"></i> Soft Fail Rules
+                                    </button>
+                                    <button class="dependency-type-btn" data-action="switch-dependency-type" data-type="allow-failure">
+                                        <i class="fas fa-exclamation-triangle"></i> Allow Failure
+                                    </button>
+                                </div>
+                                
+                                <div id="explicit-dependencies" class="dependency-section">
+                                    <h4>Step Dependencies</h4>
+                                    <div id="dependency-list"></div>
+                                </div>
+                                
+                                <div id="soft-fail-dependencies" class="dependency-section" style="display: none;">
+                                    <h4>Soft Fail Configuration</h4>
+                                    <div id="soft-fail-list"></div>
+                                </div>
+                                
+                                <div id="allow-failure-dependencies" class="dependency-section" style="display: none;">
+                                    <h4>Allow Failure Settings</h4>
+                                    <div id="allow-failure-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
     }
 
     showDependencyGraph() {
         console.log('📊 Showing dependency graph...');
         
-        // Get canvas
+        const modal = document.getElementById('dependency-graph-modal');
+        if (!modal) {
+            console.warn('Dependency graph modal not found');
+            return;
+        }
+        
+        modal.classList.remove('hidden');
+        
+        // Initialize canvas
         this.canvas = document.getElementById('dependency-graph-canvas');
         if (!this.canvas) {
-            console.error('Canvas not found');
+            console.warn('Canvas not found');
             return;
         }
         
         this.ctx = this.canvas.getContext('2d');
         
-        // Setup canvas
-        this.setupCanvas();
-        
-        // Build graph data
-        this.buildGraphData();
-        
-        // Render graph
-        this.renderGraph();
-        
-        // Show modal
-        if (window.showModal) {
-            window.showModal('dependency-graph-modal');
-        } else {
-            const modal = document.getElementById('dependency-graph-modal');
-            if (modal) {
-                modal.classList.remove('hidden');
-            }
-        }
-        
-        // Setup interactions
-        this.setupInteractions();
-    }
-
-    setupCanvas() {
+        // Set canvas size
         const container = this.canvas.parentElement;
         this.canvas.width = container.offsetWidth;
         this.canvas.height = 600;
         
-        // Set up high DPI support
-        const dpr = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
+        // Setup canvas event listeners
+        this.setupCanvasEvents();
         
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
-        
-        this.ctx.scale(dpr, dpr);
-        
-        this.canvas.style.width = rect.width + 'px';
-        this.canvas.style.height = rect.height + 'px';
+        // Build and render graph
+        this.buildGraph();
+        this.centerGraph();
+        this.renderGraph();
     }
 
-    buildGraphData() {
+    buildGraph() {
         this.nodes = [];
         this.edges = [];
         
         if (!this.pipelineBuilder || !this.pipelineBuilder.steps) {
-            console.warn('No pipeline steps to graph');
+            console.warn('No pipeline steps found');
             return;
         }
         
-        const steps = this.pipelineBuilder.steps;
-        const nodeMap = new Map();
-        
-        // Create nodes
-        steps.forEach((step, index) => {
+        // Create nodes for each step
+        const stepMap = new Map();
+        this.pipelineBuilder.steps.forEach((step, index) => {
             const node = {
                 id: step.id,
-                key: step.properties.key,
-                label: step.properties.label || `Step ${index + 1}`,
+                label: step.properties.label || step.type,
                 type: step.type,
-                x: 100 + (index % 4) * 200,
-                y: 100 + Math.floor(index / 4) * 150,
-                radius: 40,
-                color: this.getNodeColor(step.type)
+                x: 0,
+                y: 0,
+                width: 150,
+                height: 60,
+                step: step
             };
             
             this.nodes.push(node);
-            nodeMap.set(step.properties.key, node);
+            stepMap.set(step.id, node);
+            stepMap.set(step.properties.key, node);
         });
         
-        // Create edges
-        steps.forEach(step => {
-            if (step.properties.depends_on && step.properties.depends_on.length > 0) {
-                const targetNode = nodeMap.get(step.properties.key);
-                
-                step.properties.depends_on.forEach(dep => {
-                    const sourceNode = nodeMap.get(dep);
+        // Create edges for dependencies
+        this.pipelineBuilder.steps.forEach(step => {
+            if (step.properties.depends_on) {
+                const deps = Array.isArray(step.properties.depends_on) 
+                    ? step.properties.depends_on 
+                    : [step.properties.depends_on];
+                    
+                deps.forEach(dep => {
+                    const sourceNode = stepMap.get(dep);
+                    const targetNode = stepMap.get(step.id);
+                    
                     if (sourceNode && targetNode) {
                         this.edges.push({
                             source: sourceNode,
@@ -251,101 +292,78 @@ class DependencyGraphManager {
             }
         });
         
-        // Apply force-directed layout
-        this.applyForceLayout();
+        // Layout nodes
+        this.layoutGraph();
     }
 
-    getNodeColor(type) {
-        const colors = {
-            'command': '#667eea',
-            'wait': '#48bb78',
-            'block': '#ed8936',
-            'input': '#38b2ac',
-            'trigger': '#e53e3e',
-            'group': '#805ad5',
-            'annotation': '#d69e2e'
-        };
+    layoutGraph() {
+        // Simple hierarchical layout
+        const levels = new Map();
+        const visited = new Set();
         
-        return colors[type] || '#718096';
-    }
-
-    applyForceLayout() {
-        // Simple force-directed layout
-        const iterations = 50;
-        const k = 100; // Ideal spring length
-        const c = 0.1; // Spring constant
+        // Find root nodes (no incoming edges)
+        const roots = this.nodes.filter(node => 
+            !this.edges.some(edge => edge.target === node)
+        );
         
-        for (let iter = 0; iter < iterations; iter++) {
-            // Repulsive forces between all nodes
-            for (let i = 0; i < this.nodes.length; i++) {
-                for (let j = i + 1; j < this.nodes.length; j++) {
-                    const dx = this.nodes[j].x - this.nodes[i].x;
-                    const dy = this.nodes[j].y - this.nodes[i].y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (dist > 0) {
-                        const force = k * k / dist;
-                        const fx = (dx / dist) * force * c;
-                        const fy = (dy / dist) * force * c;
-                        
-                        this.nodes[i].x -= fx;
-                        this.nodes[i].y -= fy;
-                        this.nodes[j].x += fx;
-                        this.nodes[j].y += fy;
-                    }
-                }
-            }
+        // BFS to assign levels
+        const queue = roots.map(node => ({ node, level: 0 }));
+        
+        while (queue.length > 0) {
+            const { node, level } = queue.shift();
             
-            // Attractive forces for connected nodes
-            this.edges.forEach(edge => {
-                const dx = edge.target.x - edge.source.x;
-                const dy = edge.target.y - edge.source.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+            if (visited.has(node.id)) continue;
+            visited.add(node.id);
+            
+            if (!levels.has(level)) {
+                levels.set(level, []);
+            }
+            levels.get(level).push(node);
+            
+            // Find children
+            const children = this.edges
+                .filter(edge => edge.source === node)
+                .map(edge => edge.target);
                 
-                if (dist > 0) {
-                    const force = (dist - k) * c;
-                    const fx = (dx / dist) * force;
-                    const fy = (dy / dist) * force;
-                    
-                    edge.source.x += fx;
-                    edge.source.y += fy;
-                    edge.target.x -= fx;
-                    edge.target.y -= fy;
+            children.forEach(child => {
+                if (!visited.has(child.id)) {
+                    queue.push({ node: child, level: level + 1 });
                 }
             });
         }
         
-        // Center the graph
-        this.centerGraph();
+        // Position nodes
+        const levelSpacing = 150;
+        const nodeSpacing = 200;
+        
+        levels.forEach((nodes, level) => {
+            const totalWidth = nodes.length * nodeSpacing;
+            const startX = -totalWidth / 2 + nodeSpacing / 2;
+            
+            nodes.forEach((node, index) => {
+                node.x = startX + index * nodeSpacing;
+                node.y = level * levelSpacing;
+            });
+        });
     }
 
     centerGraph() {
         if (this.nodes.length === 0) return;
         
-        // Find bounds
-        let minX = Infinity, minY = Infinity;
-        let maxX = -Infinity, maxY = -Infinity;
+        // Calculate bounds
+        const bounds = {
+            minX: Math.min(...this.nodes.map(n => n.x - n.width / 2)),
+            maxX: Math.max(...this.nodes.map(n => n.x + n.width / 2)),
+            minY: Math.min(...this.nodes.map(n => n.y - n.height / 2)),
+            maxY: Math.max(...this.nodes.map(n => n.y + n.height / 2))
+        };
         
-        this.nodes.forEach(node => {
-            minX = Math.min(minX, node.x);
-            minY = Math.min(minY, node.y);
-            maxX = Math.max(maxX, node.x);
-            maxY = Math.max(maxY, node.y);
-        });
+        const graphWidth = bounds.maxX - bounds.minX;
+        const graphHeight = bounds.maxY - bounds.minY;
         
-        // Center
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-        const canvasCenterX = this.canvas.width / (2 * (window.devicePixelRatio || 1));
-        const canvasCenterY = this.canvas.height / (2 * (window.devicePixelRatio || 1));
-        
-        const offsetX = canvasCenterX - centerX;
-        const offsetY = canvasCenterY - centerY;
-        
-        this.nodes.forEach(node => {
-            node.x += offsetX;
-            node.y += offsetY;
-        });
+        // Center in canvas
+        this.panX = this.canvas.width / 2 - (bounds.minX + graphWidth / 2);
+        this.panY = this.canvas.height / 2 - (bounds.minY + graphHeight / 2);
     }
 
     renderGraph() {
@@ -354,7 +372,7 @@ class DependencyGraphManager {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Save state
+        // Save context
         this.ctx.save();
         
         // Apply transformations
@@ -362,101 +380,120 @@ class DependencyGraphManager {
         this.ctx.scale(this.scale, this.scale);
         
         // Draw edges
-        this.edges.forEach(edge => {
-            this.drawEdge(edge);
-        });
+        this.edges.forEach(edge => this.drawEdge(edge));
         
         // Draw nodes
-        this.nodes.forEach(node => {
-            this.drawNode(node);
-        });
+        this.nodes.forEach(node => this.drawNode(node));
         
-        // Restore state
+        // Restore context
         this.ctx.restore();
     }
 
-    drawEdge(edge) {
-        const ctx = this.ctx;
-        
-        // Calculate edge path
-        const dx = edge.target.x - edge.source.x;
-        const dy = edge.target.y - edge.source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Start and end points (accounting for node radius)
-        const startX = edge.source.x + (dx / dist) * edge.source.radius;
-        const startY = edge.source.y + (dy / dist) * edge.source.radius;
-        const endX = edge.target.x - (dx / dist) * edge.target.radius;
-        const endY = edge.target.y - (dy / dist) * edge.target.radius;
-        
-        // Draw line
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
-        ctx.strokeStyle = '#cbd5e0';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Draw arrowhead
-        const arrowLength = 15;
-        const arrowAngle = Math.PI / 6;
-        const angle = Math.atan2(dy, dx);
-        
-        ctx.beginPath();
-        ctx.moveTo(endX, endY);
-        ctx.lineTo(
-            endX - arrowLength * Math.cos(angle - arrowAngle),
-            endY - arrowLength * Math.sin(angle - arrowAngle)
-        );
-        ctx.lineTo(
-            endX - arrowLength * Math.cos(angle + arrowAngle),
-            endY - arrowLength * Math.sin(angle + arrowAngle)
-        );
-        ctx.closePath();
-        ctx.fillStyle = '#cbd5e0';
-        ctx.fill();
-    }
-
     drawNode(node) {
-        const ctx = this.ctx;
+        const { x, y, width, height, label, type } = node;
         
-        // Draw circle
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = node.color;
-        ctx.fill();
-        
-        if (node === this.selectedNode) {
-            ctx.strokeStyle = '#2d3748';
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-        
-        // Draw icon
-        ctx.fillStyle = 'white';
-        ctx.font = '20px Font Awesome 5 Free';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        const icons = {
-            'command': '\uf120',  // terminal
-            'wait': '\uf252',     // hourglass-half
-            'block': '\uf256',    // hand-paper
-            'input': '\uf11c',    // keyboard
-            'trigger': '\uf0e7',  // bolt
-            'group': '\uf5fd',    // layer-group
-            'annotation': '\uf27a' // comment-alt
+        // Node colors based on type
+        const colors = {
+            'command': '#667eea',
+            'wait': '#48bb78',
+            'block': '#ed8936',
+            'input': '#38b2ac',
+            'trigger': '#e53e3e',
+            'group': '#805ad5'
         };
         
-        ctx.fillText(icons[node.type] || '\uf013', node.x, node.y);
+        const color = colors[type] || '#718096';
+        
+        // Draw node background
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.strokeStyle = node === this.selectedNode ? '#4a5568' : color;
+        this.ctx.lineWidth = node === this.selectedNode ? 3 : 2;
+        
+        this.roundRect(x - width / 2, y - height / 2, width, height, 8);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Draw type icon background
+        this.ctx.fillStyle = color;
+        this.roundRect(x - width / 2, y - height / 2, 30, height, [8, 0, 0, 8]);
+        this.ctx.fill();
         
         // Draw label
-        ctx.fillStyle = '#2d3748';
-        ctx.font = '12px -apple-system, sans-serif';
-        ctx.fillText(node.label, node.x, node.y + node.radius + 15);
+        this.ctx.fillStyle = '#2d3748';
+        this.ctx.font = '14px sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        const labelText = label.length > 15 ? label.substring(0, 15) + '...' : label;
+        this.ctx.fillText(labelText, x + 5, y);
     }
 
-    setupInteractions() {
+    drawEdge(edge) {
+        const { source, target } = edge;
+        
+        // Calculate connection points
+        const sx = source.x;
+        const sy = source.y + source.height / 2;
+        const tx = target.x;
+        const ty = target.y - target.height / 2;
+        
+        // Draw bezier curve
+        this.ctx.strokeStyle = '#cbd5e0';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(sx, sy);
+        
+        const controlOffset = Math.abs(ty - sy) / 2;
+        this.ctx.bezierCurveTo(
+            sx, sy + controlOffset,
+            tx, ty - controlOffset,
+            tx, ty
+        );
+        
+        this.ctx.stroke();
+        
+        // Draw arrow
+        const angle = Math.atan2(ty - (ty - controlOffset), tx - tx);
+        this.drawArrow(tx, ty, angle);
+    }
+
+    drawArrow(x, y, angle) {
+        const size = 8;
+        
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.rotate(angle - Math.PI / 2);
+        
+        this.ctx.fillStyle = '#cbd5e0';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(-size / 2, size);
+        this.ctx.lineTo(size / 2, size);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        this.ctx.restore();
+    }
+
+    roundRect(x, y, width, height, radius) {
+        if (typeof radius === 'number') {
+            radius = [radius, radius, radius, radius];
+        }
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + radius[0], y);
+        this.ctx.lineTo(x + width - radius[1], y);
+        this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius[1]);
+        this.ctx.lineTo(x + width, y + height - radius[2]);
+        this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius[2], y + height);
+        this.ctx.lineTo(x + radius[3], y + height);
+        this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius[3]);
+        this.ctx.lineTo(x, y + radius[0]);
+        this.ctx.quadraticCurveTo(x, y, x + radius[0], y);
+        this.ctx.closePath();
+    }
+
+    setupCanvasEvents() {
         if (!this.canvas) return;
         
         // Mouse events
@@ -473,47 +510,39 @@ class DependencyGraphManager {
 
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / this.scale - this.panX / this.scale;
-        const y = (e.clientY - rect.top) / this.scale - this.panY / this.scale;
+        const x = (e.clientX - rect.left - this.panX) / this.scale;
+        const y = (e.clientY - rect.top - this.panY) / this.scale;
         
         // Check if clicking on a node
-        this.selectedNode = null;
-        for (const node of this.nodes) {
-            const dx = x - node.x;
-            const dy = y - node.y;
-            if (Math.sqrt(dx * dx + dy * dy) <= node.radius) {
-                this.selectedNode = node;
-                break;
-            }
-        }
+        const clickedNode = this.nodes.find(node => 
+            x >= node.x - node.width / 2 &&
+            x <= node.x + node.width / 2 &&
+            y >= node.y - node.height / 2 &&
+            y <= node.y + node.height / 2
+        );
         
-        this.isDragging = true;
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
+        if (clickedNode) {
+            this.selectedNode = clickedNode;
+            
+            // Select in pipeline builder
+            if (this.pipelineBuilder) {
+                this.pipelineBuilder.selectStep(clickedNode.id);
+            }
+        } else {
+            this.isDragging = true;
+            this.dragStartX = e.clientX - this.panX;
+            this.dragStartY = e.clientY - this.panY;
+        }
         
         this.renderGraph();
     }
 
     handleMouseMove(e) {
-        if (!this.isDragging) return;
-        
-        const dx = e.clientX - this.lastX;
-        const dy = e.clientY - this.lastY;
-        
-        if (this.selectedNode) {
-            // Move selected node
-            this.selectedNode.x += dx / this.scale;
-            this.selectedNode.y += dy / this.scale;
-        } else {
-            // Pan view
-            this.panX += dx;
-            this.panY += dy;
+        if (this.isDragging) {
+            this.panX = e.clientX - this.dragStartX;
+            this.panY = e.clientY - this.dragStartY;
+            this.renderGraph();
         }
-        
-        this.lastX = e.clientX;
-        this.lastY = e.clientY;
-        
-        this.renderGraph();
     }
 
     handleMouseUp(e) {
@@ -621,8 +650,50 @@ class DependencyGraphManager {
             section.style.display = section.id.includes(type) ? 'block' : 'none';
         });
     }
+
+    showDependencyManager() {
+        console.log('📊 Showing dependency manager...');
+        
+        const modal = document.getElementById('dependency-manager-modal');
+        if (!modal) {
+            console.warn('Dependency manager modal not found');
+            return;
+        }
+        
+        modal.classList.remove('hidden');
+        this.updateDependencyList();
+    }
+
+    updateDependencyList() {
+        const container = document.getElementById('dependency-list');
+        if (!container || !this.pipelineBuilder) return;
+        
+        container.innerHTML = '';
+        
+        this.pipelineBuilder.steps.forEach(step => {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'dependency-item';
+            
+            stepEl.innerHTML = `
+                <div class="step-info">
+                    <strong>${step.properties.label || step.type}</strong>
+                    ${step.properties.key ? `<code>[${step.properties.key}]</code>` : ''}
+                </div>
+                <div class="dependencies">
+                    ${step.properties.depends_on ? 
+                        `Depends on: ${Array.isArray(step.properties.depends_on) ? 
+                            step.properties.depends_on.join(', ') : 
+                            step.properties.depends_on}` : 
+                        'No dependencies'}
+                </div>
+            `;
+            
+            container.appendChild(stepEl);
+        });
+    }
 }
 
-// Export the class
-window.DependencyGraphManager = DependencyGraphManager;
-export default DependencyGraphManager;  
+// Initialize when DOM is ready
+if (typeof window !== 'undefined') {
+    window.DependencyGraphManager = DependencyGraphManager;
+}
