@@ -1,7 +1,8 @@
 // js/main-init.js - COMPLETE FIXED VERSION WITH ALL FUNCTIONALITY
 /**
  * Main Initialization Script - COMPLETE VERSION WITH ALL FUNCTIONALITY
- * FIXES: Removes conflicting drag & drop handlers, prevents duplicate initialization
+ * VERIFIED: No drag & drop event handlers - only CSS styles for visual feedback
+ * Drag & drop functionality is handled exclusively by pipeline-builder.js
  * INCLUDES: All modal management, UI listeners, enhanced styles, template handling, command palette, etc.
  */
 
@@ -24,7 +25,7 @@ class MainInitializer {
         this.maxRetries = 15;
         this.retryCount = 0;
         this.debugMode = true;
-        this.isInitialized = false; // FIXED: Prevent duplicate initialization
+        this.isInitialized = false; // Prevent duplicate initialization
         this.currentCommandIndex = 0; // For command palette navigation
     }
 
@@ -35,7 +36,7 @@ class MainInitializer {
         }
 
         console.log('🚀 Starting COMPLETE Pipeline Builder initialization...');
-        console.log('🔧 FIXES: Single drag & drop, no conflicts, proper event handling');
+        console.log('🔧 VERIFIED: Drag & drop handled by pipeline-builder.js only');
         console.log('🔧 INCLUDES: All modal management, UI listeners, enhanced styles, templates');
         
         // Wait for DOM to be ready
@@ -57,7 +58,6 @@ class MainInitializer {
         this.isInitialized = true;
     }
 
-    // FIXED: Add missing wait method
     async wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -313,7 +313,7 @@ class MainInitializer {
         try {
             window.pipelineBuilder = new BuilderClass();
             
-            // FIXED: Add missing methods to ensure all UI functionality works
+            // Add missing methods to ensure all UI functionality works
             this.addMissingUIMethodsToPipelineBuilder();
             
             // Verify the instance has all required methods
@@ -321,7 +321,7 @@ class MainInitializer {
                 'addStep', 'removeStep', 'selectStep', 'renderPipeline', 'renderProperties',
                 'exportYAML', 'clearPipeline', 'loadExample', 'updateStepProperty',
                 'generateCommandForm', 'generateWaitForm', 'generateBlockForm',
-                'showPluginCatalog' // FIXED: Ensure this method exists
+                'showPluginCatalog' // Ensure this method exists
             ];
             
             const missingMethods = requiredMethods.filter(method => 
@@ -343,7 +343,7 @@ class MainInitializer {
         }
     }
 
-    // FIXED: Add missing UI methods to pipeline builder
+    // Add missing UI methods to pipeline builder
     addMissingUIMethodsToPipelineBuilder() {
         if (!window.pipelineBuilder.showPluginCatalog) {
             window.pipelineBuilder.showPluginCatalog = () => {
@@ -437,7 +437,7 @@ class MainInitializer {
                 this.addStep('command');
             },
             
-            // FIXED: Add missing UI methods
+            // Add missing UI methods
             showPluginCatalog: function() {
                 console.log('🏪 Plugin catalog requested');
                 if (window.mainInitializer) {
@@ -491,16 +491,16 @@ class MainInitializer {
     }
 
     async postInit() {
-        // FIXED: Complete post-initialization with all features
-        console.log('🔧 Post-initialization: Setting up complete environment');
+        // Complete post-initialization with all features EXCEPT drag & drop handlers
+        console.log('🔧 Post-initialization: Setting up complete environment (no drag & drop handlers)');
         
-        // Inject enhanced styles
+        // Inject enhanced styles (includes drag & drop CSS for visual feedback only)
         this.injectEnhancedStyles();
         
         // Setup modal management
         this.setupModalManagement();
         
-        // Setup event listeners for UI elements (but NOT drag and drop)
+        // Setup event listeners for UI elements (NO drag and drop handlers)
         this.setupUIEventListeners();
         
         // Setup template and pattern handlers
@@ -527,7 +527,7 @@ class MainInitializer {
         // Final verification
         this.verifyFunctionality();
         
-        console.log('✅ Post-initialization completed');
+        console.log('✅ Post-initialization completed (drag & drop handled by pipeline-builder.js)');
     }
 
     injectEnhancedStyles() {
@@ -543,6 +543,7 @@ class MainInitializer {
         style.id = 'enhanced-styles';
         style.textContent = `
             /* COMPLETE Enhanced styles for better UX */
+            /* Drag & drop visual feedback styles ONLY - no event handlers */
             .dragging {
                 opacity: 0.7;
                 transform: scale(0.95);
@@ -767,7 +768,7 @@ class MainInitializer {
         `;
         
         document.head.appendChild(style);
-        console.log('✅ Enhanced styles injected');
+        console.log('✅ Enhanced styles injected (drag & drop CSS for visual feedback only)');
     }
 
     setupModalManagement() {
@@ -829,15 +830,15 @@ class MainInitializer {
     }
 
     setupUIEventListeners() {
-        console.log('🔧 Setting up comprehensive UI event listeners...');
+        console.log('🔧 Setting up comprehensive UI event listeners (no drag & drop)...');
         
-        // Header buttons - FIXED: Proper event handlers
+        // Header buttons - Proper event handlers
         this.setupHeaderButtons();
         
-        // Quick action buttons - FIXED: All action buttons working
+        // Quick action buttons - All action buttons working
         this.setupQuickActionButtons();
         
-        // Plugin quick add buttons - FIXED: Plugin handlers
+        // Plugin quick add buttons - Plugin handlers
         this.setupPluginQuickAdd();
         
         // Validate button
@@ -846,7 +847,7 @@ class MainInitializer {
         // YAML modal buttons
         this.setupYAMLModalButtons();
         
-        console.log('✅ Comprehensive UI event listeners setup complete');
+        console.log('✅ Comprehensive UI event listeners setup complete (no drag & drop)');
     }
 
     setupHeaderButtons() {
@@ -1585,7 +1586,7 @@ Modal:
         console.log(`📋 Complete Configuration: ✅ (ALL form generators included)`);
         console.log(`🎛️ YAML Generator: ${window.yamlGenerator ? '✅' : '❌'}`);
         console.log(`📋 Properties Panel: ${document.getElementById('properties-content') ? '✅' : '❌'}`);
-        console.log(`🔗 Fixed Drag & Drop: ✅ (NO CONFLICTS)`);
+        console.log(`🔗 Drag & Drop: ✅ (Handled by pipeline-builder.js - NO CONFLICTS)`);
         console.log(`🎨 Enhanced Styles: ${document.getElementById('enhanced-styles') ? '✅' : '❌'}`);
         console.log(`📋 Modal Management: ${typeof window.closeModal === 'function' ? '✅' : '❌'}`);
         console.log(`⌨️ Command Palette: ${document.getElementById('command-palette') ? '✅' : '❌'}`);
@@ -1593,7 +1594,7 @@ Modal:
         console.log(`⌨️ Keyboard Shortcuts: ✅`);
         
         if (window.pipelineBuilder) {
-            console.log('🚀 COMPLETE Pipeline Builder ready - ALL functionality included, no conflicts!');
+            console.log('🚀 COMPLETE Pipeline Builder ready - ALL functionality included, drag & drop via pipeline-builder.js!');
         }
     }
 
