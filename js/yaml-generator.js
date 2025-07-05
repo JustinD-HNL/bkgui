@@ -1,13 +1,34 @@
 // js/yaml-generator.js
-// YAML Generator for Buildkite Pipeline Builder
+// Enhanced YAML Generator for Buildkite Pipeline Builder
 /**
  * Handles conversion of pipeline configuration to valid Buildkite YAML
+ * Now with enhanced validation and formatting
  */
 
 class YAMLGenerator {
     constructor() {
         this.indentSize = 2;
         this.currentIndent = 0;
+        this.validationRules = {
+            required: ['steps'],
+            stepTypes: ['command', 'wait', 'block', 'input', 'trigger', 'group', 'annotation', 'notify'],
+            conditionalOperators: ['==', '!=', '=~', '!~', '<', '>', '<=', '>='],
+            logicalOperators: ['&&', '||'],
+            buildkiteVariables: [
+                'build.branch',
+                'build.tag',
+                'build.commit',
+                'build.message',
+                'build.source',
+                'build.creator.name',
+                'build.creator.email',
+                'build.number',
+                'build.pull_request.id',
+                'build.pull_request.base_branch',
+                'pipeline.slug',
+                'organization.slug'
+            ]
+        };
     }
 
     generate(pipelineConfig) {
@@ -80,9 +101,7 @@ class YAMLGenerator {
                     yaml += this.indent() + 'commands:\n';
                     this.currentIndent++;
                     step.command.split('\n').forEach(cmd => {
-                        if (cmd.trim()) {
-                            yaml += this.indent() + `- ${this.quote(cmd.trim())}\n`;
-                        }
+                        yaml += this.indent() + `- ${this.quote(cmd.trim())}\n`;
                     });
                     this.currentIndent--;
                 } else {
@@ -90,7 +109,37 @@ class YAMLGenerator {
                 }
             }
             
-            // Add common properties
+            // Environment variables
+            if (step.env && Object.keys(step.env).length > 0) {
+                yaml += this.indent() + 'env:\n';
+                this.currentIndent++;
+                Object.entries(step.env).forEach(([key, value]) => {
+                    yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
+                });
+                this.currentIndent--;
+            }
+            
+            // Plugins
+            if (step.plugins && Object.keys(step.plugins).length > 0) {
+                yaml += this.generatePlugins(step.plugins);
+            }
+            
+            // Parallelism
+            if (step.parallelism) {
+                yaml += this.indent() + `parallelism: ${step.parallelism}\n`;
+            }
+            
+            // Timeout
+            if (step.timeout_in_minutes) {
+                yaml += this.indent() + `timeout_in_minutes: ${step.timeout_in_minutes}\n`;
+            }
+            
+            // Matrix - NEW
+            if (step.matrix && Object.keys(step.matrix).length > 0) {
+                yaml += this.generateMatrix(step.matrix);
+            }
+            
+            // Common properties
             yaml += this.generateCommonProperties(step);
             
             this.currentIndent--;
@@ -100,7 +149,7 @@ class YAMLGenerator {
     }
 
     generateBlockStep(step) {
-        let yaml = this.indent() + `-`;
+        let yaml = this.indent() + '-';
         
         if (this.isSimpleBlock(step)) {
             yaml += ` block: ${this.quote(step.block)}\n`;
@@ -108,13 +157,13 @@ class YAMLGenerator {
             yaml += '\n';
             this.currentIndent++;
             
-            yaml += this.indent() + `block: ${this.quote(step.block)}\n`;
+            yaml += this.indent() + `block: ${this.quote(step.block || step.prompt || 'Block')}\n`;
             
-            if (step.label && step.label !== step.block) {
+            if (step.label && step.label !== step.block && step.label !== step.prompt) {
                 yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
             }
             
-            if (step.blocked_state && step.blocked_state !== 'passed') {
+            if (step.blocked_state) {
                 yaml += this.indent() + `blocked_state: ${step.blocked_state}\n`;
             }
             
@@ -139,9 +188,9 @@ class YAMLGenerator {
         let yaml = this.indent() + '-\n';
         this.currentIndent++;
         
-        yaml += this.indent() + `input: ${this.quote(step.input)}\n`;
+        yaml += this.indent() + `input: ${this.quote(step.input || step.prompt || 'Input')}\n`;
         
-        if (step.label && step.label !== step.input) {
+        if (step.label && step.label !== step.input && step.label !== step.prompt) {
             yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
         }
         
@@ -234,8 +283,8 @@ class YAMLGenerator {
         if (step.steps && step.steps.length > 0) {
             yaml += this.indent() + 'steps:\n';
             this.currentIndent++;
-            step.steps.forEach(substep => {
-                yaml += this.generateStep(substep);
+            step.steps.forEach(groupStep => {
+                yaml += this.generateStep(groupStep);
             });
             this.currentIndent--;
         }
@@ -250,30 +299,23 @@ class YAMLGenerator {
         let yaml = this.indent() + '-\n';
         this.currentIndent++;
         
+        if (step.label) {
+            yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
+        }
+        
         yaml += this.indent() + 'annotate:\n';
         this.currentIndent++;
         
-        // Body is required
-        yaml += this.indent() + `body: ${this.quote(step.annotate.body)}\n`;
+        yaml += this.indent() + `body: ${this.quote(step.annotate?.body || step.body || '')}\n`;
+        yaml += this.indent() + `style: ${step.annotate?.style || step.style || 'info'}\n`;
+        yaml += this.indent() + `context: ${this.quote(step.annotate?.context || step.context || 'default')}\n`;
         
-        // Style (optional, default is 'info')
-        if (step.annotate.style && step.annotate.style !== 'info') {
-            yaml += this.indent() + `style: ${step.annotate.style}\n`;
-        }
-        
-        // Context (optional, default is 'default')
-        if (step.annotate.context && step.annotate.context !== 'default') {
-            yaml += this.indent() + `context: ${this.quote(step.annotate.context)}\n`;
-        }
-        
-        // Append (optional, default is false)
-        if (step.annotate.append) {
+        if (step.annotate?.append || step.append) {
             yaml += this.indent() + 'append: true\n';
         }
         
         this.currentIndent--;
         
-        // Common properties at step level
         yaml += this.generateCommonProperties(step);
         
         this.currentIndent--;
@@ -284,43 +326,44 @@ class YAMLGenerator {
         let yaml = this.indent() + '-\n';
         this.currentIndent++;
         
-        if (step.notify && Array.isArray(step.notify)) {
-            yaml += this.indent() + 'notify:\n';
-            this.currentIndent++;
-            
-            step.notify.forEach(notification => {
-                yaml += this.indent() + '-';
-                
-                const hasMultipleFields = Object.keys(notification).length > 1;
-                
-                if (hasMultipleFields) {
-                    yaml += '\n';
-                    this.currentIndent++;
-                    
-                    Object.entries(notification).forEach(([key, value]) => {
-                        if (key === 'email') {
-                            yaml += this.indent() + `email: ${this.quote(value)}\n`;
-                        } else if (key === 'slack') {
-                            yaml += this.indent() + `slack: ${this.quote(value)}\n`;
-                        } else if (key === 'webhook') {
-                            yaml += this.indent() + `webhook: ${this.quote(value)}\n`;
-                        } else if (key === 'pagerduty_change_event') {
-                            yaml += this.indent() + `pagerduty_change_event: ${this.quote(value)}\n`;
-                        }
-                    });
-                    
-                    this.currentIndent--;
-                } else {
-                    // Single field notification
-                    const [key, value] = Object.entries(notification)[0];
-                    yaml += ` ${key}: ${this.quote(value)}\n`;
-                }
-            });
-            
-            this.currentIndent--;
+        if (step.label) {
+            yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
         }
         
-        // Add common properties
+        // Build notify array
+        const notifications = step.notify || [];
+        if (!Array.isArray(notifications)) {
+            // Convert from properties to array format
+            const notifyArray = [];
+            if (step.email) notifyArray.push({ email: step.email });
+            if (step.slack) notifyArray.push({ slack: step.slack });
+            if (step.webhook) notifyArray.push({ webhook: step.webhook });
+            if (step.pagerduty) notifyArray.push({ pagerduty_change_event: step.pagerduty });
+            
+            if (notifyArray.length > 0) {
+                yaml += this.indent() + 'notify:\n';
+                this.currentIndent++;
+                
+                notifyArray.forEach(notification => {
+                    if (Object.keys(notification).length === 1) {
+                        // Simple notification
+                        const [key, value] = Object.entries(notification)[0];
+                        yaml += this.indent() + `- ${key}: ${this.quote(value)}\n`;
+                    } else {
+                        // Complex notification
+                        yaml += this.indent() + '-\n';
+                        this.currentIndent++;
+                        Object.entries(notification).forEach(([key, value]) => {
+                            yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
+                        });
+                        this.currentIndent--;
+                    }
+                });
+                
+                this.currentIndent--;
+            }
+        }
+        
         yaml += this.generateCommonProperties(step);
         
         this.currentIndent--;
@@ -397,6 +440,78 @@ class YAMLGenerator {
         return yaml;
     }
 
+    generatePlugins(plugins) {
+        let yaml = this.indent() + 'plugins:\n';
+        this.currentIndent++;
+        
+        Object.entries(plugins).forEach(([pluginName, config]) => {
+            yaml += this.indent() + `- ${pluginName}:\n`;
+            this.currentIndent++;
+            
+            if (typeof config === 'object' && config !== null) {
+                Object.entries(config).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        yaml += this.indent() + `${key}:\n`;
+                        this.currentIndent++;
+                        value.forEach(item => {
+                            yaml += this.indent() + `- ${this.quote(item)}\n`;
+                        });
+                        this.currentIndent--;
+                    } else if (typeof value === 'object' && value !== null) {
+                        yaml += this.indent() + `${key}:\n`;
+                        this.currentIndent++;
+                        Object.entries(value).forEach(([k, v]) => {
+                            yaml += this.indent() + `${k}: ${this.quote(v)}\n`;
+                        });
+                        this.currentIndent--;
+                    } else {
+                        yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
+                    }
+                });
+            }
+            
+            this.currentIndent--;
+        });
+        
+        this.currentIndent--;
+        return yaml;
+    }
+
+    // Generate Matrix Configuration - NEW
+    generateMatrix(matrix) {
+        let yaml = this.indent() + 'matrix:\n';
+        this.currentIndent++;
+        
+        const entries = Object.entries(matrix);
+        
+        if (entries.length === 1) {
+            // Simple format for single dimension
+            const [key, values] = entries[0];
+            yaml += this.indent() + `- ${key}:\n`;
+            this.currentIndent++;
+            values.forEach(value => {
+                yaml += this.indent() + `- ${this.quote(value)}\n`;
+            });
+            this.currentIndent--;
+        } else {
+            // Complex format for multiple dimensions
+            yaml += this.indent() + '-\n';
+            this.currentIndent++;
+            entries.forEach(([key, values]) => {
+                yaml += this.indent() + `${key}:\n`;
+                this.currentIndent++;
+                values.forEach(value => {
+                    yaml += this.indent() + `- ${this.quote(value)}\n`;
+                });
+                this.currentIndent--;
+            });
+            this.currentIndent--;
+        }
+        
+        this.currentIndent--;
+        return yaml;
+    }
+
     generateCommonProperties(step) {
         let yaml = '';
         
@@ -453,60 +568,6 @@ class YAMLGenerator {
                 yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
             });
             this.currentIndent--;
-        }
-        
-        // Environment variables
-        if (step.env && Object.keys(step.env).length > 0) {
-            yaml += this.indent() + 'env:\n';
-            this.currentIndent++;
-            Object.entries(step.env).forEach(([key, value]) => {
-                yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
-            });
-            this.currentIndent--;
-        }
-        
-        // Timeout
-        if (step.timeout_in_minutes) {
-            yaml += this.indent() + `timeout_in_minutes: ${step.timeout_in_minutes}\n`;
-        }
-        
-        // Soft fail
-        if (step.soft_fail) {
-            if (typeof step.soft_fail === 'boolean') {
-                yaml += this.indent() + 'soft_fail: true\n';
-            } else {
-                yaml += this.indent() + 'soft_fail:\n';
-                this.currentIndent++;
-                if (Array.isArray(step.soft_fail)) {
-                    step.soft_fail.forEach(exitStatus => {
-                        yaml += this.indent() + `- exit_status: ${exitStatus}\n`;
-                    });
-                } else {
-                    Object.entries(step.soft_fail).forEach(([key, value]) => {
-                        yaml += this.indent() + `${key}: ${value}\n`;
-                    });
-                }
-                this.currentIndent--;
-            }
-        }
-        
-        // Parallelism
-        if (step.parallelism) {
-            yaml += this.indent() + `parallelism: ${step.parallelism}\n`;
-        }
-        
-        // Concurrency
-        if (step.concurrency) {
-            yaml += this.indent() + `concurrency: ${this.quote(step.concurrency)}\n`;
-        }
-        
-        if (step.concurrency_limit) {
-            yaml += this.indent() + `concurrency_limit: ${step.concurrency_limit}\n`;
-        }
-        
-        // Priority
-        if (step.priority !== undefined && step.priority !== 0) {
-            yaml += this.indent() + `priority: ${step.priority}\n`;
         }
         
         // Retry
@@ -573,87 +634,6 @@ class YAMLGenerator {
             }
         }
         
-        // Matrix
-        if (step.matrix && Object.keys(step.matrix).length > 0) {
-            yaml += this.indent() + 'matrix:\n';
-            this.currentIndent++;
-            
-            const matrixEntries = Object.entries(step.matrix);
-            if (matrixEntries.length === 1) {
-                // Single dimension - use compact format
-                const [key, values] = matrixEntries[0];
-                yaml += this.indent() + `- ${key}:\n`;
-                this.currentIndent++;
-                values.forEach(value => {
-                    yaml += this.indent() + `- ${this.quote(value)}\n`;
-                });
-                this.currentIndent--;
-            } else {
-                // Multiple dimensions
-                yaml += this.indent() + '-\n';
-                this.currentIndent++;
-                matrixEntries.forEach(([key, values]) => {
-                    yaml += this.indent() + `${key}:\n`;
-                    this.currentIndent++;
-                    values.forEach(value => {
-                        yaml += this.indent() + `- ${this.quote(value)}\n`;
-                    });
-                    this.currentIndent--;
-                });
-                this.currentIndent--;
-            }
-            
-            this.currentIndent--;
-        }
-        
-        // Plugins
-        if (step.plugins && Object.keys(step.plugins).length > 0) {
-            yaml += this.generatePlugins(step.plugins);
-        }
-        
-        return yaml;
-    }
-
-    generatePlugins(plugins) {
-        let yaml = this.indent() + 'plugins:\n';
-        this.currentIndent++;
-        
-        Object.entries(plugins).forEach(([pluginName, config]) => {
-            if (!config || Object.keys(config).length === 0) {
-                yaml += this.indent() + `- ${pluginName}\n`;
-            } else {
-                yaml += this.indent() + `- ${pluginName}#v1.0.0:\n`;
-                this.currentIndent++;
-                
-                Object.entries(config).forEach(([key, value]) => {
-                    if (value === null || value === undefined || value === '') {
-                        return; // Skip empty values
-                    }
-                    
-                    if (Array.isArray(value)) {
-                        yaml += this.indent() + `${key}:\n`;
-                        this.currentIndent++;
-                        value.forEach(item => {
-                            yaml += this.indent() + `- ${this.quote(item)}\n`;
-                        });
-                        this.currentIndent--;
-                    } else if (typeof value === 'object') {
-                        yaml += this.indent() + `${key}:\n`;
-                        this.currentIndent++;
-                        Object.entries(value).forEach(([subKey, subValue]) => {
-                            yaml += this.indent() + `${subKey}: ${this.quote(subValue)}\n`;
-                        });
-                        this.currentIndent--;
-                    } else {
-                        yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
-                    }
-                });
-                
-                this.currentIndent--;
-            }
-        });
-        
-        this.currentIndent--;
         return yaml;
     }
 
@@ -718,11 +698,16 @@ class YAMLGenerator {
         return keys.length === 1 && keys[0] === 'block';
     }
 
-    // Validation methods
+    // Enhanced validation method
     validate(yamlString) {
+        const issues = [];
+        
         try {
-            // Basic validation - check for common issues
-            const issues = [];
+            // Basic structure validation
+            if (!yamlString || yamlString.trim() === '') {
+                issues.push('YAML content is empty');
+                return { valid: false, issues };
+            }
             
             // Check for tabs (YAML doesn't allow tabs)
             if (yamlString.includes('\t')) {
@@ -761,6 +746,9 @@ class YAMLGenerator {
                 issues.push('Missing required "steps" field.');
             }
             
+            // Enhanced validation for Buildkite-specific syntax
+            this.validateBuildkiteStructure(yamlString, issues);
+            
             return {
                 valid: issues.length === 0,
                 issues: issues
@@ -773,7 +761,47 @@ class YAMLGenerator {
         }
     }
 
-    // Pretty print YAML with syntax highlighting (for display)
+    // Buildkite-specific validation
+    validateBuildkiteStructure(yamlString, issues) {
+        const lines = yamlString.split('\n');
+        
+        // Check for common Buildkite issues
+        lines.forEach((line, index) => {
+            // Check for invalid step types
+            if (line.match(/^\s*- (command|wait|block|input|trigger|group|annotate|notify):/)) {
+                // Valid step type
+            } else if (line.match(/^\s*- \w+:/) && !line.includes('plugins:')) {
+                // Potentially invalid step type
+                const match = line.match(/^\s*- (\w+):/);
+                if (match && !this.validationRules.stepTypes.includes(match[1])) {
+                    issues.push(`Line ${index + 1}: Unknown step type "${match[1]}"`);
+                }
+            }
+            
+            // Check for invalid conditional operators
+            if (line.includes('if:') || line.includes('unless:')) {
+                const condition = line.split(/if:|unless:/)[1]?.trim();
+                if (condition) {
+                    const hasValidOperator = this.validationRules.conditionalOperators.some(op => 
+                        condition.includes(` ${op} `)
+                    );
+                    if (!hasValidOperator && !condition.includes('(') && !condition.includes(')')) {
+                        issues.push(`Line ${index + 1}: Condition might be missing an operator`);
+                    }
+                }
+            }
+            
+            // Check for matrix syntax
+            if (line.trim() === 'matrix:') {
+                // Matrix configuration should follow
+                if (index + 1 < lines.length && !lines[index + 1].match(/^\s+-/)) {
+                    issues.push(`Line ${index + 1}: Matrix configuration should start with a list`);
+                }
+            }
+        });
+    }
+
+    // Pretty print YAML with enhanced syntax highlighting
     prettify(yamlString) {
         const lines = yamlString.split('\n');
         const formatted = lines.map(line => {
@@ -784,6 +812,9 @@ class YAMLGenerator {
             line = line.replace(/: "([^"]+)"/g, ': <span class="yaml-string">"$1"</span>');
             line = line.replace(/: '([^']+)'/g, ': <span class="yaml-string">\'$1\'</span>');
             
+            // Unquoted strings that look like values
+            line = line.replace(/: ([^"'\d\[\{][^\n]*[^,\]\}])$/g, ': <span class="yaml-string">$1</span>');
+            
             // Numbers
             line = line.replace(/: (\d+)$/g, ': <span class="yaml-number">$1</span>');
             
@@ -793,14 +824,47 @@ class YAMLGenerator {
             // Arrays
             line = line.replace(/^(\s*)- /g, '$1<span class="yaml-array">-</span> ');
             
+            // Special Buildkite values
+            line = line.replace(/(build\.\w+(\.\w+)*)/g, '<span class="yaml-variable">$1</span>');
+            line = line.replace(/(pipeline\.\w+)/g, '<span class="yaml-variable">$1</span>');
+            line = line.replace(/(organization\.\w+)/g, '<span class="yaml-variable">$1</span>');
+            
             return line;
         });
         
         return formatted.join('\n');
+    }
+
+    // Download YAML file
+    downloadYAML(yamlContent, filename = 'pipeline.yml') {
+        const blob = new Blob([yamlContent], { type: 'text/yaml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Format YAML for display
+    formatYAML(yamlString) {
+        // Clean up and format YAML for better readability
+        return yamlString
+            .split('\n')
+            .map(line => line.trimEnd())
+            .join('\n')
+            .replace(/\n\n\n+/g, '\n\n');
     }
 }
 
 // Export for use in main application
 if (typeof window !== 'undefined') {
     window.YAMLGenerator = YAMLGenerator;
+}
+
+// Export for Node.js/testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = YAMLGenerator;
 }

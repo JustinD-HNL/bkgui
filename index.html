@@ -1,10 +1,10 @@
-<!-- index.html -->
+<!-- index.html - Complete Buildkite Pipeline Builder with All Features Merged -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buildkite Pipeline Builder</title>
+    <title>Buildkite Pipeline Builder - Enhanced v3.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -17,7 +17,7 @@
                 <div class="header-brand">
                     <i class="fas fa-stream"></i>
                     <h1>Buildkite Pipeline Builder</h1>
-                    <span class="version">Enhanced v2.0</span>
+                    <span class="version">Enhanced v3.0</span>
                 </div>
                 <div class="header-actions">
                     <button id="load-example" class="btn btn-secondary">
@@ -27,6 +27,10 @@
                     <button id="clear-pipeline" class="btn btn-secondary">
                         <i class="fas fa-trash"></i>
                         Clear All
+                    </button>
+                    <button id="share-pipeline" class="btn btn-secondary">
+                        <i class="fas fa-share-alt"></i>
+                        Share
                     </button>
                     <button id="export-yaml" class="btn btn-primary">
                         <i class="fas fa-download"></i>
@@ -62,13 +66,20 @@
                         <div class="step-type" draggable="true" data-step-type="block">
                             <i class="fas fa-hand-paper"></i>
                             <span>Block Step</span>
-                            <small>Manual approval gate</small>
+                            <small>Manual approval</small>
                         </div>
                         <div class="step-type" draggable="true" data-step-type="input">
                             <i class="fas fa-keyboard"></i>
                             <span>Input Step</span>
                             <small>Collect user input</small>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Steps -->
+                <div class="step-category">
+                    <h4><i class="fas fa-rocket"></i> Advanced Steps</h4>
+                    <div class="step-palette">
                         <div class="step-type" draggable="true" data-step-type="trigger">
                             <i class="fas fa-bolt"></i>
                             <span>Trigger Step</span>
@@ -77,103 +88,156 @@
                         <div class="step-type" draggable="true" data-step-type="group">
                             <i class="fas fa-layer-group"></i>
                             <span>Group Step</span>
-                            <small>Group multiple steps</small>
+                            <small>Group related steps</small>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Advanced Steps -->
-                <div class="step-category">
-                    <h4><i class="fas fa-tools"></i> Advanced</h4>
-                    <div class="step-palette">
-                        <div class="step-type advanced" draggable="true" data-step-type="pipeline-upload">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Pipeline Upload</span>
-                            <small>Upload dynamic pipeline</small>
-                        </div>
-                        <div class="step-type advanced" draggable="true" data-step-type="annotation">
+                        <div class="step-type" draggable="true" data-step-type="annotation">
                             <i class="fas fa-comment-alt"></i>
                             <span>Annotation</span>
                             <small>Add build annotations</small>
                         </div>
-                        <div class="step-type advanced" draggable="true" data-step-type="notify">
+                        <div class="step-type" draggable="true" data-step-type="notify">
                             <i class="fas fa-bell"></i>
-                            <span>Notify</span>
+                            <span>Notify Step</span>
                             <small>Send notifications</small>
                         </div>
-                        <div class="step-type advanced" draggable="true" data-step-type="plugin">
+                        <div class="step-type" draggable="true" data-step-type="plugin">
                             <i class="fas fa-puzzle-piece"></i>
                             <span>Plugin Step</span>
                             <small>Use Buildkite plugins</small>
                         </div>
+                        <div class="step-type" draggable="true" data-step-type="pipeline-upload">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Pipeline Upload</span>
+                            <small>Dynamic pipeline upload</small>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Sidebar Actions -->
+                <!-- Quick Actions -->
                 <div class="sidebar-actions">
-                    <!-- Quick Actions Grid -->
-                    <div class="quick-actions">
-                        <button class="action-btn" data-action="plugin-catalog">
-                            <i class="fas fa-store"></i>
-                            <span>Plugin Catalog</span>
-                        </button>
-                        <button class="action-btn" data-action="matrix-builder">
-                            <i class="fas fa-th"></i>
-                            <span>Matrix Builder</span>
-                        </button>
-                        <button class="action-btn" data-action="step-templates">
-                            <i class="fas fa-file-alt"></i>
-                            <span>Step Templates</span>
-                        </button>
-                        <button class="action-btn" data-action="variable-manager">
-                            <i class="fas fa-cog"></i>
-                            <span>Variables</span>
-                        </button>
+                    <h4><i class="fas fa-magic"></i> Quick Actions</h4>
+                    <button class="action-btn" data-action="plugin-catalog">
+                        <i class="fas fa-store"></i> Plugin Catalog
+                    </button>
+                    <button class="action-btn" data-action="matrix-builder">
+                        <i class="fas fa-th"></i> Matrix Builder
+                    </button>
+                    <button class="action-btn" data-action="conditional-logic">
+                        <i class="fas fa-code-branch"></i> Conditional Logic
+                    </button>
+                    <button class="action-btn" data-action="step-templates">
+                        <i class="fas fa-clipboard-list"></i> Step Templates
+                    </button>
+                    <button class="action-btn" data-action="variable-manager">
+                        <i class="fas fa-dollar-sign"></i> Variables
+                    </button>
+                    <button class="action-btn" data-action="pattern-library">
+                        <i class="fas fa-book"></i> Patterns
+                    </button>
+                    <button class="action-btn" data-action="dependency-manager">
+                        <i class="fas fa-sitemap"></i> Dependencies
+                    </button>
+                    <button class="action-btn" data-action="pipeline-validator">
+                        <i class="fas fa-check-circle"></i> Validator
+                    </button>
+                    <button class="action-btn" data-action="pipeline-preview">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                </div>
+
+                <!-- Templates -->
+                <div class="sidebar-templates">
+                    <h4><i class="fas fa-file-code"></i> Templates</h4>
+                    <div class="template-list">
+                        <div class="template-item" data-template="ci-cd">
+                            <i class="fas fa-sync"></i> CI/CD Pipeline
+                        </div>
+                        <div class="template-item" data-template="docker">
+                            <i class="fab fa-docker"></i> Docker Build
+                        </div>
+                        <div class="template-item" data-template="node">
+                            <i class="fab fa-node-js"></i> Node.js App
+                        </div>
+                        <div class="template-item" data-template="python">
+                            <i class="fab fa-python"></i> Python App
+                        </div>
+                        <div class="template-item" data-template="matrix">
+                            <i class="fas fa-th"></i> Matrix Build
+                        </div>
                     </div>
-                    <!-- Pattern Library Link -->
-                    <div class="pattern-library-link">
-                        <button class="btn btn-outline btn-full" data-action="pattern-library">
-                            <i class="fas fa-book"></i>
-                            Pattern Library
+                </div>
+
+                <!-- Plugin Quick Add -->
+                <div class="sidebar-plugins">
+                    <h4><i class="fas fa-puzzle-piece"></i> Popular Plugins</h4>
+                    <div class="plugin-quick-list">
+                        <button class="plugin-quick-add" data-plugin="docker-compose">
+                            <i class="fab fa-docker"></i> Docker Compose
+                        </button>
+                        <button class="plugin-quick-add" data-plugin="artifacts">
+                            <i class="fas fa-archive"></i> Artifacts
+                        </button>
+                        <button class="plugin-quick-add" data-plugin="test-collector">
+                            <i class="fas fa-vial"></i> Test Collector
                         </button>
                     </div>
                 </div>
             </aside>
 
-            <!-- Central Canvas -->
-            <section class="canvas">
+            <!-- Pipeline Canvas - Middle Column -->
+            <section class="pipeline-canvas canvas">
                 <div class="canvas-header">
-                    <h2>Pipeline Canvas</h2>
+                    <h2><i class="fas fa-project-diagram"></i> Pipeline Builder</h2>
                     <div class="canvas-controls">
-                        <span class="step-count">0 steps</span>
-                        <button class="btn btn-secondary btn-small" id="toggle-yaml">
-                            <i class="fas fa-code"></i>
-                            Toggle YAML
+                        <button id="toggle-yaml" class="btn btn-secondary btn-small">
+                            <i class="fas fa-code"></i> Show YAML
                         </button>
+                        <button id="validate-pipeline" class="btn btn-secondary btn-small">
+                            <i class="fas fa-check-circle"></i> Validate
+                        </button>
+                        <button id="copy-yaml" class="btn btn-secondary btn-small">
+                            <i class="fas fa-copy"></i> Copy YAML
+                        </button>
+                        <span class="step-count">0 steps</span>
                     </div>
                 </div>
-
+                
                 <!-- Pipeline Container -->
                 <div class="pipeline-container">
                     <div id="pipeline-steps" class="pipeline-steps">
                         <div id="empty-state" class="empty-pipeline">
                             <i class="fas fa-stream"></i>
                             <h3>Start Building Your Pipeline</h3>
-                            <p>Drag step types from the sidebar to build your pipeline</p>
+                            <p>Drag step types from the sidebar or use quick actions to get started</p>
+                            <div class="quick-start-buttons">
+                                <button class="btn btn-primary" data-action="add-step" data-step-type="command">
+                                    <i class="fas fa-plus"></i> Add Command Step
+                                </button>
+                                <button class="btn btn-secondary" data-action="load-template">
+                                    <i class="fas fa-file-import"></i> Load Template
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- YAML Preview (Initially Hidden) -->
+                <!-- YAML Preview -->
                 <div id="yaml-preview" class="yaml-preview" style="display: none;">
                     <div class="yaml-header">
                         <h3>Pipeline YAML</h3>
-                        <button class="btn btn-secondary btn-small" id="copy-yaml">
-                            <i class="fas fa-copy"></i>
-                            Copy
-                        </button>
+                        <div class="yaml-actions">
+                            <button id="download-yaml" class="btn btn-small">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                            <button id="validate-yaml" class="btn btn-small">
+                                <i class="fas fa-check"></i> Validate
+                            </button>
+                        </div>
                     </div>
-                    <pre><code id="yaml-output">steps: []</code></pre>
+                    <pre id="yaml-output" class="yaml-output"><code>steps: []</code></pre>
+                    <div id="yaml-validation" class="yaml-validation hidden">
+                        <div id="validation-content"></div>
+                    </div>
                 </div>
             </section>
 
@@ -193,7 +257,7 @@
     </div>
 
     <!-- Command Palette -->
-    <div id="command-palette" class="command-palette" style="display: none;">
+    <div id="command-palette" class="command-palette hidden" style="display: none;">
         <div class="command-palette-content">
             <input type="text" id="command-input" placeholder="Type a command or search...">
             <div id="command-results" class="command-results"></div>
@@ -204,7 +268,7 @@
     <div id="plugin-catalog-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3><i class="fas fa-store"></i> Plugin Catalog</h3>
+                <h2><i class="fas fa-store"></i> Plugin Catalog</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
@@ -219,9 +283,7 @@
                         <button class="filter-btn" data-filter="security">Security</button>
                     </div>
                 </div>
-                <div id="plugin-list" class="plugin-list">
-                    <!-- Plugins will be dynamically populated -->
-                </div>
+                <div id="plugin-list" class="plugin-list"></div>
             </div>
         </div>
     </div>
@@ -230,27 +292,25 @@
     <div id="matrix-builder-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3><i class="fas fa-th"></i> Matrix Builder</h3>
+                <h2><i class="fas fa-th"></i> Matrix Build Configuration</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="matrix-builder-content">
+                <div class="matrix-builder">
                     <div class="matrix-info">
                         <p>Configure build matrices to run the same step with different parameter combinations.</p>
                     </div>
                     
                     <div class="matrix-dimensions">
-                        <h4>Matrix Dimensions</h4>
-                        <div id="matrix-dimensions-list">
-                            <!-- Dynamic matrix dimensions will be added here -->
-                        </div>
-                        <button class="btn btn-secondary" id="add-dimension">
+                        <h3>Matrix Dimensions</h3>
+                        <div id="matrix-dimensions-list"></div>
+                        <button id="add-matrix-dimension" class="btn btn-secondary">
                             <i class="fas fa-plus"></i> Add Dimension
                         </button>
                     </div>
                     
                     <div class="matrix-preview">
-                        <h4>Preview</h4>
+                        <h3>Preview</h3>
                         <div id="matrix-preview-content">
                             <p class="empty-state">Add dimensions to see matrix preview</p>
                         </div>
@@ -264,11 +324,60 @@
                             <small>Maximum number of jobs to run in parallel</small>
                         </div>
                     </div>
+                    
+                    <div class="matrix-actions">
+                        <button class="btn btn-secondary close-modal">Cancel</button>
+                        <button id="apply-matrix" class="btn btn-primary">Apply to Step</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary close-modal">Cancel</button>
-                <button class="btn btn-primary" id="apply-matrix">Apply Matrix</button>
+        </div>
+    </div>
+
+    <!-- Conditional Logic Builder Modal (Enhanced Version) -->
+    <div id="conditional-logic-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-code-branch"></i> Conditional Logic Builder</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="condition-builder">
+                    <div class="condition-type">
+                        <label>Condition Type:</label>
+                        <select id="condition-type">
+                            <option value="if">If (condition)</option>
+                            <option value="unless">Unless (negative condition)</option>
+                        </select>
+                    </div>
+                    <div class="condition-presets">
+                        <h4>Common Conditions</h4>
+                        <button class="condition-preset" data-condition="build.branch == 'main'">Main Branch Only</button>
+                        <button class="condition-preset" data-condition="build.pull_request.id != null">Pull Requests Only</button>
+                        <button class="condition-preset" data-condition="build.tag != null">Tagged Builds</button>
+                        <button class="condition-preset" data-condition="build.source == 'schedule'">Scheduled Builds</button>
+                    </div>
+                    <div class="condition-builder-visual">
+                        <h4>Build Custom Condition</h4>
+                        <div id="condition-builder-content"></div>
+                        <button id="add-condition-group" class="btn btn-secondary">
+                            <i class="fas fa-plus"></i> Add Condition
+                        </button>
+                    </div>
+                    <div class="condition-editor">
+                        <label>Custom Condition Expression</label>
+                        <textarea id="condition-expression" rows="3" placeholder="e.g., build.branch == 'main' && build.pull_request.id == null"></textarea>
+                        <small>Use Buildkite environment variables and logical operators</small>
+                    </div>
+                    <div class="condition-preview">
+                        <h4>Generated Condition</h4>
+                        <code id="condition-preview-text"></code>
+                    </div>
+                    <div class="condition-actions">
+                        <button id="apply-condition" class="btn btn-primary">Apply Condition</button>
+                        <button class="btn btn-secondary close-modal">Cancel</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -277,7 +386,7 @@
     <div id="step-templates-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3><i class="fas fa-file-alt"></i> Step Templates</h3>
+                <h2><i class="fas fa-clipboard-list"></i> Step Templates</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
@@ -286,7 +395,9 @@
                     <button class="template-cat" data-category="testing">Testing</button>
                     <button class="template-cat" data-category="deployment">Deployment</button>
                     <button class="template-cat" data-category="docker">Docker</button>
+                    <button class="template-cat" data-category="build">Build & Package</button>
                     <button class="template-cat" data-category="security">Security</button>
+                    <button class="template-cat" data-category="notifications">Notifications</button>
                 </div>
                 
                 <div id="template-list" class="template-list">
@@ -470,19 +581,19 @@
     <div id="variable-manager-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-cog"></i> Pipeline Variables</h3>
+                <h2><i class="fas fa-dollar-sign"></i> Environment Variables</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="variable-manager">
                     <div class="variable-section">
-                        <h4>Environment Variables</h4>
-                        <div id="env-variables" class="variable-list">
+                        <h3>Pipeline Variables</h3>
+                        <div id="pipeline-variables" class="variable-list">
                             <div class="empty-state">
                                 <p>No environment variables defined</p>
                             </div>
                         </div>
-                        <button class="btn btn-secondary" id="add-env-var">
+                        <button id="add-pipeline-variable" class="btn btn-secondary">
                             <i class="fas fa-plus"></i> Add Variable
                         </button>
                     </div>
@@ -508,6 +619,16 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="variable-info">
+                        <h4>Available Buildkite Variables</h4>
+                        <ul>
+                            <li><code>BUILDKITE_BRANCH</code> - Git branch</li>
+                            <li><code>BUILDKITE_COMMIT</code> - Git commit</li>
+                            <li><code>BUILDKITE_BUILD_NUMBER</code> - Build number</li>
+                            <li><code>BUILDKITE_TAG</code> - Git tag (if present)</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -517,14 +638,14 @@
     <div id="pattern-library-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3><i class="fas fa-book"></i> Pipeline Pattern Library</h3>
+                <h2><i class="fas fa-book"></i> Pipeline Pattern Library</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="pattern-categories">
                     <button class="pattern-cat active" data-category="all">All Patterns</button>
-                    <button class="pattern-cat" data-category="microservices">Microservices</button>
                     <button class="pattern-cat" data-category="monorepo">Monorepo</button>
+                    <button class="pattern-cat" data-category="microservices">Microservices</button>
                     <button class="pattern-cat" data-category="mobile">Mobile Apps</button>
                     <button class="pattern-cat" data-category="ml">Machine Learning</button>
                 </div>
@@ -700,6 +821,74 @@ steps:
         </div>
     </div>
 
+    <!-- YAML Export Modal -->
+    <div id="yaml-export-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-code"></i> Export Pipeline YAML</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="yaml-export-container">
+                    <div class="yaml-validation-status">
+                        <div id="export-validation-status"></div>
+                    </div>
+                    <div class="yaml-export-content">
+                        <pre id="export-yaml-output" class="yaml-output syntax-highlighted"></pre>
+                    </div>
+                    <div class="yaml-export-actions">
+                        <button id="download-yaml-file" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download pipeline.yml
+                        </button>
+                        <button id="copy-yaml-clipboard" class="btn btn-secondary">
+                            <i class="fas fa-copy"></i> Copy to Clipboard
+                        </button>
+                        <button id="validate-yaml-export" class="btn btn-secondary">
+                            <i class="fas fa-check-circle"></i> Validate YAML
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Sharing Modal -->
+    <div id="share-pipeline-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-share-alt"></i> Share Pipeline</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-options">
+                    <div class="share-link-section">
+                        <h3>Share Link</h3>
+                        <p>Anyone with this link can view and import your pipeline</p>
+                        <div class="share-link-input">
+                            <input type="text" id="share-link" readonly>
+                            <button id="copy-share-link" class="btn btn-secondary">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="share-export-section">
+                        <h3>Export Options</h3>
+                        <button id="export-json" class="btn btn-secondary">
+                            <i class="fas fa-file-export"></i> Export as JSON
+                        </button>
+                        <button id="export-yaml-share" class="btn btn-secondary">
+                            <i class="fas fa-file-code"></i> Export as YAML
+                        </button>
+                    </div>
+                    <div class="share-qr-section">
+                        <h3>QR Code</h3>
+                        <div id="share-qr-code"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Dependency Manager Modal -->
     <div id="dependency-manager-modal" class="modal" style="display: none;">
         <div class="modal-content large">
@@ -735,60 +924,6 @@ steps:
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Conditional Builder Modal -->
-    <div id="conditional-builder-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-code-branch"></i> Conditional Builder</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="conditional-builder">
-                    <div class="condition-type">
-                        <label>Condition Type</label>
-                        <select id="condition-type">
-                            <option value="if">If (run when true)</option>
-                            <option value="unless">Unless (skip when true)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="condition-presets">
-                        <h4>Common Conditions</h4>
-                        <div class="preset-grid">
-                            <button class="preset-btn" data-condition="build.branch == 'main'">
-                                Main Branch Only
-                            </button>
-                            <button class="preset-btn" data-condition="build.pull_request.id == null">
-                                Not a Pull Request
-                            </button>
-                            <button class="preset-btn" data-condition="build.tag != null">
-                                Tagged Builds Only
-                            </button>
-                            <button class="preset-btn" data-condition="build.source == 'schedule'">
-                                Scheduled Builds
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="condition-editor">
-                        <label>Custom Condition</label>
-                        <textarea id="condition-expression" rows="3" placeholder="e.g., build.branch == 'main' && build.pull_request.id == null"></textarea>
-                        <small>Use Buildkite environment variables and logical operators</small>
-                    </div>
-                    
-                    <div class="condition-preview">
-                        <h4>Preview</h4>
-                        <code id="condition-preview-text">No condition set</code>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary close-modal">Cancel</button>
-                <button class="btn btn-primary" id="apply-condition">Apply Condition</button>
             </div>
         </div>
     </div>
@@ -876,15 +1011,21 @@ steps:
         <p>Loading...</p>
     </div>
 
-    <!-- Success/Error Notifications -->
+    <!-- Notification Container -->
     <div id="notification-container" class="notification-container"></div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
     <!-- Hidden File Input for Import -->
     <input type="file" id="import-file" accept=".yml,.yaml" style="display: none;">
 
-    <!-- Scripts -->
+    <!-- Scripts - Load in correct order -->
     <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
+    <script src="js/matrix-builder.js"></script>
+    <script src="js/conditional-logic-builder.js"></script>
+    <script src="js/pipeline-sharing.js"></script>
     <script src="js/enhanced-pipeline-builder.js"></script>
     <script src="js/app.js"></script>
 </body>

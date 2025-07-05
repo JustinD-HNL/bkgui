@@ -1,13 +1,17 @@
 // js/app.js
-// Main Application Controller for Buildkite Pipeline Builder
+// Main Application Controller for Buildkite Pipeline Builder - Enhanced v3.0
 /**
  * Coordinates all components and handles top-level application logic
+ * Now with matrix builds, conditional logic, enhanced YAML validation, and sharing
  */
 
 class BuildkiteApp {
     constructor() {
         this.pipelineBuilder = null;
         this.yamlGenerator = null;
+        this.matrixBuilder = null;
+        this.conditionalLogicBuilder = null;
+        this.pipelineSharing = null;
         this.yamlVisible = false;
         this.autoSaveEnabled = true;
         this.autoSaveInterval = null;
@@ -16,12 +20,11 @@ class BuildkiteApp {
     }
 
     init() {
-        console.log('🚀 Initializing Buildkite Pipeline Builder App...');
+        console.log('🚀 Initializing Enhanced Buildkite Pipeline Builder App v3.0...');
         
         // Initialize components
         this.yamlGenerator = new YAMLGenerator();
         
-        // Pipeline builder is initialized by enhanced-pipeline-builder.js
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
@@ -33,8 +36,11 @@ class BuildkiteApp {
     onDOMReady() {
         console.log('📄 DOM Ready, setting up application...');
         
-        // Get reference to pipeline builder
+        // Get references to components
         this.pipelineBuilder = window.pipelineBuilder;
+        this.matrixBuilder = window.matrixBuilder;
+        this.conditionalLogicBuilder = window.conditionalLogicBuilder;
+        this.pipelineSharing = window.pipelineSharing;
         
         if (!this.pipelineBuilder) {
             console.error('❌ Pipeline Builder not initialized!');
@@ -56,7 +62,7 @@ class BuildkiteApp {
         // Start auto-save
         this.startAutoSave();
         
-        console.log('✅ Buildkite Pipeline Builder App initialized successfully!');
+        console.log('✅ Enhanced Buildkite Pipeline Builder App initialized successfully!');
     }
 
     setupEventListeners() {
@@ -68,8 +74,18 @@ class BuildkiteApp {
         });
         
         document.getElementById('clear-pipeline')?.addEventListener('click', () => {
-            this.pipelineBuilder.clearPipeline();
-            this.updateYAML();
+            if (confirm('Are you sure you want to clear the entire pipeline?')) {
+                this.pipelineBuilder.clearPipeline();
+                this.updateYAML();
+                this.showNotification('Pipeline cleared', 'success');
+            }
+        });
+        
+        // NEW: Share pipeline button
+        document.getElementById('share-pipeline')?.addEventListener('click', () => {
+            if (this.pipelineSharing) {
+                this.pipelineSharing.openShareModal();
+            }
         });
         
         document.getElementById('export-yaml')?.addEventListener('click', () => {
@@ -85,11 +101,25 @@ class BuildkiteApp {
             this.copyYAML();
         });
         
+        // NEW: Validate pipeline button
+        document.getElementById('validate-pipeline')?.addEventListener('click', () => {
+            this.validatePipeline();
+        });
+        
         // Sidebar actions
         document.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const action = e.currentTarget.dataset.action;
                 this.handleAction(action);
+            });
+        });
+        
+        // Plugin quick add buttons
+        document.querySelectorAll('.plugin-quick-add').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const plugin = e.currentTarget.dataset.plugin;
+                this.pipelineBuilder.addPluginStep(plugin);
+                this.showNotification(`${plugin} plugin added`, 'success');
             });
         });
         
@@ -101,6 +131,9 @@ class BuildkiteApp {
         
         // Keyboard shortcuts
         this.setupKeyboardShortcuts();
+        
+        // YAML Export Modal buttons
+        this.setupYAMLExportButtons();
     }
 
     setupKeyboardShortcuts() {
@@ -135,6 +168,12 @@ class BuildkiteApp {
                 e.preventDefault();
                 this.toggleYAML();
             }
+            
+            // Ctrl/Cmd + K: Open command palette
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                this.openCommandPalette();
+            }
         });
     }
 
@@ -142,7 +181,7 @@ class BuildkiteApp {
         // Plugin Catalog Modal
         this.setupPluginCatalog();
         
-        // Matrix Builder Modal
+        // Matrix Builder Modal - NEW
         this.setupMatrixBuilder();
         
         // Step Templates Modal
@@ -186,85 +225,66 @@ class BuildkiteApp {
                 );
             
             pluginList.innerHTML = plugins.map(([key, plugin]) => `
-                <div class="plugin-card" data-plugin-key="${key}">
+                <div class="plugin-card" data-plugin="${key}">
                     <h4>${plugin.name}</h4>
                     <p>${plugin.description}</p>
+                    <div class="plugin-config">
+                        ${Object.entries(plugin.config || {}).map(([configKey, config]) => `
+                            <small><strong>${configKey}:</strong> ${config.description || configKey}</small>
+                        `).join('<br>')}
+                    </div>
                 </div>
             `).join('');
             
             // Add click handlers
             pluginList.querySelectorAll('.plugin-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const pluginKey = card.dataset.pluginKey;
-                    this.pipelineBuilder.addPluginStep(pluginKey);
+                    const pluginKey = card.dataset.plugin;
+                    const currentStep = window.currentStepForPlugin;
+                    
+                    if (currentStep) {
+                        // Add to existing step
+                        if (!currentStep.properties.plugins) {
+                            currentStep.properties.plugins = {};
+                        }
+                        
+                        const plugin = this.pipelineBuilder.pluginCatalog[pluginKey];
+                        currentStep.properties.plugins[pluginKey] = {};
+                        
+                        if (plugin.config) {
+                            Object.entries(plugin.config).forEach(([key, config]) => {
+                                currentStep.properties.plugins[pluginKey][key] = config.default || '';
+                            });
+                        }
+                        
+                        this.pipelineBuilder.renderProperties();
+                        window.currentStepForPlugin = null;
+                    } else {
+                        // Create new plugin step
+                        this.pipelineBuilder.addPluginStep(pluginKey);
+                    }
+                    
                     modal.style.display = 'none';
-                    this.updateYAML();
-                    this.showNotification(`Added ${this.pipelineBuilder.pluginCatalog[pluginKey].name} plugin`, 'success');
+                    this.showNotification(`${this.pipelineBuilder.pluginCatalog[pluginKey].name} plugin added`, 'success');
                 });
             });
         };
-        
-        // Initial render
-        renderPlugins();
         
         // Search functionality
         searchInput?.addEventListener('input', (e) => {
             renderPlugins(e.target.value);
         });
+        
+        // Initial render
+        renderPlugins();
     }
 
     setupMatrixBuilder() {
         const modal = document.getElementById('matrix-builder-modal');
-        const addDimensionBtn = document.getElementById('add-dimension');
-        const dimensionsContainer = document.getElementById('matrix-dimensions');
-        const previewContainer = document.getElementById('matrix-preview-content');
+        if (!modal || !this.matrixBuilder) return;
         
-        let matrixConfig = {};
-        
-        const renderDimensions = () => {
-            dimensionsContainer.innerHTML = Object.entries(matrixConfig).map(([name, values]) => `
-                <div class="matrix-dimension" data-dimension="${name}">
-                    <input type="text" class="dimension-name" value="${name}" placeholder="Dimension name">
-                    <div class="dimension-values">
-                        ${values.map((value, index) => `
-                            <input type="text" class="dimension-value" data-index="${index}" value="${value}" placeholder="Value">
-                        `).join('')}
-                        <button class="btn btn-secondary btn-small add-value">Add Value</button>
-                    </div>
-                    <button class="btn btn-secondary btn-small remove-dimension">Remove</button>
-                </div>
-            `).join('');
-            
-            updatePreview();
-        };
-        
-        const updatePreview = () => {
-            const dimensions = Object.entries(matrixConfig).filter(([_, values]) => values.length > 0);
-            if (dimensions.length === 0) {
-                previewContainer.innerHTML = '<p>No dimensions configured</p>';
-                return;
-            }
-            
-            let totalCombinations = 1;
-            dimensions.forEach(([_, values]) => {
-                totalCombinations *= values.length;
-            });
-            
-            previewContainer.innerHTML = `
-                <p><strong>${dimensions.length} dimensions = ${totalCombinations} jobs</strong></p>
-                <ul>
-                    ${dimensions.map(([name, values]) => 
-                        `<li><strong>${name}:</strong> ${values.join(', ')}</li>`
-                    ).join('')}
-                </ul>
-            `;
-        };
-        
-        addDimensionBtn?.addEventListener('click', () => {
-            const name = `dimension${Object.keys(matrixConfig).length + 1}`;
-            matrixConfig[name] = [''];
-            renderDimensions();
-        });
+        // Matrix builder is self-contained
+        console.log('✅ Matrix Builder modal setup complete');
     }
 
     setupStepTemplates() {
@@ -283,62 +303,38 @@ class BuildkiteApp {
                 {
                     id: 'python-test',
                     name: 'Python Test Suite',
-                    description: 'PyTest with coverage',
+                    description: 'Run pytest with coverage',
                     icon: 'fa-python'
-                },
-                {
-                    id: 'parallel-tests',
-                    name: 'Parallel Tests',
-                    description: 'Split tests across agents',
-                    icon: 'fa-tasks'
                 }
             ],
             deployment: [
                 {
                     id: 'docker-deploy',
                     name: 'Docker Deployment',
-                    description: 'Build and push Docker images',
+                    description: 'Build and push Docker image',
                     icon: 'fa-docker'
                 },
                 {
                     id: 'k8s-deploy',
-                    name: 'Kubernetes Deploy',
+                    name: 'Kubernetes Deployment',
                     description: 'Deploy to Kubernetes cluster',
                     icon: 'fa-dharmachakra'
-                },
-                {
-                    id: 'aws-deploy',
-                    name: 'AWS Deployment',
-                    description: 'Deploy to AWS services',
-                    icon: 'fa-aws'
                 }
             ],
             docker: [
                 {
                     id: 'docker-build',
-                    name: 'Docker Build',
-                    description: 'Build Docker image',
+                    name: 'Docker Build & Push',
+                    description: 'Build and push to registry',
                     icon: 'fa-docker'
-                },
-                {
-                    id: 'docker-compose',
-                    name: 'Docker Compose',
-                    description: 'Run with docker-compose',
-                    icon: 'fa-layer-group'
                 }
             ],
-            security: [
+            notifications: [
                 {
-                    id: 'security-scan',
-                    name: 'Security Scan',
-                    description: 'Run security checks',
-                    icon: 'fa-shield-alt'
-                },
-                {
-                    id: 'dependency-check',
-                    name: 'Dependency Check',
-                    description: 'Check for vulnerabilities',
-                    icon: 'fa-search'
+                    id: 'slack-notify',
+                    name: 'Slack Notification',
+                    description: 'Send build status to Slack',
+                    icon: 'fa-slack'
                 }
             ]
         };
@@ -349,21 +345,18 @@ class BuildkiteApp {
                 templates[category] || [];
             
             templateList.innerHTML = templatesToShow.map(template => `
-                <div class="template-item" data-template="${template.id}">
-                    <i class="fas ${template.icon}"></i>
-                    <span>${template.name}</span>
-                    <small>${template.description}</small>
+                <div class="template-card" data-template="${template.id}">
+                    <h4><i class="fas ${template.icon}"></i> ${template.name}</h4>
+                    <p>${template.description}</p>
                 </div>
             `).join('');
             
             // Add click handlers
-            templateList.querySelectorAll('.template-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const templateId = item.dataset.template;
-                    this.pipelineBuilder.loadTemplate(templateId);
+            templateList.querySelectorAll('.template-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const templateId = card.dataset.template;
+                    this.applyTemplate(templateId);
                     modal.style.display = 'none';
-                    this.updateYAML();
-                    this.showNotification(`Loaded ${templateId} template`, 'success');
                 });
             });
         };
@@ -383,19 +376,52 @@ class BuildkiteApp {
 
     setupVariableManager() {
         const modal = document.getElementById('variable-manager-modal');
-        const envVarsContainer = document.getElementById('env-variables');
-        const buildOptionsContainer = document.getElementById('build-options');
-        const addEnvVarBtn = document.getElementById('add-env-var');
-        
-        // This would typically manage global pipeline variables
-        // For now, it's a placeholder for future implementation
+        const variableList = document.getElementById('pipeline-variables');
+        const addBtn = document.getElementById('add-pipeline-variable');
         
         const renderVariables = () => {
-            envVarsContainer.innerHTML = '<p>No global environment variables defined</p>';
-            buildOptionsContainer.innerHTML = '<p>No build options configured</p>';
+            // Get all environment variables from pipeline
+            const allVars = {};
+            this.pipelineBuilder.steps.forEach(step => {
+                if (step.properties.env) {
+                    Object.assign(allVars, step.properties.env);
+                }
+            });
+            
+            variableList.innerHTML = Object.entries(allVars).length > 0 ?
+                Object.entries(allVars).map(([key, value]) => `
+                    <div class="env-var">
+                        <span class="var-key">${key}</span>
+                        <span class="var-value">${value}</span>
+                    </div>
+                `).join('') :
+                '<p class="no-data">No pipeline variables defined</p>';
         };
         
-        renderVariables();
+        addBtn?.addEventListener('click', () => {
+            const key = prompt('Variable name:');
+            if (!key) return;
+            
+            const value = prompt('Variable value:');
+            if (value === null) return;
+            
+            // Add to all command steps
+            this.pipelineBuilder.steps.forEach(step => {
+                if (step.type === 'command') {
+                    if (!step.properties.env) {
+                        step.properties.env = {};
+                    }
+                    step.properties.env[key] = value;
+                }
+            });
+            
+            this.pipelineBuilder.renderPipeline();
+            renderVariables();
+            this.showNotification('Variable added to all command steps', 'success');
+        });
+        
+        // Initial render when modal opens
+        modal.addEventListener('show', renderVariables);
     }
 
     setupPatternLibrary() {
@@ -404,57 +430,32 @@ class BuildkiteApp {
         const categoryButtons = modal.querySelectorAll('.pattern-cat');
         
         const patterns = {
-            microservices: [
-                {
-                    name: 'Microservice CI/CD',
-                    description: 'Complete microservice pipeline with testing, building, and deployment',
-                    icon: 'fa-cubes'
-                },
-                {
-                    name: 'Service Mesh Deploy',
-                    description: 'Deploy microservices with Istio/Linkerd',
-                    icon: 'fa-project-diagram'
-                }
-            ],
             monorepo: [
                 {
-                    name: 'Monorepo Pipeline',
-                    description: 'Handle multiple projects in a monorepo',
+                    name: 'Monorepo Changed Paths',
+                    description: 'Only run steps when specific paths change',
                     icon: 'fa-code-branch'
-                },
+                }
+            ],
+            microservices: [
                 {
-                    name: 'Selective Builds',
-                    description: 'Build only changed packages',
-                    icon: 'fa-filter'
+                    name: 'Service Dependencies',
+                    description: 'Deploy services in dependency order',
+                    icon: 'fa-project-diagram'
                 }
             ],
             mobile: [
                 {
-                    name: 'iOS App Pipeline',
-                    description: 'Build, test, and deploy iOS apps',
-                    icon: 'fa-apple'
-                },
-                {
-                    name: 'Android App Pipeline',
-                    description: 'Build, test, and deploy Android apps',
-                    icon: 'fa-android'
-                },
-                {
-                    name: 'React Native Pipeline',
-                    description: 'Cross-platform mobile app pipeline',
-                    icon: 'fa-react'
+                    name: 'iOS/Android Build',
+                    description: 'Parallel mobile app builds',
+                    icon: 'fa-mobile-alt'
                 }
             ],
             ml: [
                 {
-                    name: 'ML Model Training',
-                    description: 'Train and validate ML models',
+                    name: 'ML Training Pipeline',
+                    description: 'Train, evaluate, and deploy models',
                     icon: 'fa-brain'
-                },
-                {
-                    name: 'ML Model Deployment',
-                    description: 'Deploy models to production',
-                    icon: 'fa-rocket'
                 }
             ]
         };
@@ -488,10 +489,72 @@ class BuildkiteApp {
         renderPatterns('all');
     }
 
+    setupYAMLExportButtons() {
+        // Download YAML button
+        document.getElementById('download-yaml-file')?.addEventListener('click', () => {
+            const config = this.pipelineBuilder.getPipelineConfig();
+            const yaml = this.yamlGenerator.generate(config);
+            this.yamlGenerator.downloadYAML(yaml, 'pipeline.yml');
+            this.showNotification('Pipeline downloaded as pipeline.yml', 'success');
+        });
+        
+        // Copy YAML button
+        document.getElementById('copy-yaml-clipboard')?.addEventListener('click', () => {
+            const yamlOutput = document.getElementById('export-yaml-output');
+            if (yamlOutput) {
+                const yaml = yamlOutput.textContent;
+                navigator.clipboard.writeText(yaml).then(() => {
+                    this.showNotification('YAML copied to clipboard!', 'success');
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    this.showNotification('Failed to copy YAML', 'error');
+                });
+            }
+        });
+        
+        // Validate YAML button
+        document.getElementById('validate-yaml-export')?.addEventListener('click', () => {
+            const yamlOutput = document.getElementById('export-yaml-output');
+            if (yamlOutput && this.yamlGenerator) {
+                const yaml = yamlOutput.textContent;
+                const validation = this.yamlGenerator.validate(yaml);
+                
+                const statusDiv = document.getElementById('export-validation-status');
+                if (statusDiv) {
+                    if (validation.valid) {
+                        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> YAML validation passed!';
+                        statusDiv.className = 'validation-success';
+                        this.showNotification('YAML validation passed!', 'success');
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Validation issues: ' + validation.issues.join(', ');
+                        statusDiv.className = 'validation-error';
+                        this.showNotification('YAML validation failed', 'error');
+                    }
+                }
+            }
+        });
+    }
+
     handleAction(action) {
-        const modal = document.getElementById(`${action}-modal`);
-        if (modal) {
-            modal.style.display = 'block';
+        switch (action) {
+            case 'plugin-catalog':
+                document.getElementById('plugin-catalog-modal').style.display = 'block';
+                break;
+            case 'matrix-builder':
+                this.showNotification('Select a command step and click "Configure Matrix" in properties', 'info');
+                break;
+            case 'conditional-logic':
+                this.showNotification('Select a step and click "Configure Conditions" in properties', 'info');
+                break;
+            case 'step-templates':
+                document.getElementById('step-templates-modal').style.display = 'block';
+                break;
+            case 'variable-manager':
+                document.getElementById('variable-manager-modal').style.display = 'block';
+                break;
+            case 'pattern-library':
+                document.getElementById('pattern-library-modal').style.display = 'block';
+                break;
         }
     }
 
@@ -504,6 +567,9 @@ class BuildkiteApp {
         
         // Set up drag-drop file upload (future feature)
         this.setupFileDragDrop();
+        
+        // Set up command palette
+        this.setupCommandPalette();
     }
 
     setupAutoSaveIndicator() {
@@ -534,8 +600,103 @@ class BuildkiteApp {
             if (e.dataTransfer.files.length > 0) {
                 e.preventDefault();
                 // Handle file drop - future implementation
+                const file = e.dataTransfer.files[0];
+                if (file.name.endsWith('.yml') || file.name.endsWith('.yaml') || file.name.endsWith('.json')) {
+                    this.importPipelineFile(file);
+                }
             }
         });
+    }
+
+    setupCommandPalette() {
+        const palette = document.getElementById('command-palette');
+        const input = document.getElementById('command-input');
+        const results = document.getElementById('command-results');
+        
+        if (!palette || !input || !results) return;
+        
+        const commands = [
+            { name: 'Add Command Step', icon: 'fa-terminal', action: () => this.pipelineBuilder.addStep('command') },
+            { name: 'Add Wait Step', icon: 'fa-hourglass-half', action: () => this.pipelineBuilder.addStep('wait') },
+            { name: 'Add Block Step', icon: 'fa-hand-paper', action: () => this.pipelineBuilder.addStep('block') },
+            { name: 'Export YAML', icon: 'fa-download', action: () => this.exportYAML() },
+            { name: 'Clear Pipeline', icon: 'fa-trash', action: () => this.pipelineBuilder.clearPipeline() },
+            { name: 'Load Example', icon: 'fa-file-import', action: () => this.pipelineBuilder.loadExample() },
+            { name: 'Toggle YAML Preview', icon: 'fa-code', action: () => this.toggleYAML() },
+            { name: 'Validate Pipeline', icon: 'fa-check-circle', action: () => this.validatePipeline() },
+            { name: 'Share Pipeline', icon: 'fa-share-alt', action: () => this.pipelineSharing?.openShareModal() }
+        ];
+        
+        const showCommands = (filter = '') => {
+            const filtered = commands.filter(cmd => 
+                cmd.name.toLowerCase().includes(filter.toLowerCase())
+            );
+            
+            results.innerHTML = filtered.map((cmd, index) => `
+                <div class="command-result ${index === 0 ? 'active' : ''}" data-index="${index}">
+                    <i class="fas ${cmd.icon}"></i>
+                    <span>${cmd.name}</span>
+                </div>
+            `).join('');
+            
+            // Add click handlers
+            results.querySelectorAll('.command-result').forEach((el, index) => {
+                el.addEventListener('click', () => {
+                    filtered[index].action();
+                    this.closeCommandPalette();
+                });
+            });
+        };
+        
+        input.addEventListener('input', (e) => {
+            showCommands(e.target.value);
+        });
+        
+        // Keyboard navigation
+        input.addEventListener('keydown', (e) => {
+            const active = results.querySelector('.active');
+            const all = results.querySelectorAll('.command-result');
+            let index = Array.from(all).indexOf(active);
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                index = (index + 1) % all.length;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                index = (index - 1 + all.length) % all.length;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                active?.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.closeCommandPalette();
+            }
+            
+            all.forEach(el => el.classList.remove('active'));
+            all[index]?.classList.add('active');
+        });
+    }
+
+    openCommandPalette() {
+        const palette = document.getElementById('command-palette');
+        const input = document.getElementById('command-input');
+        
+        if (palette && input) {
+            palette.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+            
+            // Show all commands initially
+            const event = new Event('input');
+            input.dispatchEvent(event);
+        }
+    }
+
+    closeCommandPalette() {
+        const palette = document.getElementById('command-palette');
+        if (palette) {
+            palette.classList.add('hidden');
+        }
     }
 
     toggleYAML() {
@@ -589,20 +750,39 @@ class BuildkiteApp {
         });
     }
 
-    exportYAML() {
+    validatePipeline() {
         const config = this.pipelineBuilder.getPipelineConfig();
         const yaml = this.yamlGenerator.generate(config);
+        const validation = this.yamlGenerator.validate(yaml);
         
-        // Create download
-        const blob = new Blob([yaml], { type: 'text/yaml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'pipeline.yml';
-        a.click();
-        URL.revokeObjectURL(url);
+        const validationDiv = document.getElementById('yaml-validation');
+        const validationContent = document.getElementById('validation-content');
         
-        this.showNotification('Pipeline exported successfully!', 'success');
+        if (validationDiv && validationContent) {
+            validationDiv.classList.remove('hidden');
+            
+            if (validation.valid) {
+                validationDiv.classList.remove('error');
+                validationContent.innerHTML = '<p style="color: #48bb78;"><i class="fas fa-check-circle"></i> Pipeline validation passed!</p>';
+                this.showNotification('Pipeline validation passed!', 'success');
+            } else {
+                validationDiv.classList.add('error');
+                validationContent.innerHTML = `
+                    <p style="color: #f56565;"><i class="fas fa-exclamation-circle"></i> Validation issues found:</p>
+                    <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+                `;
+                this.showNotification('Pipeline validation failed', 'error');
+            }
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                validationDiv.classList.add('hidden');
+            }, 5000);
+        }
+    }
+
+    exportYAML() {
+        this.pipelineBuilder.exportYAML();
     }
 
     savePipeline() {
@@ -627,8 +807,10 @@ class BuildkiteApp {
         
         try {
             const config = JSON.parse(saved);
-            // TODO: Implement pipeline loading from config
-            console.log('Found saved pipeline:', config);
+            if (this.pipelineSharing) {
+                this.pipelineSharing.loadPipelineConfig(config);
+            }
+            console.log('Loaded saved pipeline from localStorage');
         } catch (err) {
             console.error('Failed to load saved pipeline:', err);
         }
@@ -639,6 +821,57 @@ class BuildkiteApp {
         this.autoSaveInterval = setInterval(() => {
             this.savePipeline();
         }, 30000);
+    }
+
+    importPipelineFile(file) {
+        if (this.pipelineSharing) {
+            this.pipelineSharing.importFromFile(file);
+        }
+    }
+
+    applyTemplate(templateId) {
+        // Template implementations
+        const templates = {
+            'node-test': () => {
+                this.pipelineBuilder.addStep('command').properties = {
+                    label: 'Node.js Tests',
+                    command: 'npm ci\nnpm test',
+                    plugins: {
+                        'test-collector': {
+                            files: 'test-results/**/*.xml',
+                            format: 'junit'
+                        }
+                    }
+                };
+            },
+            'docker-build': () => {
+                const step = this.pipelineBuilder.addStep('command');
+                step.properties = {
+                    label: 'Build Docker Image',
+                    command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
+                    plugins: {
+                        'docker': {
+                            image: 'myapp:$BUILDKITE_BUILD_NUMBER',
+                            dockerfile: 'Dockerfile'
+                        }
+                    }
+                };
+            },
+            'slack-notify': () => {
+                const step = this.pipelineBuilder.addStep('notify');
+                step.properties = {
+                    label: 'Notify Slack',
+                    slack: '#builds',
+                    if: 'build.state == "failed"'
+                };
+            }
+        };
+        
+        if (templates[templateId]) {
+            templates[templateId]();
+            this.pipelineBuilder.renderPipeline();
+            this.showNotification('Template applied', 'success');
+        }
     }
 
     showNotification(message, type = 'info') {
@@ -672,13 +905,14 @@ class BuildkiteApp {
     }
 }
 
-// CSS for YAML syntax highlighting
+// CSS for enhanced YAML syntax highlighting
 const yamlStyles = `
     .yaml-key { color: #e06c75; font-weight: 600; }
     .yaml-string { color: #98c379; }
     .yaml-number { color: #d19a66; }
     .yaml-boolean { color: #56b6c2; }
     .yaml-array { color: #c678dd; }
+    .yaml-variable { color: #61afef; font-style: italic; }
 `;
 
 // Add styles to document
@@ -690,5 +924,6 @@ document.head.appendChild(styleSheet);
 window.buildkiteApp = new BuildkiteApp();
 
 // Export for debugging
-console.log('🎉 Buildkite Pipeline Builder loaded successfully!');
+console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
 console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
+console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');

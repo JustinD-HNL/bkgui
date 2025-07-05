@@ -1,30 +1,78 @@
 // js/pipeline-builder.js
 /**
- * Pipeline Builder Class - Core functionality for building Buildkite pipelines
- * FIXED: Prevents duplicate step creation on drag and drop
+ * Buildkite Pipeline Builder - Core functionality
+ * Complete version with ALL features:
+ * - Matrix builds support
+ * - Conditional logic support
+ * - Fixed drag-and-drop (no duplicates)
+ * - All step types
+ * - Complete plugin catalog
+ * - Enhanced templates
  */
 
 class PipelineBuilder {
     constructor() {
-        // Pipeline state
+        console.log('🚀 Initializing Complete Pipeline Builder...');
+        
+        // Core state
         this.steps = [];
         this.selectedStep = null;
         this.stepCounter = 0;
         
         // Drag and drop state
         this.draggedElement = null;
-        this.dropHandled = false; // FIXED: Add flag to prevent duplicate drops
+        this.dropZones = [];
+        this.dropHandled = false; // FIXED: Prevent duplicate drops
         
-        // Plugin catalog
+        // Complete plugin catalog - MERGED FROM BOTH VERSIONS
         this.pluginCatalog = {
             'docker-compose': {
                 name: 'Docker Compose',
                 icon: 'fa-docker',
-                description: 'Run commands using Docker Compose',
+                description: 'Build, run and push Docker Compose',
                 config: {
-                    'run': { type: 'string', default: 'app', required: true, description: 'Service to run' },
-                    'config': { type: 'string', default: 'docker-compose.yml', description: 'Config file path' },
-                    'shell': { type: 'boolean', default: true, description: 'Run with shell' }
+                    run: { type: 'string', default: 'app', required: true, description: 'Service to run' },
+                    config: { type: 'string', default: 'docker-compose.yml', description: 'Config file path' },
+                    shell: { type: 'boolean', default: true, description: 'Run with shell' }
+                }
+            },
+            'docker': {
+                name: 'Docker',
+                icon: 'fa-docker',
+                description: 'Build and push Docker images',
+                config: {
+                    image: { type: 'string', required: true, description: 'Image name' },
+                    dockerfile: { type: 'string', default: 'Dockerfile', description: 'Dockerfile path' },
+                    tag: { type: 'string', default: '$BUILDKITE_BUILD_NUMBER', description: 'Image tag' },
+                    push: { type: 'boolean', default: true, description: 'Push to registry' }
+                }
+            },
+            'artifacts': {
+                name: 'Artifacts',
+                icon: 'fa-file-archive',
+                description: 'Upload and download artifacts',
+                config: {
+                    upload: { type: 'string', description: 'Paths to upload' },
+                    download: { type: 'string', description: 'Paths to download' },
+                    compress: { type: 'boolean', default: false, description: 'Compress artifacts' }
+                }
+            },
+            'test-collector': {
+                name: 'Test Collector',
+                icon: 'fa-check-circle',
+                description: 'Collect test results',
+                config: {
+                    files: { type: 'string', required: true, description: 'Test result files' },
+                    format: { type: 'string', default: 'junit', description: 'Result format' }
+                }
+            },
+            'kubernetes': {
+                name: 'Kubernetes',
+                icon: 'fa-dharmachakra',
+                description: 'Deploy to Kubernetes',
+                config: {
+                    'deployment-file': { type: 'string', required: true, description: 'Deployment YAML' },
+                    'namespace': { type: 'string', default: 'default', description: 'K8s namespace' }
                 }
             },
             'aws-s3': {
@@ -35,16 +83,6 @@ class PipelineBuilder {
                     'bucket': { type: 'string', required: true, description: 'S3 bucket name' },
                     'key': { type: 'string', required: true, description: 'S3 object key' },
                     'region': { type: 'string', default: 'us-east-1', description: 'AWS region' }
-                }
-            },
-            'artifacts': {
-                name: 'Artifacts',
-                icon: 'fa-file-archive',
-                description: 'Upload and download build artifacts',
-                config: {
-                    'upload': { type: 'string', description: 'Paths to upload' },
-                    'download': { type: 'string', description: 'Paths to download' },
-                    'compress': { type: 'boolean', default: false, description: 'Compress artifacts' }
                 }
             },
             'ecr': {
@@ -75,16 +113,6 @@ class PipelineBuilder {
                     'webhook_url': { type: 'string', description: 'Webhook URL' }
                 }
             },
-            'docker': {
-                name: 'Docker',
-                icon: 'fa-docker',
-                description: 'Build and push Docker images',
-                config: {
-                    'image': { type: 'string', required: true, description: 'Image name' },
-                    'tag': { type: 'string', default: '$BUILDKITE_BUILD_NUMBER', description: 'Image tag' },
-                    'push': { type: 'boolean', default: true, description: 'Push to registry' }
-                }
-            },
             'junit': {
                 name: 'JUnit',
                 icon: 'fa-check-circle',
@@ -96,12 +124,12 @@ class PipelineBuilder {
             }
         };
         
-        // Notification handlers
-        this.notificationHandlers = {
+        // Notifications config - COMPLETE FROM BOTH VERSIONS
+        this.notificationTypes = {
             email: {
                 name: 'Email',
                 icon: 'fa-envelope',
-                fields: ['email']
+                fields: ['to', 'subject', 'email']
             },
             slack: {
                 name: 'Slack',
@@ -141,11 +169,10 @@ class PipelineBuilder {
         console.log('✅ Complete Pipeline Builder initialized successfully');
     }
 
-    // FIXED: Add step movement functionality
+    // FIXED: Add step movement functionality - PRESERVED FROM ORIGINAL
     moveStepUp(stepId) {
         const index = this.steps.findIndex(s => s.id === stepId);
         if (index > 0) {
-            // Swap with previous step
             [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
             this.renderPipeline();
             this.renderProperties();
@@ -156,7 +183,6 @@ class PipelineBuilder {
     moveStepDown(stepId) {
         const index = this.steps.findIndex(s => s.id === stepId);
         if (index >= 0 && index < this.steps.length - 1) {
-            // Swap with next step
             [this.steps[index], this.steps[index + 1]] = [this.steps[index + 1], this.steps[index]];
             this.renderPipeline();
             this.renderProperties();
@@ -164,7 +190,7 @@ class PipelineBuilder {
         }
     }
 
-    // Enhanced drag and drop functionality
+    // Enhanced drag and drop functionality - FIXED VERSION
     setupEnhancedDragAndDrop() {
         console.log('🎯 Setting up enhanced drag and drop...');
         
@@ -178,6 +204,9 @@ class PipelineBuilder {
         // Make template and pattern items draggable
         const templateItems = document.querySelectorAll('.template-item, .pattern-item');
         templateItems.forEach(item => {
+            item.draggable = true;
+            item.addEventListener('dragstart', this.handleDragStart.bind(this));
+            item.addEventListener('dragend', this.handleDragEnd.bind(this));
             item.addEventListener('click', this.handleTemplateClick.bind(this));
         });
 
@@ -204,61 +233,72 @@ class PipelineBuilder {
 
     handleDragStart(e) {
         const stepType = e.target.closest('.step-type');
-        if (!stepType) return;
-
-        this.draggedElement = {
-            type: 'step',
-            stepType: stepType.dataset.stepType,
-            element: stepType
-        };
+        const template = e.target.closest('.template-item');
+        const pattern = e.target.closest('.pattern-item');
+        
+        if (stepType) {
+            this.draggedElement = {
+                type: 'step',
+                stepType: stepType.dataset.stepType,
+                element: stepType
+            };
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('stepType', stepType.dataset.stepType);
+        } else if (template) {
+            this.draggedElement = {
+                type: 'template',
+                template: template.dataset.template,
+                element: template
+            };
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('template', template.dataset.template);
+        } else if (pattern) {
+            this.draggedElement = {
+                type: 'pattern',
+                pattern: pattern.dataset.pattern,
+                element: pattern
+            };
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('pattern', pattern.dataset.pattern);
+        }
         
         this.dropHandled = false; // FIXED: Reset flag on new drag
-
-        stepType.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'copy';
-        e.dataTransfer.setData('text/plain', stepType.dataset.stepType);
-
-        // Show drop zones
-        this.showDropZones();
+        
+        if (this.draggedElement) {
+            this.draggedElement.element.classList.add('dragging');
+            this.showDropZones();
+        }
     }
 
     handleDragEnd(e) {
-        const stepType = e.target.closest('.step-type');
-        if (stepType) {
-            stepType.classList.remove('dragging');
-        }
-        
+        e.target.classList.remove('dragging');
         this.hideDropZones();
         this.draggedElement = null;
         this.dropHandled = false; // FIXED: Reset flag
+        this.removeDropIndicator();
     }
 
     handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-        
-        const pipelineSteps = document.getElementById('pipeline-steps');
-        if (pipelineSteps) {
-            pipelineSteps.classList.add('drag-over');
-        }
+        if (e.dataTransfer.types.includes('stepType') || 
+            e.dataTransfer.types.includes('template') ||
+            e.dataTransfer.types.includes('pattern')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            
+            const pipelineSteps = document.getElementById('pipeline-steps');
+            if (pipelineSteps) {
+                pipelineSteps.classList.add('drag-over');
+            }
 
-        // Calculate drop position
-        const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
-        const indicator = this.getOrCreateDropIndicator();
-        
-        if (afterElement == null) {
-            pipelineSteps.appendChild(indicator);
-        } else {
-            pipelineSteps.insertBefore(indicator, afterElement);
-        }
-    }
-
-    handleDragLeave(e) {
-        // Only remove styles if we're leaving the container
-        const pipelineSteps = document.getElementById('pipeline-steps');
-        if (e.target === pipelineSteps && !pipelineSteps.contains(e.relatedTarget)) {
-            pipelineSteps.classList.remove('drag-over');
-            this.removeDropIndicator();
+            // Calculate drop position
+            const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
+            const indicator = this.getOrCreateDropIndicator();
+            
+            if (afterElement == null) {
+                pipelineSteps.appendChild(indicator);
+            } else {
+                pipelineSteps.insertBefore(indicator, afterElement);
+            }
         }
     }
 
@@ -277,9 +317,11 @@ class PipelineBuilder {
         const pipelineSteps = document.getElementById('pipeline-steps');
         pipelineSteps.classList.remove('drag-over');
         
-        const stepType = e.dataTransfer.getData('text/plain');
+        const stepType = e.dataTransfer.getData('stepType');
+        const template = e.dataTransfer.getData('template');
+        const pattern = e.dataTransfer.getData('pattern');
         
-        if (stepType && this.draggedElement) {
+        if (stepType || template || pattern) {
             // Calculate insert position
             const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
             let insertIndex = this.steps.length;
@@ -291,9 +333,15 @@ class PipelineBuilder {
                 }
             }
             
-            // Add the step at the calculated position - ONLY ONCE
-            console.log(`📍 Adding single step at index ${insertIndex}`);
-            this.addStep(stepType, insertIndex);
+            // Add the step/template/pattern at the calculated position - ONLY ONCE
+            if (stepType) {
+                console.log(`📍 Adding single step at index ${insertIndex}`);
+                this.addStep(stepType, insertIndex);
+            } else if (template) {
+                this.loadTemplate(template, insertIndex);
+            } else if (pattern) {
+                this.loadPattern(pattern, insertIndex);
+            }
         }
         
         this.removeDropIndicator();
@@ -303,6 +351,15 @@ class PipelineBuilder {
         setTimeout(() => {
             this.dropHandled = false;
         }, 100);
+    }
+
+    handleDragLeave(e) {
+        // Only remove styles if we're leaving the container
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (e.target === pipelineSteps && !pipelineSteps.contains(e.relatedTarget)) {
+            pipelineSteps.classList.remove('drag-over');
+            this.removeDropIndicator();
+        }
     }
 
     getDragAfterElement(container, y) {
@@ -378,7 +435,7 @@ class PipelineBuilder {
         console.log('✅ Event listeners configured');
     }
 
-    // Step management
+    // Step management - PRESERVED ALL FROM ORIGINAL
     addStep(stepType, index = -1) {
         if (!stepType) {
             console.warn('⚠️ No step type provided');
@@ -408,6 +465,7 @@ class PipelineBuilder {
         this.addStep(stepType, index);
     }
 
+    // Plugin step methods - PRESERVED FROM ORIGINAL
     addPluginStep(pluginKey) {
         console.log(`🔌 Adding plugin step: ${pluginKey}`);
         
@@ -471,6 +529,7 @@ class PipelineBuilder {
         console.log(`✅ Added plugin step: ${pluginKey} at index ${index}`);
     }
 
+    // Create step with all types - COMPLETE FROM BOTH VERSIONS
     createStep(type) {
         const baseStep = {
             id: `step-${this.stepCounter}`,
@@ -480,7 +539,7 @@ class PipelineBuilder {
             }
         };
 
-        // Type-specific defaults
+        // Type-specific defaults - ALL PRESERVED FROM BOTH VERSIONS
         switch (type) {
             case 'command':
                 Object.assign(baseStep.properties, {
@@ -492,6 +551,7 @@ class PipelineBuilder {
                     timeout_in_minutes: null,
                     retry: null,
                     parallelism: null,
+                    matrix: null,  // Matrix support
                     soft_fail: false,
                     skip: false
                 });
@@ -597,7 +657,7 @@ class PipelineBuilder {
         return labels[type] || 'Pipeline Step';
     }
 
-    // Proper pipeline rendering with step actions
+    // Pipeline rendering with step actions - ENHANCED WITH MATRIX AND CONDITIONS
     renderPipeline() {
         const container = document.getElementById('pipeline-steps');
         if (!container) {
@@ -631,35 +691,50 @@ class PipelineBuilder {
         if (window.yamlGenerator) {
             window.yamlGenerator.updateYAML(this.steps);
         }
+        
+        // Emit pipeline changed event
+        document.dispatchEvent(new CustomEvent('pipelineChanged'));
     }
 
     createStepElement(step) {
         const stepEl = document.createElement('div');
-        stepEl.className = 'pipeline-step';
+        stepEl.className = `pipeline-step ${step.type}-step ${this.selectedStep === step.id ? 'selected' : ''}`;
         stepEl.dataset.stepId = step.id;
         
-        if (this.selectedStep === step.id) {
-            stepEl.classList.add('selected');
-        }
-
-        // Get step icon and color
-        const { icon, color } = this.getStepStyle(step.type);
+        const style = this.getStepStyle(step.type);
+        
+        // Check for matrix configuration
+        const hasMatrix = step.properties.matrix && Object.keys(step.properties.matrix).length > 0;
+        const matrixInfo = hasMatrix ? this.getMatrixInfo(step.properties.matrix) : null;
+        
+        // Check for conditional logic
+        const hasCondition = step.properties.if || step.properties.unless;
+        const conditionInfo = hasCondition ? this.getConditionInfo(step.properties) : null;
         
         stepEl.innerHTML = `
-            <div class="step-header">
+            <div class="step-header" style="border-left-color: ${style.color}">
+                <div class="step-icon">
+                    <i class="fas ${style.icon}"></i>
+                </div>
                 <div class="step-info">
-                    <div class="step-type-badge" style="background: ${color}">
-                        <i class="fas ${icon}"></i>
-                        <span>${step.type}</span>
-                    </div>
-                    <div class="step-label">${step.properties.label || 'Untitled Step'}</div>
+                    <div class="step-label">${step.properties.label || step.type}</div>
                     ${this.renderStepDescription(step)}
+                    ${hasMatrix ? `
+                        <div class="step-matrix-badge">
+                            <i class="fas fa-th"></i> Matrix: ${matrixInfo}
+                        </div>
+                    ` : ''}
+                    ${hasCondition ? `
+                        <div class="step-condition-badge">
+                            <i class="fas fa-code-branch"></i> ${conditionInfo}
+                        </div>
+                    ` : ''}
                 </div>
                 <div class="step-actions">
-                    <button class="step-action move-up" title="Move up" onclick="window.pipelineBuilder.moveStepUp('${step.id}')">
+                    <button class="step-action move-up" title="Move Up" onclick="window.pipelineBuilder.moveStepUp('${step.id}')">
                         <i class="fas fa-chevron-up"></i>
                     </button>
-                    <button class="step-action move-down" title="Move down" onclick="window.pipelineBuilder.moveStepDown('${step.id}')">
+                    <button class="step-action move-down" title="Move Down" onclick="window.pipelineBuilder.moveStepDown('${step.id}')">
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <button class="step-action duplicate" title="Duplicate" onclick="window.pipelineBuilder.duplicateStep('${step.id}')">
@@ -673,9 +748,9 @@ class PipelineBuilder {
             ${this.renderStepDetails(step)}
         `;
 
-        // Add click handler for selection
+        // Add click handler
         stepEl.addEventListener('click', (e) => {
-            if (!e.target.closest('.step-actions')) {
+            if (!e.target.closest('.step-action')) {
                 this.selectStep(step.id);
             }
         });
@@ -683,114 +758,108 @@ class PipelineBuilder {
         return stepEl;
     }
 
+    getMatrixInfo(matrix) {
+        const dimensions = Object.keys(matrix).length;
+        let combinations = 1;
+        Object.values(matrix).forEach(values => {
+            combinations *= values.length;
+        });
+        return `${dimensions}D, ${combinations} jobs`;
+    }
+
+    getConditionInfo(properties) {
+        if (properties.if) {
+            return `if: ${properties.if}`;
+        } else if (properties.unless) {
+            return `unless: ${properties.unless}`;
+        }
+        return '';
+    }
+
     getStepStyle(type) {
         const styles = {
-            'command': { icon: 'fa-terminal', color: '#4299e1' },
-            'wait': { icon: 'fa-hourglass-half', color: '#ed8936' },
-            'block': { icon: 'fa-hand-paper', color: '#e53e3e' },
-            'input': { icon: 'fa-keyboard', color: '#9f7aea' },
-            'trigger': { icon: 'fa-bolt', color: '#f6ad55' },
-            'group': { icon: 'fa-layer-group', color: '#38b2ac' },
-            'annotation': { icon: 'fa-comment-alt', color: '#718096' },
-            'notify': { icon: 'fa-bell', color: '#d69e2e' },
-            'plugin': { icon: 'fa-puzzle-piece', color: '#667eea' },
-            'pipeline-upload': { icon: 'fa-cloud-upload-alt', color: '#48bb78' }
+            'command': { icon: 'fa-terminal', color: '#667eea' },
+            'wait': { icon: 'fa-hourglass-half', color: '#48bb78' },
+            'block': { icon: 'fa-hand-paper', color: '#ed8936' },
+            'input': { icon: 'fa-keyboard', color: '#38b2ac' },
+            'trigger': { icon: 'fa-bolt', color: '#e53e3e' },
+            'group': { icon: 'fa-layer-group', color: '#805ad5' },
+            'annotation': { icon: 'fa-comment-alt', color: '#d69e2e' },
+            'notify': { icon: 'fa-bell', color: '#9f7aea' },
+            'plugin': { icon: 'fa-puzzle-piece', color: '#319795' },
+            'pipeline-upload': { icon: 'fa-cloud-upload-alt', color: '#2d3748' }
         };
-        
+
         return styles[type] || { icon: 'fa-cog', color: '#718096' };
     }
 
     renderStepDescription(step) {
         switch (step.type) {
             case 'command':
-                if (step.properties.command) {
-                    const lines = step.properties.command.split('\n');
-                    return `<div class="step-description">${lines[0]}${lines.length > 1 ? '...' : ''}</div>`;
-                }
-                return '';
+                return step.properties.command ? 
+                    `<div class="step-description"><code>${step.properties.command.substring(0, 50)}${step.properties.command.length > 50 ? '...' : ''}</code></div>` : '';
             case 'wait':
-                return `<div class="step-description">${step.properties.continue_on_failure ? 'Continue on failure' : 'Wait for all steps'}</div>`;
+                return `<div class="step-description">Wait for all previous steps to complete</div>`;
             case 'block':
-                return `<div class="step-description">${step.properties.prompt || 'Manual approval'}</div>`;
+                return `<div class="step-description">${step.properties.prompt || 'Manual approval required'}</div>`;
             case 'input':
-                return `<div class="step-description">${step.properties.prompt || 'User input'}</div>`;
+                return `<div class="step-description">${step.properties.prompt || 'Collect user input'}</div>`;
             case 'trigger':
-                return `<div class="step-description">${step.properties.trigger || 'Pipeline trigger'}</div>`;
+                return `<div class="step-description">Trigger: ${step.properties.trigger || 'Not configured'}</div>`;
             case 'group':
-                return `<div class="step-description">${step.properties.steps?.length ? `${step.properties.steps.length} steps` : 'Empty group'}</div>`;
+                return `<div class="step-description">${step.properties.steps ? `${step.properties.steps.length} steps` : 'Empty group'}</div>`;
             case 'annotation':
                 return `<div class="step-description">Style: ${step.properties.style || 'info'}</div>`;
             case 'notify':
-                const notifyTypes = [];
-                if (step.properties.email) notifyTypes.push('Email');
-                if (step.properties.slack) notifyTypes.push('Slack');
-                if (step.properties.webhook) notifyTypes.push('Webhook');
-                if (step.properties.pagerduty) notifyTypes.push('PagerDuty');
-                return `<div class="step-description">${notifyTypes.length ? notifyTypes.join(', ') : 'Not configured'}</div>`;
+                const channels = [];
+                if (step.properties.email) channels.push('Email');
+                if (step.properties.slack) channels.push('Slack');
+                if (step.properties.webhook) channels.push('Webhook');
+                if (step.properties.pagerduty) channels.push('PagerDuty');
+                return `<div class="step-description">${channels.length > 0 ? channels.join(', ') : 'No channels configured'}</div>`;
             case 'plugin':
                 const plugins = Object.keys(step.properties.plugins || {});
-                return `<div class="step-description">${plugins.length ? plugins.join(', ') : 'No plugins configured'}</div>`;
+                return `<div class="step-description">${plugins.length > 0 ? plugins.join(', ') : 'No plugins configured'}</div>`;
             case 'pipeline-upload':
-                return `<div class="step-description">Upload: ${step.properties.pipeline || 'Not configured'}</div>`;
+                return `<div class="step-description">Upload: ${step.properties.pipeline || '.buildkite/pipeline.yml'}</div>`;
             default:
                 return '';
         }
     }
 
     renderStepDetails(step) {
-        let details = '';
+        const details = [];
         
-        // Add dependency information
         if (step.properties.depends_on) {
             const deps = Array.isArray(step.properties.depends_on) ? 
                 step.properties.depends_on : [step.properties.depends_on];
-            if (deps.length > 0) {
-                details += `<div class="step-detail"><i class="fas fa-link"></i> Depends on: ${deps.join(', ')}</div>`;
-            }
+            details.push(`<i class="fas fa-link"></i> Depends on: ${deps.join(', ')}`);
         }
         
-        // Add condition information
-        if (step.properties.if) {
-            details += `<div class="step-detail"><i class="fas fa-code-branch"></i> If: ${step.properties.if}</div>`;
+        if (step.properties.key) {
+            details.push(`<i class="fas fa-key"></i> Key: ${step.properties.key}`);
         }
         
-        // Add agent information for command steps
-        if (step.type === 'command' && step.properties.agents && Object.keys(step.properties.agents).length > 0) {
-            const agentTags = Object.entries(step.properties.agents)
-                .map(([k, v]) => `${k}=${v}`)
-                .join(', ');
-            details += `<div class="step-detail"><i class="fas fa-server"></i> Agents: ${agentTags}</div>`;
+        if (step.properties.agents && Object.keys(step.properties.agents).length > 0) {
+            details.push(`<i class="fas fa-server"></i> Agents: ${Object.keys(step.properties.agents).join(', ')}`);
         }
         
-        // Add plugin information
         if (step.properties.plugins && Object.keys(step.properties.plugins).length > 0) {
-            const pluginNames = Object.keys(step.properties.plugins).join(', ');
-            details += `<div class="step-detail"><i class="fas fa-puzzle-piece"></i> Plugins: ${pluginNames}</div>`;
+            details.push(`<i class="fas fa-puzzle-piece"></i> Plugins: ${Object.keys(step.properties.plugins).join(', ')}`);
         }
         
-        // Add notification details
-        if (step.type === 'notify') {
-            const notifyChannels = [];
-            if (step.properties.email) notifyChannels.push(`Email: ${step.properties.email}`);
-            if (step.properties.slack) notifyChannels.push(`Slack: ${step.properties.slack}`);
-            if (step.properties.webhook) notifyChannels.push('Webhook configured');
-            if (step.properties.pagerduty) notifyChannels.push('PagerDuty configured');
-            
-            if (notifyChannels.length > 0) {
-                details += `<div class="step-detail"><i class="fas fa-bell"></i> ${notifyChannels.join(', ')}</div>`;
-            }
+        if (details.length > 0) {
+            return `<div class="step-details">${details.join(' • ')}</div>`;
         }
         
-        return details ? `<div class="step-details">${details}</div>` : '';
+        return '';
     }
 
-    // Step selection and properties
     selectStep(stepId) {
-        console.log(`🎯 Selecting step: ${stepId}`);
-        
         this.selectedStep = stepId;
         this.renderPipeline();
         this.renderProperties();
+        console.log(`📌 Selected step: ${stepId}`);
         
         // Scroll to selected step
         const stepElement = document.querySelector(`[data-step-id="${stepId}"]`);
@@ -800,8 +869,6 @@ class PipelineBuilder {
     }
 
     deleteStep(stepId) {
-        console.log(`🗑️ Deleting step: ${stepId}`);
-        
         const index = this.steps.findIndex(s => s.id === stepId);
         if (index !== -1) {
             this.steps.splice(index, 1);
@@ -814,18 +881,16 @@ class PipelineBuilder {
             this.renderProperties();
             this.updateStepCount();
             
-            console.log(`✅ Deleted step: ${stepId}`);
+            console.log(`🗑️ Deleted step: ${stepId}`);
         }
     }
 
     duplicateStep(stepId) {
-        console.log(`📋 Duplicating step: ${stepId}`);
-        
         const step = this.steps.find(s => s.id === stepId);
         if (!step) return;
         
         const newStep = JSON.parse(JSON.stringify(step));
-        newStep.id = `step-${this.stepCounter++}`;
+        newStep.id = `step-${this.stepCounter}`;
         newStep.properties.label = `${step.properties.label} (Copy)`;
         if (newStep.properties.key) {
             newStep.properties.key = `${newStep.properties.key}-copy`;
@@ -834,14 +899,15 @@ class PipelineBuilder {
         const index = this.steps.indexOf(step);
         this.steps.splice(index + 1, 0, newStep);
         
+        this.stepCounter++;
         this.renderPipeline();
         this.selectStep(newStep.id);
         this.updateStepCount();
         
-        console.log(`✅ Duplicated step: ${step.id} -> ${newStep.id}`);
+        console.log(`📋 Duplicated step: ${stepId} -> ${newStep.id}`);
     }
 
-    // Properties panel management
+    // Properties panel management - ENHANCED WITH NEW FEATURES
     renderProperties() {
         const container = document.getElementById('properties-content');
         if (!container) {
@@ -865,6 +931,7 @@ class PipelineBuilder {
                             <li><strong>Plugins:</strong> Buildkite plugins to use</li>
                             <li><strong>Dependencies:</strong> Step dependencies</li>
                             <li><strong>Conditions:</strong> Conditional execution rules</li>
+                            <li><strong>Matrix:</strong> Matrix build configuration</li>
                         </ul>
                     </div>
                 </div>
@@ -879,6 +946,7 @@ class PipelineBuilder {
         this.setupPropertyFormListeners(step);
     }
 
+    // Property form generation - ALL STEP TYPES PRESERVED
     generatePropertyForm(step) {
         let form = `
             <div class="property-section">
@@ -890,7 +958,7 @@ class PipelineBuilder {
                 </div>
         `;
 
-        // Type-specific fields
+        // Type-specific fields - ALL PRESERVED FROM ORIGINAL
         switch (step.type) {
             case 'command':
                 form += this.generateCommandStepForm(step);
@@ -907,6 +975,9 @@ class PipelineBuilder {
             case 'trigger':
                 form += this.generateTriggerStepForm(step);
                 break;
+            case 'group':
+                form += this.generateGroupStepForm(step);
+                break;
             case 'annotation':
                 form += this.generateAnnotationStepForm(step);
                 break;
@@ -919,14 +990,11 @@ class PipelineBuilder {
             case 'pipeline-upload':
                 form += this.generatePipelineUploadStepForm(step);
                 break;
-            case 'group':
-                form += this.generateGroupStepForm(step);
-                break;
         }
 
         form += `</div>`;
 
-        // Common properties for all steps except certain types
+        // Common properties for all steps
         if (!['wait', 'annotation'].includes(step.type)) {
             form += this.generateCommonPropertiesForm(step);
         }
@@ -939,6 +1007,7 @@ class PipelineBuilder {
         return form;
     }
 
+    // ALL FORM GENERATORS PRESERVED FROM ORIGINAL WITH ENHANCEMENTS
     generateCommandStepForm(step) {
         return `
             <div class="property-group">
@@ -978,6 +1047,18 @@ class PipelineBuilder {
                     <label for="step-parallelism">Parallelism</label>
                     <input type="number" id="step-parallelism" value="${step.properties.parallelism || ''}" min="1" placeholder="1">
                     <small>Number of parallel jobs to run</small>
+                </div>
+                <div class="property-group">
+                    <label>Matrix Configuration</label>
+                    ${step.properties.matrix && Object.keys(step.properties.matrix).length > 0 ? 
+                        `<div class="matrix-summary">
+                            ${this.getMatrixInfo(step.properties.matrix)}
+                        </div>` : 
+                        '<div class="no-matrix">No matrix configured</div>'
+                    }
+                    <button type="button" class="btn btn-secondary btn-small" onclick="window.matrixBuilder?.openForStep(window.pipelineBuilder.steps.find(s => s.id === '${step.id}'))">
+                        <i class="fas fa-th"></i> Configure Matrix
+                    </button>
                 </div>
             </div>
 
@@ -1068,7 +1149,7 @@ class PipelineBuilder {
             <div class="property-group">
                 <label>
                     <input type="checkbox" id="step-async" ${step.properties.async ? 'checked' : ''}>
-                    Asynchronous
+                    Trigger asynchronously
                 </label>
                 <small>Don't wait for triggered pipeline to complete</small>
             </div>
@@ -1105,24 +1186,23 @@ class PipelineBuilder {
             <div class="property-section">
                 <h4><i class="fas fa-comment-alt"></i> Annotation Configuration</h4>
                 <div class="property-group">
-                    <label for="annotation-body">Annotation Body (Markdown)</label>
-                    <textarea id="annotation-body" rows="6" placeholder="Build completed successfully! 🎉">${step.properties.body || ''}</textarea>
-                    <small>Markdown content for the annotation</small>
+                    <label for="annotation-body">Annotation Content</label>
+                    <textarea id="annotation-body" rows="4" placeholder="Markdown content...">${step.properties.body || ''}</textarea>
+                    <small>Supports Markdown formatting</small>
                 </div>
                 <div class="property-group">
                     <label for="annotation-style">Style</label>
                     <select id="annotation-style">
                         <option value="info" ${step.properties.style === 'info' ? 'selected' : ''}>Info</option>
+                        <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
                         <option value="warning" ${step.properties.style === 'warning' ? 'selected' : ''}>Warning</option>
                         <option value="error" ${step.properties.style === 'error' ? 'selected' : ''}>Error</option>
-                        <option value="success" ${step.properties.style === 'success' ? 'selected' : ''}>Success</option>
                     </select>
-                    <small>Visual style of the annotation</small>
                 </div>
                 <div class="property-group">
                     <label for="annotation-context">Context</label>
                     <input type="text" id="annotation-context" value="${step.properties.context || ''}" placeholder="default">
-                    <small>Unique identifier for the annotation</small>
+                    <small>Annotation context identifier</small>
                 </div>
                 <div class="property-checkbox">
                     <input type="checkbox" id="annotation-append" ${step.properties.append ? 'checked' : ''}>
@@ -1189,7 +1269,7 @@ class PipelineBuilder {
             </div>
             <div class="property-checkbox">
                 <input type="checkbox" id="pipeline-replace" ${step.properties.replace ? 'checked' : ''}>
-                <label for="pipeline-replace">Replace existing pipeline</label>
+                <label for="pipeline-replace">Replace current pipeline</label>
             </div>
         `;
     }
@@ -1217,6 +1297,19 @@ class PipelineBuilder {
                     <small>Skip this step if condition is true</small>
                 </div>
                 <div class="property-group">
+                    <label>Conditional Execution</label>
+                    ${step.properties.if || step.properties.unless ? 
+                        `<div class="condition-summary">
+                            ${step.properties.if ? `if: ${step.properties.if}` : ''}
+                            ${step.properties.unless ? `unless: ${step.properties.unless}` : ''}
+                        </div>` : 
+                        '<div class="no-condition">No conditions set</div>'
+                    }
+                    <button type="button" class="btn btn-secondary btn-small" onclick="window.conditionalLogicBuilder?.openForStep(window.pipelineBuilder.steps.find(s => s.id === '${step.id}'))">
+                        <i class="fas fa-code-branch"></i> Configure Conditions
+                    </button>
+                </div>
+                <div class="property-group">
                     <label for="step-branches">Branch Filter</label>
                     <input type="text" id="step-branches" value="${step.properties.branches || ''}" placeholder="main develop feature/*">
                     <small>Only run on matching branches (space separated patterns)</small>
@@ -1228,10 +1321,27 @@ class PipelineBuilder {
                     </label>
                     <small>Run even if dependencies fail</small>
                 </div>
+                <div class="property-checkbox">
+                    <input type="checkbox" id="step-skip" ${step.properties.skip ? 'checked' : ''}>
+                    <label for="step-skip">Skip this step</label>
+                </div>
             </div>
+        `;
+    }
 
-            <div class="property-section">
-                <h4><i class="fas fa-shield-alt"></i> Retry Configuration</h4>
+    generateAdvancedPropertiesForm(step) {
+        return `
+            <div class="property-section collapsed">
+                <h4><i class="fas fa-shield-alt"></i> Retry & Error Handling</h4>
+                ${step.type === 'command' ? `
+                    <div class="property-group">
+                        <label>
+                            <input type="checkbox" id="step-soft-fail" ${step.properties.soft_fail ? 'checked' : ''}>
+                            Soft fail
+                        </label>
+                        <small>Allow step to fail without failing the build</small>
+                    </div>
+                ` : ''}
                 <div class="property-group">
                     <label>
                         <input type="checkbox" id="step-retry-automatic" ${step.properties.retry && step.properties.retry.automatic ? 'checked' : ''}>
@@ -1255,76 +1365,34 @@ class PipelineBuilder {
         `;
     }
 
-    generateAdvancedPropertiesForm(step) {
-        return `
-            <div class="property-section collapsed">
-                <h4><i class="fas fa-cogs"></i> Advanced Options</h4>
-                ${step.type === 'command' ? `
-                    <div class="property-group">
-                        <label>
-                            <input type="checkbox" id="step-soft-fail" ${step.properties.soft_fail ? 'checked' : ''}>
-                            Soft fail
-                        </label>
-                        <small>Allow step to fail without failing the build</small>
-                    </div>
-                    <div class="property-group">
-                        <label>
-                            <input type="checkbox" id="step-skip" ${step.properties.skip ? 'checked' : ''}>
-                            Skip step
-                        </label>
-                        <small>Skip this step entirely</small>
-                    </div>
-                ` : ''}
-                <div class="property-group">
-                    <label for="step-label">Matrix Configuration</label>
-                    <button type="button" class="btn btn-secondary btn-small" data-action="configure-matrix">
-                        <i class="fas fa-th"></i> Configure Matrix
-                    </button>
-                    <small>Run this step with multiple configurations</small>
-                </div>
-            </div>
-        `;
-    }
-
+    // Helper render methods - COMPLETE FROM BOTH VERSIONS
     renderAgentTags(agents) {
-        if (!agents || Object.keys(agents).length === 0) {
-            return '<div class="empty-list">No agent requirements specified</div>';
-        }
-
         return Object.entries(agents).map(([key, value]) => `
-            <div class="tag-item">
+            <div class="agent-tag">
                 <span class="tag-key">${key}</span>
                 <span class="tag-value">${value}</span>
                 <button class="remove-btn" data-action="remove-agent-tag" data-key="${key}">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-        `).join('');
+        `).join('') || '<div class="empty-list">No agent requirements</div>';
     }
 
     renderEnvVars(env) {
-        if (!env || Object.keys(env).length === 0) {
-            return '<div class="empty-list">No environment variables</div>';
-        }
-
         return Object.entries(env).map(([key, value]) => `
-            <div class="env-var-item">
-                <span class="env-key">${key}</span>
-                <span class="env-value">${value}</span>
+            <div class="env-var">
+                <span class="var-key">${key}</span>
+                <span class="var-value">${value}</span>
                 <button class="remove-btn" data-action="remove-env-var" data-key="${key}">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-        `).join('');
+        `).join('') || '<div class="empty-list">No environment variables</div>';
     }
 
     renderInputFields(fields) {
-        if (!fields || fields.length === 0) {
-            return '<div class="empty-list">No input fields defined</div>';
-        }
-
         return fields.map((field, index) => `
-            <div class="input-field-item">
+            <div class="input-field">
                 <span class="field-key">${field.key}</span>
                 <span class="field-type">${field.type || 'text'}</span>
                 ${field.required ? '<span class="field-required">Required</span>' : ''}
@@ -1332,7 +1400,7 @@ class PipelineBuilder {
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-        `).join('');
+        `).join('') || '<div class="empty-list">No input fields defined</div>';
     }
 
     renderBlockFields(fields) {
@@ -1383,65 +1451,50 @@ class PipelineBuilder {
     }
 
     renderSelectedPlugins(plugins) {
-        if (!plugins || Object.keys(plugins).length === 0) {
-            return '<div class="empty-list">No plugins selected</div>';
-        }
-
-        return Object.entries(plugins).map(([pluginKey, config]) => {
-            const plugin = this.pluginCatalog[pluginKey];
-            return `
-                <div class="plugin-item">
-                    <div class="plugin-header">
-                        <span class="plugin-name">${plugin ? plugin.name : pluginKey}</span>
-                        <button class="remove-btn" data-action="remove-plugin" data-plugin="${pluginKey}">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    ${this.renderPluginConfig(pluginKey, config)}
+        return Object.entries(plugins).map(([key, config]) => `
+            <div class="selected-plugin">
+                <div class="plugin-header">
+                    <span class="plugin-name">${this.pluginCatalog[key]?.name || key}</span>
+                    <button class="remove-btn" data-action="remove-plugin" data-plugin="${key}">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-            `;
-        }).join('');
+                <div class="plugin-config">
+                    ${this.renderPluginConfig(key, config)}
+                </div>
+            </div>
+        `).join('') || '<div class="empty-list">No plugins configured</div>';
     }
 
     renderPluginConfig(pluginKey, config) {
-        const plugin = this.pluginCatalog[pluginKey];
-        if (!plugin || !plugin.config) return '';
-
-        return Object.entries(plugin.config).map(([key, schema]) => {
-            const value = config[key] || '';
-            return `
-                <div class="plugin-config-item">
-                    <label>${key}${schema.required ? ' *' : ''}</label>
-                    <input type="text" 
-                           data-plugin="${pluginKey}" 
-                           data-config-key="${key}" 
-                           value="${value}" 
-                           placeholder="${schema.default || ''}"
-                           class="plugin-config-input">
-                    ${schema.description ? `<small>${schema.description}</small>` : ''}
-                </div>
-            `;
-        }).join('');
+        const pluginDef = this.pluginCatalog[pluginKey];
+        if (!pluginDef || !pluginDef.config) return '';
+        
+        return Object.entries(pluginDef.config).map(([key, def]) => `
+            <div class="config-field">
+                <label>${key}${def.required ? ' *' : ''}</label>
+                <input type="text" 
+                       value="${config[key] || ''}" 
+                       placeholder="${def.default || ''}"
+                       data-plugin="${pluginKey}"
+                       data-config-key="${key}"
+                       class="plugin-config-input">
+                ${def.description ? `<small>${def.description}</small>` : ''}
+            </div>
+        `).join('');
     }
 
+    // Property form event listeners setup - ALL PRESERVED
     setupPropertyFormListeners(step) {
         const container = document.getElementById('properties-content');
         if (!container) return;
 
-        // Basic property listeners
+        // Label change
         const labelInput = container.querySelector('#step-label');
         if (labelInput) {
             labelInput.addEventListener('input', (e) => {
                 step.properties.label = e.target.value;
                 this.renderPipeline();
-            });
-        }
-
-        // Key input (for steps that have it)
-        const keyInput = container.querySelector('#step-key');
-        if (keyInput) {
-            keyInput.addEventListener('input', (e) => {
-                step.properties.key = e.target.value;
             });
         }
 
@@ -1462,6 +1515,9 @@ class PipelineBuilder {
             case 'trigger':
                 this.setupTriggerStepListeners(step, container);
                 break;
+            case 'group':
+                this.setupGroupStepListeners(step, container);
+                break;
             case 'annotation':
                 this.setupAnnotationStepListeners(step, container);
                 break;
@@ -1472,10 +1528,7 @@ class PipelineBuilder {
                 this.setupPluginStepListeners(step, container);
                 break;
             case 'pipeline-upload':
-                this.setupPipelineUploadStepListeners(step, container);
-                break;
-            case 'group':
-                this.setupGroupStepListeners(step, container);
+                this.setupPipelineUploadListeners(step, container);
                 break;
         }
 
@@ -1483,12 +1536,10 @@ class PipelineBuilder {
         if (!['wait', 'annotation'].includes(step.type)) {
             this.setupCommonPropertyListeners(step, container);
         }
-
-        // Advanced property listeners
-        if (['command', 'trigger', 'group'].includes(step.type)) {
-            this.setupAdvancedPropertyListeners(step, container);
-        }
-
+        
+        // Action button listeners
+        this.setupActionButtonListeners(step, container);
+        
         // Section collapse/expand
         container.querySelectorAll('.property-section h4').forEach(header => {
             header.addEventListener('click', (e) => {
@@ -1498,11 +1549,20 @@ class PipelineBuilder {
         });
     }
 
+    // All setup listener methods - PRESERVED FROM BOTH VERSIONS
     setupCommandStepListeners(step, container) {
         const commandInput = container.querySelector('#step-command');
         if (commandInput) {
             commandInput.addEventListener('input', (e) => {
                 step.properties.command = e.target.value;
+                this.renderPipeline();
+            });
+        }
+
+        const keyInput = container.querySelector('#step-key');
+        if (keyInput) {
+            keyInput.addEventListener('input', (e) => {
+                step.properties.key = e.target.value;
                 this.renderPipeline();
             });
         }
@@ -1569,11 +1629,10 @@ class PipelineBuilder {
     }
 
     setupWaitStepListeners(step, container) {
-        const continueOnFailure = container.querySelector('#step-continue-on-failure');
-        if (continueOnFailure) {
-            continueOnFailure.addEventListener('change', (e) => {
+        const continueCheckbox = container.querySelector('#step-continue-on-failure');
+        if (continueCheckbox) {
+            continueCheckbox.addEventListener('change', (e) => {
                 step.properties.continue_on_failure = e.target.checked;
-                this.renderPipeline();
             });
         }
     }
@@ -1587,14 +1646,13 @@ class PipelineBuilder {
             });
         }
 
-        const blockedState = container.querySelector('#step-blocked-state');
-        if (blockedState) {
-            blockedState.addEventListener('change', (e) => {
+        const blockedStateSelect = container.querySelector('#step-blocked-state');
+        if (blockedStateSelect) {
+            blockedStateSelect.addEventListener('change', (e) => {
                 step.properties.blocked_state = e.target.value;
             });
         }
 
-        // Block fields
         container.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="add-block-field"]')) {
                 this.showAddBlockFieldDialog(step);
@@ -1642,7 +1700,6 @@ class PipelineBuilder {
             });
         }
 
-        // Build configuration
         container.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="configure-build"]')) {
                 this.showBuildConfigDialog(step);
@@ -1656,6 +1713,13 @@ class PipelineBuilder {
             groupInput.addEventListener('input', (e) => {
                 step.properties.group = e.target.value;
                 this.renderPipeline();
+            });
+        }
+
+        const keyInput = container.querySelector('#step-key');
+        if (keyInput) {
+            keyInput.addEventListener('input', (e) => {
+                step.properties.key = e.target.value;
             });
         }
     }
@@ -1750,7 +1814,7 @@ class PipelineBuilder {
         });
     }
 
-    setupPipelineUploadStepListeners(step, container) {
+    setupPipelineUploadListeners(step, container) {
         const pipelineInput = container.querySelector('#pipeline-file');
         if (pipelineInput) {
             pipelineInput.addEventListener('input', (e) => {
@@ -1768,7 +1832,7 @@ class PipelineBuilder {
     }
 
     setupCommonPropertyListeners(step, container) {
-        // Dependencies
+        // Dependencies - NEW HANDLING
         container.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="add-dependency"]')) {
                 this.showAddDependencyDialog(step);
@@ -1809,10 +1873,26 @@ class PipelineBuilder {
             });
         }
 
+        const skipCheckbox = container.querySelector('#step-skip');
+        if (skipCheckbox) {
+            skipCheckbox.addEventListener('change', (e) => {
+                step.properties.skip = e.target.checked;
+                this.renderPipeline();
+            });
+        }
+
         const allowFailureCheckbox = container.querySelector('#step-allow-dependency-failure');
         if (allowFailureCheckbox) {
             allowFailureCheckbox.addEventListener('change', (e) => {
                 step.properties.allow_dependency_failure = e.target.checked;
+            });
+        }
+
+        // Soft fail for command steps
+        const softFailCheckbox = container.querySelector('#step-soft-fail');
+        if (softFailCheckbox) {
+            softFailCheckbox.addEventListener('change', (e) => {
+                step.properties.soft_fail = e.target.checked;
             });
         }
 
@@ -1847,25 +1927,6 @@ class PipelineBuilder {
                 step.properties.retry.automatic.exit_status = e.target.value || '*';
             });
         }
-    }
-
-    setupAdvancedPropertyListeners(step, container) {
-        // Soft fail
-        const softFailCheckbox = container.querySelector('#step-soft-fail');
-        if (softFailCheckbox) {
-            softFailCheckbox.addEventListener('change', (e) => {
-                step.properties.soft_fail = e.target.checked;
-            });
-        }
-
-        // Skip
-        const skipCheckbox = container.querySelector('#step-skip');
-        if (skipCheckbox) {
-            skipCheckbox.addEventListener('change', (e) => {
-                step.properties.skip = e.target.checked;
-                this.renderPipeline();
-            });
-        }
 
         // Matrix configuration
         container.addEventListener('click', (e) => {
@@ -1875,7 +1936,48 @@ class PipelineBuilder {
         });
     }
 
-    // Dialog helpers
+    setupActionButtonListeners(step, container) {
+        container.addEventListener('click', (e) => {
+            const action = e.target.closest('[data-action]')?.dataset.action;
+            if (!action) return;
+            
+            switch (action) {
+                case 'add-agent-tag':
+                    this.showAddAgentTagDialog(step);
+                    break;
+                case 'add-env-var':
+                    this.showAddEnvVarDialog(step);
+                    break;
+                case 'add-plugin':
+                    this.showPluginCatalog(step);
+                    break;
+                case 'remove-agent-tag':
+                    const agentKey = e.target.closest('[data-action="remove-agent-tag"]').dataset.key;
+                    if (step.properties.agents) {
+                        delete step.properties.agents[agentKey];
+                        this.renderProperties();
+                    }
+                    break;
+                case 'remove-env-var':
+                    const envKey = e.target.closest('[data-action="remove-env-var"]').dataset.key;
+                    if (step.properties.env) {
+                        delete step.properties.env[envKey];
+                        this.renderProperties();
+                    }
+                    break;
+                case 'remove-plugin':
+                    const pluginKey = e.target.closest('[data-action="remove-plugin"]').dataset.plugin;
+                    if (step.properties.plugins) {
+                        delete step.properties.plugins[pluginKey];
+                        this.renderProperties();
+                        this.renderPipeline();
+                    }
+                    break;
+            }
+        });
+    }
+
+    // Dialog methods - ALL PRESERVED
     showAddAgentTagDialog(step) {
         const key = prompt('Agent tag key (e.g., queue, docker, os):');
         if (!key) return;
@@ -1886,6 +1988,7 @@ class PipelineBuilder {
         if (!step.properties.agents) {
             step.properties.agents = {};
         }
+        
         step.properties.agents[key] = value;
         this.renderProperties();
     }
@@ -1900,6 +2003,7 @@ class PipelineBuilder {
         if (!step.properties.env) {
             step.properties.env = {};
         }
+        
         step.properties.env[key] = value;
         this.renderProperties();
     }
@@ -2046,19 +2150,20 @@ class PipelineBuilder {
         alert('Matrix configuration is available in the Matrix Builder. Click the "Matrix Builder" button in the sidebar.');
     }
 
-    // Utility methods
-    updateStepCount() {
-        const countElement = document.querySelector('.step-count');
-        if (countElement) {
-            countElement.textContent = `${this.steps.length} step${this.steps.length !== 1 ? 's' : ''}`;
-        }
-        
-        const countEl = document.getElementById('step-count');
-        if (countEl) {
-            countEl.textContent = this.steps.length;
+    showPluginCatalog(step) {
+        // Show plugin catalog modal
+        const modal = document.getElementById('plugin-catalog-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            // Store current step for plugin addition
+            window.currentStepForPlugin = step;
+        } else {
+            // Fallback to selector dialog
+            this.showPluginSelector(step);
         }
     }
 
+    // Pipeline operations
     clearPipeline() {
         if (this.steps.length === 0) {
             alert('Pipeline is already empty.');
@@ -2072,208 +2177,87 @@ class PipelineBuilder {
             this.renderPipeline();
             this.renderProperties();
             this.updateStepCount();
-            console.log('🗑️ Pipeline cleared');
+            console.log('🧹 Pipeline cleared');
         }
     }
 
-    loadExample() {
-        if (this.steps.length > 0) {
-            if (!confirm('This will replace your current pipeline. Continue?')) {
-                return;
-            }
+    updateStepCount() {
+        const countElement = document.querySelector('.step-count');
+        if (countElement) {
+            countElement.textContent = `${this.steps.length} step${this.steps.length !== 1 ? 's' : ''}`;
         }
         
-        this.steps = [];
-        this.stepCounter = 0;
-        
-        // Add example steps
-        const exampleSteps = [
-            { 
-                type: 'command', 
-                properties: { 
-                    label: '📦 Install Dependencies', 
-                    command: 'npm install\nnpm run lint',
-                    key: 'install'
-                } 
-            },
-            { 
-                type: 'command', 
-                properties: { 
-                    label: '🧪 Run Tests', 
-                    command: 'npm test',
-                    key: 'test',
-                    depends_on: 'install',
-                    retry: { automatic: { limit: 3, exit_status: '*' } }
-                } 
-            },
-            { 
-                type: 'wait',
-                properties: {}
-            },
-            { 
-                type: 'command', 
-                properties: { 
-                    label: '🔨 Build Application', 
-                    command: 'npm run build',
-                    key: 'build',
-                    agents: { queue: 'build' }
-                } 
-            },
-            { 
-                type: 'block', 
-                properties: { 
-                    prompt: 'Deploy to production?',
-                    key: 'approval'
-                } 
-            },
-            { 
-                type: 'command', 
-                properties: { 
-                    label: '🚀 Deploy', 
-                    command: 'npm run deploy',
-                    key: 'deploy',
-                    depends_on: ['build', 'approval']
-                } 
-            }
-        ];
-        
-        exampleSteps.forEach(stepConfig => {
-            const step = this.createStep(stepConfig.type);
-            Object.assign(step.properties, stepConfig.properties);
-            this.steps.push(step);
-            this.stepCounter++;
-        });
-        
-        this.renderPipeline();
-        this.renderProperties();
-        this.updateStepCount();
-        
-        console.log('📋 Loaded example pipeline');
-    }
-
-    exportYAML() {
-        if (window.yamlGenerator) {
-            const yaml = window.yamlGenerator.generateYAML(this.steps);
-            console.log('📋 Generated YAML:', yaml);
-            window.yamlGenerator.downloadYAML(yaml);
+        const countEl = document.getElementById('step-count');
+        if (countEl) {
+            countEl.textContent = this.steps.length;
         }
     }
 
-    // Template loading
-    loadTemplate(templateType) {
-        console.log(`📋 Loading template: ${templateType}`);
-        
-        const templates = {
-            'basic-ci': [
-                { type: 'command', properties: { label: 'Install Dependencies', command: 'npm install' } },
-                { type: 'command', properties: { label: 'Run Tests', command: 'npm test' } },
-                { type: 'wait', properties: {} },
-                { type: 'command', properties: { label: 'Build', command: 'npm run build' } }
-            ],
-            'docker-build': [
-                { type: 'command', properties: { 
-                    label: 'Build Docker Image', 
-                    command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
-                    plugins: { 'docker': { image: 'myapp', tag: '$BUILDKITE_BUILD_NUMBER' } }
-                }},
-                { type: 'command', properties: { 
-                    label: 'Push to Registry', 
-                    command: 'docker push myapp:$BUILDKITE_BUILD_NUMBER',
-                    plugins: { 'ecr': { login: true } }
-                }}
-            ],
-            'deploy-pipeline': [
-                { type: 'command', properties: { label: 'Run Tests', command: 'make test' } },
-                { type: 'block', properties: { prompt: 'Deploy to staging?' } },
-                { type: 'command', properties: { label: 'Deploy Staging', command: 'deploy staging' } },
-                { type: 'block', properties: { prompt: 'Deploy to production?' } },
-                { type: 'command', properties: { label: 'Deploy Production', command: 'deploy production' } }
-            ],
-            'test-suite': [
-                { type: 'command', properties: { label: 'Unit Tests', command: 'npm run test:unit', key: 'unit-tests' } },
-                { type: 'command', properties: { label: 'Integration Tests', command: 'npm run test:integration', key: 'integration-tests' } },
-                { type: 'command', properties: { label: 'E2E Tests', command: 'npm run test:e2e', key: 'e2e-tests' } },
-                { type: 'wait', properties: {} },
-                { type: 'command', properties: { 
-                    label: 'Test Report', 
-                    command: 'npm run test:report',
-                    depends_on: ['unit-tests', 'integration-tests', 'e2e-tests']
-                }}
-            ],
-            'quality-gates': [
-                { type: 'command', properties: { label: 'Linting', command: 'npm run lint', key: 'lint' } },
-                { type: 'command', properties: { label: 'Type Check', command: 'npm run type-check', key: 'type-check' } },
-                { type: 'command', properties: { label: 'Security Scan', command: 'npm audit', key: 'security' } },
-                { type: 'wait', properties: {} },
-                { type: 'command', properties: { 
-                    label: 'Quality Report', 
-                    command: 'npm run quality:report',
-                    depends_on: ['lint', 'type-check', 'security']
-                }}
-            ]
-        };
-        
-        const template = templates[templateType];
-        if (template) {
-            if (this.steps.length > 0) {
-                if (!confirm('This will replace your current pipeline. Continue?')) {
-                    return;
-                }
-            }
-            
-            this.steps = [];
-            this.stepCounter = 0;
-            
-            template.forEach(stepConfig => {
-                const step = this.createStep(stepConfig.type);
-                Object.assign(step.properties, stepConfig.properties);
-                this.steps.push(step);
-                this.stepCounter++;
-            });
-            
-            this.renderPipeline();
-            this.renderProperties();
-            this.updateStepCount();
-            
-            console.log(`✅ Loaded template: ${templateType}`);
-        }
-    }
-
-    // Public API for enhanced features
-    updateStepProperty(stepId, property, value) {
-        const step = this.steps.find(s => s.id === stepId);
-        if (!step) return;
-        
-        // Handle nested properties
-        if (property.includes('_')) {
-            const parts = property.split('_');
-            if (parts[0] === 'build' && step.properties.build) {
-                step.properties.build[parts[1]] = value;
-            } else if (parts[0] === 'retry' && parts[1] === 'limit') {
-                if (!step.properties.retry) step.properties.retry = { automatic: {} };
-                step.properties.retry.automatic.limit = parseInt(value) || 3;
-            } else if (parts[0] === 'notify') {
-                step.properties[property] = value;
-            } else {
-                step.properties[property] = value;
-            }
-        } else {
-            step.properties[property] = value;
-        }
-        
-        this.renderPipeline();
-        
-        // Notify YAML generator if available
-        if (window.yamlGenerator) {
-            window.yamlGenerator.updateYAML(this.steps);
-        }
-    }
-
-    // Pipeline configuration getter for YAML generation
     getPipelineConfig() {
         return {
             steps: this.steps.map(step => this.convertStepToYAML(step))
         };
+    }
+
+    buildStepConfig(step) {
+        const config = {};
+        
+        // Copy all non-empty properties
+        Object.entries(step.properties).forEach(([key, value]) => {
+            if (value !== null && value !== '' && value !== undefined) {
+                if (typeof value === 'object' && Object.keys(value).length === 0) {
+                    // Skip empty objects
+                    return;
+                }
+                config[key] = value;
+            }
+        });
+        
+        // Handle step-specific transformations
+        switch (step.type) {
+            case 'wait':
+                return 'wait';
+            case 'block':
+                config.block = step.properties.prompt || 'Block';
+                delete config.prompt;
+                break;
+            case 'input':
+                config.input = step.properties.prompt || 'Input';
+                delete config.prompt;
+                break;
+            case 'annotation':
+                config.annotate = {
+                    body: step.properties.body || '',
+                    style: step.properties.style || 'info',
+                    context: step.properties.context || 'default'
+                };
+                if (step.properties.append) config.annotate.append = true;
+                break;
+            case 'notify':
+                config.notify = [];
+                if (step.properties.email) {
+                    config.notify.push({ email: step.properties.email });
+                }
+                if (step.properties.slack) {
+                    config.notify.push({ slack: step.properties.slack });
+                }
+                if (step.properties.webhook) {
+                    config.notify.push({ webhook: step.properties.webhook });
+                }
+                if (step.properties.pagerduty) {
+                    config.notify.push({ pagerduty_change_event: step.properties.pagerduty });
+                }
+                break;
+            case 'plugin':
+                // Plugin steps only have plugins
+                break;
+            case 'pipeline-upload':
+                config.command = `buildkite-agent pipeline upload ${step.properties.pipeline || '.buildkite/pipeline.yml'}`;
+                if (step.properties.replace) config.command += ' --replace';
+                break;
+        }
+        
+        return config;
     }
 
     convertStepToYAML(step) {
@@ -2396,6 +2380,10 @@ class PipelineBuilder {
             yamlStep.parallelism = step.properties.parallelism;
         }
         
+        if (step.properties.matrix && Object.keys(step.properties.matrix).length > 0) {
+            yamlStep.matrix = step.properties.matrix;
+        }
+        
         if (step.properties.allow_dependency_failure) {
             yamlStep.allow_dependency_failure = true;
         }
@@ -2440,8 +2428,272 @@ class PipelineBuilder {
         return yamlStep;
     }
 
+    // Template loading - COMPLETE FROM BOTH VERSIONS
+    loadTemplate(templateName, index = -1) {
+        console.log(`📄 Loading template: ${templateName}`);
+        
+        const templates = {
+            'ci-cd': [
+                { type: 'command', properties: { label: 'Checkout', command: 'git checkout $BUILDKITE_COMMIT', key: 'checkout' } },
+                { type: 'command', properties: { label: 'Install Dependencies', command: 'npm install', key: 'install' } },
+                { type: 'command', properties: { label: 'Run Tests', command: 'npm test', key: 'test' } },
+                { type: 'wait' },
+                { type: 'command', properties: { label: 'Build', command: 'npm run build', key: 'build' } },
+                { type: 'command', properties: { label: 'Deploy', command: 'npm run deploy', if: 'build.branch == "main"' } }
+            ],
+            'docker': [
+                { type: 'command', properties: { 
+                    label: 'Build Docker Image', 
+                    command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
+                    plugins: { 'docker': { image: 'myapp:$BUILDKITE_BUILD_NUMBER' } }
+                }},
+                { type: 'command', properties: { label: 'Push to Registry', command: 'docker push myapp:$BUILDKITE_BUILD_NUMBER' } }
+            ],
+            'node': [
+                { type: 'command', properties: { label: 'Install', command: 'npm ci' } },
+                { type: 'command', properties: { label: 'Lint', command: 'npm run lint' } },
+                { type: 'command', properties: { label: 'Test', command: 'npm test' } },
+                { type: 'command', properties: { label: 'Build', command: 'npm run build' } }
+            ],
+            'python': [
+                { type: 'command', properties: { label: 'Install', command: 'pip install -r requirements.txt' } },
+                { type: 'command', properties: { label: 'Lint', command: 'pylint src/' } },
+                { type: 'command', properties: { label: 'Test', command: 'pytest' } }
+            ],
+            'matrix': [
+                { type: 'command', properties: { 
+                    label: 'Matrix Test', 
+                    command: 'npm test',
+                    matrix: {
+                        'node': ['14', '16', '18'],
+                        'os': ['linux', 'windows', 'macos']
+                    }
+                }}
+            ],
+            'basic-ci': [
+                { type: 'command', properties: { label: 'Install Dependencies', command: 'npm install', key: 'install' } },
+                { type: 'command', properties: { label: 'Run Tests', command: 'npm test', key: 'test' } },
+                { type: 'wait', properties: {} },
+                { type: 'command', properties: { label: 'Build', command: 'npm run build' } }
+            ],
+            'docker-build': [
+                { type: 'command', properties: { 
+                    label: 'Build Docker Image', 
+                    command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
+                    plugins: { 'docker': { image: 'myapp', tag: '$BUILDKITE_BUILD_NUMBER' } }
+                }},
+                { type: 'command', properties: { 
+                    label: 'Push to Registry', 
+                    command: 'docker push myapp:$BUILDKITE_BUILD_NUMBER',
+                    plugins: { 'ecr': { login: true } }
+                }}
+            ],
+            'deploy-pipeline': [
+                { type: 'command', properties: { label: 'Run Tests', command: 'make test' } },
+                { type: 'block', properties: { prompt: 'Deploy to staging?' } },
+                { type: 'command', properties: { label: 'Deploy Staging', command: 'deploy staging' } },
+                { type: 'block', properties: { prompt: 'Deploy to production?' } },
+                { type: 'command', properties: { label: 'Deploy Production', command: 'deploy production' } }
+            ],
+            'test-suite': [
+                { type: 'command', properties: { label: 'Unit Tests', command: 'npm run test:unit', key: 'unit-tests' } },
+                { type: 'command', properties: { label: 'Integration Tests', command: 'npm run test:integration', key: 'integration-tests' } },
+                { type: 'command', properties: { label: 'E2E Tests', command: 'npm run test:e2e', key: 'e2e-tests' } },
+                { type: 'wait', properties: {} },
+                { type: 'command', properties: { 
+                    label: 'Test Report', 
+                    command: 'npm run test:report',
+                    depends_on: ['unit-tests', 'integration-tests', 'e2e-tests']
+                }}
+            ],
+            'quality-gates': [
+                { type: 'command', properties: { label: 'Linting', command: 'npm run lint', key: 'lint' } },
+                { type: 'command', properties: { label: 'Type Check', command: 'npm run type-check', key: 'type-check' } },
+                { type: 'command', properties: { label: 'Security Scan', command: 'npm audit', key: 'security' } },
+                { type: 'wait', properties: {} },
+                { type: 'command', properties: { 
+                    label: 'Quality Report', 
+                    command: 'npm run quality:report',
+                    depends_on: ['lint', 'type-check', 'security']
+                }}
+            ]
+        };
+        
+        const template = templates[templateName];
+        if (!template) {
+            console.warn(`Template not found: ${templateName}`);
+            return;
+        }
+        
+        if (this.steps.length > 0 && index === -1) {
+            if (!confirm('This will replace your current pipeline. Continue?')) {
+                return;
+            }
+            this.steps = [];
+            this.stepCounter = 0;
+        }
+        
+        // Add template steps
+        template.forEach(stepConfig => {
+            const step = this.addStep(stepConfig.type, index);
+            if (step && stepConfig.properties) {
+                Object.assign(step.properties, stepConfig.properties);
+            }
+            if (index >= 0) index++;
+        });
+        
+        this.renderPipeline();
+        this.renderProperties();
+        
+        if (window.buildkiteApp) {
+            window.buildkiteApp.showNotification(`Template "${templateName}" loaded`, 'success');
+        }
+    }
+
+    loadExample() {
+        if (this.steps.length > 0) {
+            if (!confirm('This will replace your current pipeline. Continue?')) {
+                return;
+            }
+        }
+        
+        this.steps = [];
+        this.stepCounter = 0;
+        
+        // Add example steps
+        const exampleSteps = [
+            { 
+                type: 'command', 
+                properties: { 
+                    label: '📦 Install Dependencies', 
+                    command: 'npm install\nnpm run lint',
+                    key: 'install'
+                } 
+            },
+            { 
+                type: 'command', 
+                properties: { 
+                    label: '🧪 Run Tests', 
+                    command: 'npm test',
+                    key: 'test',
+                    depends_on: 'install',
+                    retry: { automatic: { limit: 3, exit_status: '*' } }
+                } 
+            },
+            { 
+                type: 'wait',
+                properties: {}
+            },
+            { 
+                type: 'command', 
+                properties: { 
+                    label: '🔨 Build Application', 
+                    command: 'npm run build',
+                    key: 'build',
+                    agents: { queue: 'build' }
+                } 
+            },
+            { 
+                type: 'block', 
+                properties: { 
+                    prompt: 'Deploy to production?',
+                    key: 'approval'
+                } 
+            },
+            { 
+                type: 'command', 
+                properties: { 
+                    label: '🚀 Deploy', 
+                    command: 'npm run deploy',
+                    key: 'deploy',
+                    depends_on: ['build', 'approval']
+                } 
+            }
+        ];
+        
+        exampleSteps.forEach(stepConfig => {
+            const step = this.createStep(stepConfig.type);
+            Object.assign(step.properties, stepConfig.properties);
+            this.steps.push(step);
+            this.stepCounter++;
+        });
+        
+        this.renderPipeline();
+        this.renderProperties();
+        this.updateStepCount();
+        
+        console.log('📋 Loaded example pipeline');
+    }
+
+    exportYAML() {
+        if (window.yamlGenerator) {
+            const yaml = window.yamlGenerator.generateYAML(this.steps);
+            console.log('📋 Generated YAML:', yaml);
+            window.yamlGenerator.downloadYAML(yaml);
+        } else {
+            const modal = document.getElementById('yaml-export-modal');
+            if (modal && window.yamlGenerator) {
+                const config = this.getPipelineConfig();
+                const yaml = window.yamlGenerator.generate(config);
+                
+                // Update modal content
+                const output = document.getElementById('export-yaml-output');
+                if (output) {
+                    output.innerHTML = window.yamlGenerator.prettify(yaml);
+                }
+                
+                // Update validation status
+                const validation = window.yamlGenerator.validate(yaml);
+                const statusDiv = document.getElementById('export-validation-status');
+                if (statusDiv) {
+                    if (validation.valid) {
+                        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Valid Buildkite YAML';
+                        statusDiv.className = 'validation-success';
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Validation issues: ' + validation.issues.join(', ');
+                        statusDiv.className = 'validation-error';
+                    }
+                }
+                
+                // Show modal
+                modal.style.display = 'block';
+                modal.classList.remove('hidden');
+            }
+        }
+    }
+
+    // Public API for enhanced features
+    updateStepProperty(stepId, property, value) {
+        const step = this.steps.find(s => s.id === stepId);
+        if (!step) return;
+        
+        // Handle nested properties
+        if (property.includes('_')) {
+            const parts = property.split('_');
+            if (parts[0] === 'build' && step.properties.build) {
+                step.properties.build[parts[1]] = value;
+            } else if (parts[0] === 'retry' && parts[1] === 'limit') {
+                if (!step.properties.retry) step.properties.retry = { automatic: {} };
+                step.properties.retry.automatic.limit = parseInt(value) || 3;
+            } else if (parts[0] === 'notify') {
+                step.properties[property] = value;
+            } else {
+                step.properties[property] = value;
+            }
+        } else {
+            step.properties[property] = value;
+        }
+        
+        this.renderPipeline();
+        
+        // Notify YAML generator if available
+        if (window.yamlGenerator) {
+            window.yamlGenerator.updateYAML(this.steps);
+        }
+    }
+
     // Plugin catalog methods
-    showPluginCatalog() {
+    showPluginCatalogModal() {
         console.log('🏪 Opening plugin catalog...');
         // This would trigger the modal in the main app
         const event = new CustomEvent('openPluginCatalog');
@@ -2488,3 +2740,16 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Initializing Pipeline Builder...');
     window.pipelineBuilder = new PipelineBuilder();
 });
+
+// Also initialize immediately if DOM is already loaded
+if (document.readyState === 'loading') {
+    // Still loading, wait for DOMContentLoaded
+} else {
+    // DOM is already ready
+    console.log('🚀 Initializing Pipeline Builder (DOM already loaded)...');
+    window.pipelineBuilder = new PipelineBuilder();
+}
+
+// Export for debugging
+console.log('🎉 Pipeline Builder loaded successfully!');
+console.log('📚 Available in console: window.pipelineBuilder');
