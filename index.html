@@ -11,7 +11,7 @@
 <body>
     <!-- Main Application -->
     <div id="app-container" class="app-container">
-        <!-- Header - FIXED: Title now properly positioned at top -->
+        <!-- Header -->
         <header class="header">
             <div class="header-content">
                 <div class="header-brand">
@@ -36,7 +36,7 @@
             </div>
         </header>
 
-        <!-- Main Content - 3 Column Layout - FIXED: Proper grid structure -->
+        <!-- Main Content - 3 Column Layout -->
         <main class="main-content">
             <!-- Enhanced Sidebar - Left Column -->
             <aside class="sidebar enhanced-sidebar">
@@ -86,10 +86,25 @@
                 <div class="step-category">
                     <h4><i class="fas fa-tools"></i> Advanced</h4>
                     <div class="step-palette">
-                        <div class="step-type" draggable="true" data-step-type="pipeline-upload">
+                        <div class="step-type advanced" draggable="true" data-step-type="pipeline-upload">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span>Pipeline Upload</span>
                             <small>Upload dynamic pipeline</small>
+                        </div>
+                        <div class="step-type advanced" draggable="true" data-step-type="annotation">
+                            <i class="fas fa-comment-alt"></i>
+                            <span>Annotation</span>
+                            <small>Add build annotations</small>
+                        </div>
+                        <div class="step-type advanced" draggable="true" data-step-type="notify">
+                            <i class="fas fa-bell"></i>
+                            <span>Notify</span>
+                            <small>Send notifications</small>
+                        </div>
+                        <div class="step-type advanced" draggable="true" data-step-type="plugin">
+                            <i class="fas fa-puzzle-piece"></i>
+                            <span>Plugin Step</span>
+                            <small>Use Buildkite plugins</small>
                         </div>
                     </div>
                 </div>
@@ -110,207 +125,177 @@
                             <i class="fas fa-file-alt"></i>
                             <span>Step Templates</span>
                         </button>
-                        <button class="action-btn" data-action="dependency-manager">
-                            <i class="fas fa-sitemap"></i>
-                            <span>Dependencies</span>
+                        <button class="action-btn" data-action="variable-manager">
+                            <i class="fas fa-cog"></i>
+                            <span>Variables</span>
                         </button>
                     </div>
-
-                    <!-- Plugin Quickstart -->
-                    <div class="plugin-quickstart">
-                        <div class="plugin-quick" data-plugin="docker">
-                            <i class="fab fa-docker"></i>
-                            <span>Docker</span>
-                        </div>
-                        <div class="plugin-quick" data-plugin="artifacts">
-                            <i class="fas fa-archive"></i>
-                            <span>Artifacts</span>
-                        </div>
-                        <div class="plugin-quick" data-plugin="ecr">
-                            <i class="fab fa-aws"></i>
-                            <span>AWS ECR</span>
-                        </div>
-                        <div class="plugin-quick" data-plugin="slack">
-                            <i class="fab fa-slack"></i>
-                            <span>Slack</span>
-                        </div>
+                    <!-- Pattern Library Link -->
+                    <div class="pattern-library-link">
+                        <button class="btn btn-outline btn-full" data-action="pattern-library">
+                            <i class="fas fa-book"></i>
+                            Pattern Library
+                        </button>
                     </div>
                 </div>
             </aside>
 
-            <!-- Pipeline Canvas - Center Column - FIXED: Proper drop zone structure -->
-            <section class="pipeline-canvas">
+            <!-- Central Canvas -->
+            <section class="canvas">
                 <div class="canvas-header">
-                    <h2><i class="fas fa-stream"></i> Pipeline Steps</h2>
-                    <div class="canvas-actions">
-                        <button id="validate-pipeline" class="btn btn-secondary">
-                            <i class="fas fa-check-circle"></i>
-                            Validate
-                        </button>
-                        <button class="btn btn-outline" data-action="pipeline-validator">
-                            <i class="fas fa-clipboard-check"></i>
-                            Advanced Validation
+                    <h2>Pipeline Canvas</h2>
+                    <div class="canvas-controls">
+                        <span class="step-count">0 steps</span>
+                        <button class="btn btn-secondary btn-small" id="toggle-yaml">
+                            <i class="fas fa-code"></i>
+                            Toggle YAML
                         </button>
                     </div>
                 </div>
 
-                <!-- Drop Zone for Pipeline Steps -->
-                <div id="pipeline-steps" class="pipeline-steps">
-                    <!-- Steps will be rendered here -->
-                    <div class="empty-pipeline">
-                        <div class="empty-content">
-                            <i class="fas fa-hand-paper"></i>
+                <!-- Pipeline Container -->
+                <div class="pipeline-container">
+                    <div id="pipeline-steps" class="pipeline-steps">
+                        <div id="empty-state" class="empty-pipeline">
+                            <i class="fas fa-stream"></i>
                             <h3>Start Building Your Pipeline</h3>
-                            <p>Drag step types from the sidebar to create your pipeline</p>
+                            <p>Drag step types from the sidebar to build your pipeline</p>
                         </div>
                     </div>
+                </div>
+
+                <!-- YAML Preview (Initially Hidden) -->
+                <div id="yaml-preview" class="yaml-preview" style="display: none;">
+                    <div class="yaml-header">
+                        <h3>Pipeline YAML</h3>
+                        <button class="btn btn-secondary btn-small" id="copy-yaml">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <pre><code id="yaml-output">steps: []</code></pre>
                 </div>
             </section>
 
             <!-- Properties Panel - Right Column -->
             <aside class="properties-panel">
                 <div class="properties-header">
-                    <h3><i class="fas fa-cog"></i> Properties</h3>
-                    <span class="step-count">0 steps</span>
+                    <h3><i class="fas fa-sliders-h"></i> Step Properties</h3>
                 </div>
-                
                 <div id="properties-content" class="properties-content">
-                    <p class="no-selection">Select a step to view its properties</p>
+                    <div class="no-selection">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Select a step to view its properties</p>
+                    </div>
                 </div>
             </aside>
         </main>
-
-        <!-- YAML Output Panel -->
-        <section class="yaml-output-panel">
-            <div class="yaml-header">
-                <h3><i class="fas fa-file-code"></i> YAML Output</h3>
-                <div class="yaml-actions">
-                    <button id="validate-yaml" class="btn btn-outline">
-                        <i class="fas fa-check"></i>
-                        Validate
-                    </button>
-                    <button id="download-yaml" class="btn btn-secondary">
-                        <i class="fas fa-download"></i>
-                        Download
-                    </button>
-                </div>
-            </div>
-            
-            <div class="yaml-content">
-                <textarea id="yaml-output" placeholder="YAML will appear here when you build your pipeline..."></textarea>
-                
-                <div id="yaml-validation" class="yaml-validation hidden">
-                    <div id="validation-content"></div>
-                </div>
-            </div>
-        </section>
     </div>
 
     <!-- Command Palette -->
-    <div id="command-palette" class="command-palette hidden">
+    <div id="command-palette" class="command-palette" style="display: none;">
         <div class="command-palette-content">
-            <div class="command-palette-header">
-                <i class="fas fa-search"></i>
-                <input type="text" class="command-palette-input" placeholder="Search commands..." />
-                <button class="command-palette-close">&times;</button>
-            </div>
-            <div class="command-palette-results">
-                <!-- Results will be populated by JavaScript -->
-            </div>
+            <input type="text" id="command-input" placeholder="Type a command or search...">
+            <div id="command-results" class="command-results"></div>
         </div>
     </div>
 
-    <!-- All Modals - COMPLETE -->
-    
     <!-- Plugin Catalog Modal -->
-    <div id="plugin-catalog-modal" class="modal hidden">
+    <div id="plugin-catalog-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
                 <h3><i class="fas fa-store"></i> Plugin Catalog</h3>
-                <button class="modal-close">&times;</button>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="plugin-search">
-                    <input type="text" placeholder="Search plugins..." class="plugin-search-input">
+                    <input type="text" id="plugin-search" placeholder="Search plugins...">
                     <div class="plugin-filters">
                         <button class="filter-btn active" data-filter="all">All</button>
                         <button class="filter-btn" data-filter="testing">Testing</button>
                         <button class="filter-btn" data-filter="deployment">Deployment</button>
-                        <button class="filter-btn" data-filter="notification">Notification</button>
+                        <button class="filter-btn" data-filter="docker">Docker</button>
+                        <button class="filter-btn" data-filter="notifications">Notifications</button>
                         <button class="filter-btn" data-filter="security">Security</button>
                     </div>
                 </div>
-                <div id="plugin-catalog-content" class="plugin-catalog">
-                    <!-- Plugin cards will be populated by JavaScript -->
+                <div id="plugin-list" class="plugin-list">
+                    <!-- Plugins will be dynamically populated -->
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Matrix Builder Modal -->
-    <div id="matrix-builder-modal" class="modal hidden">
+    <div id="matrix-builder-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
-                <h3><i class="fas fa-th"></i> Matrix Build Configuration</h3>
-                <button class="modal-close">&times;</button>
+                <h3><i class="fas fa-th"></i> Matrix Builder</h3>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="matrix-builder">
+                <div class="matrix-builder-content">
+                    <div class="matrix-info">
+                        <p>Configure build matrices to run the same step with different parameter combinations.</p>
+                    </div>
+                    
                     <div class="matrix-dimensions">
                         <h4>Matrix Dimensions</h4>
                         <div id="matrix-dimensions-list">
-                            <!-- Dynamic dimensions will be added here -->
+                            <!-- Dynamic matrix dimensions will be added here -->
                         </div>
-                        <button class="btn btn-secondary" id="add-matrix-dimension">
+                        <button class="btn btn-secondary" id="add-dimension">
                             <i class="fas fa-plus"></i> Add Dimension
                         </button>
                     </div>
                     
                     <div class="matrix-preview">
-                        <h4>Generated Jobs Preview</h4>
-                        <div id="matrix-jobs-preview">
-                            <p class="no-matrix">Add dimensions to see job combinations</p>
+                        <h4>Preview</h4>
+                        <div id="matrix-preview-content">
+                            <p class="empty-state">Add dimensions to see matrix preview</p>
                         </div>
                     </div>
                     
-                    <div class="matrix-config">
-                        <h4>Matrix Configuration</h4>
-                        <div class="property-group">
-                            <label for="matrix-strategy">Execution Strategy</label>
-                            <select id="matrix-strategy">
-                                <option value="eager">Eager - Start all jobs immediately</option>
-                                <option value="conservative">Conservative - Start jobs as resources available</option>
-                                <option value="fail-fast">Fail Fast - Stop on first failure</option>
-                            </select>
-                        </div>
-                        
+                    <div class="matrix-options">
+                        <h4>Options</h4>
                         <div class="property-group">
                             <label for="matrix-max-parallel">Max Parallel Jobs</label>
                             <input type="number" id="matrix-max-parallel" value="10" min="1" max="50">
+                            <small>Maximum number of jobs to run in parallel</small>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary modal-close">Cancel</button>
+                <button class="btn btn-secondary close-modal">Cancel</button>
                 <button class="btn btn-primary" id="apply-matrix">Apply Matrix</button>
             </div>
         </div>
     </div>
 
     <!-- Step Templates Modal -->
-    <div id="step-templates-modal" class="modal hidden">
+    <div id="step-templates-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
                 <h3><i class="fas fa-file-alt"></i> Step Templates</h3>
-                <button class="modal-close">&times;</button>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="template-categories">
-                    <div class="template-category">
+                    <button class="template-cat active" data-category="all">All</button>
+                    <button class="template-cat" data-category="testing">Testing</button>
+                    <button class="template-cat" data-category="deployment">Deployment</button>
+                    <button class="template-cat" data-category="docker">Docker</button>
+                    <button class="template-cat" data-category="security">Security</button>
+                </div>
+                
+                <div id="template-list" class="template-list">
+                    <!-- Testing Templates -->
+                    <div class="template-category" data-category="testing">
                         <h4><i class="fas fa-vial"></i> Testing</h4>
                         <div class="template-grid">
                             <div class="template-item" data-template="unit-tests">
+                                <i class="fas fa-flask"></i>
                                 <h5>Unit Tests</h5>
                                 <p>Run unit tests with coverage reporting</p>
                                 <div class="template-tags">
@@ -319,6 +304,7 @@
                                 </div>
                             </div>
                             <div class="template-item" data-template="integration-tests">
+                                <i class="fas fa-network-wired"></i>
                                 <h5>Integration Tests</h5>
                                 <p>End-to-end integration testing</p>
                                 <div class="template-tags">
@@ -326,7 +312,17 @@
                                     <span class="tag">E2E</span>
                                 </div>
                             </div>
+                            <div class="template-item" data-template="parallel-tests">
+                                <i class="fas fa-tasks"></i>
+                                <h5>Parallel Tests</h5>
+                                <p>Split tests across multiple agents</p>
+                                <div class="template-tags">
+                                    <span class="tag">Parallel</span>
+                                    <span class="tag">Performance</span>
+                                </div>
+                            </div>
                             <div class="template-item" data-template="security-scan">
+                                <i class="fas fa-shield-alt"></i>
                                 <h5>Security Scan</h5>
                                 <p>Code security vulnerability scanning</p>
                                 <div class="template-tags">
@@ -337,62 +333,365 @@
                         </div>
                     </div>
                     
-                    <div class="template-category">
+                    <!-- Build & Package Templates -->
+                    <div class="template-category" data-category="build">
                         <h4><i class="fas fa-tools"></i> Build & Package</h4>
                         <div class="template-grid">
-                            <div class="template-item" data-template="docker-build">
-                                <h5>Docker Build</h5>
-                                <p>Build and push Docker images</p>
+                            <div class="template-item" data-template="node-build">
+                                <i class="fab fa-node-js"></i>
+                                <h5>Node.js Build</h5>
+                                <p>Build Node.js applications</p>
                                 <div class="template-tags">
-                                    <span class="tag">Docker</span>
-                                    <span class="tag">Registry</span>
-                                </div>
-                            </div>
-                            <div class="template-item" data-template="npm-package">
-                                <h5>NPM Package</h5>
-                                <p>Build and publish NPM packages</p>
-                                <div class="template-tags">
-                                    <span class="tag">Node.js</span>
+                                    <span class="tag">Node</span>
                                     <span class="tag">NPM</span>
                                 </div>
                             </div>
-                            <div class="template-item" data-template="artifact-upload">
-                                <h5>Artifact Upload</h5>
-                                <p>Upload build artifacts for distribution</p>
+                            <div class="template-item" data-template="python-build">
+                                <i class="fab fa-python"></i>
+                                <h5>Python Build</h5>
+                                <p>Build Python applications</p>
                                 <div class="template-tags">
-                                    <span class="tag">Artifacts</span>
-                                    <span class="tag">Storage</span>
+                                    <span class="tag">Python</span>
+                                    <span class="tag">Pip</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="go-build">
+                                <i class="fas fa-cube"></i>
+                                <h5>Go Build</h5>
+                                <p>Build Go applications</p>
+                                <div class="template-tags">
+                                    <span class="tag">Go</span>
+                                    <span class="tag">Binary</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="multi-arch-build">
+                                <i class="fas fa-microchip"></i>
+                                <h5>Multi-Arch Build</h5>
+                                <p>Build for multiple architectures</p>
+                                <div class="template-tags">
+                                    <span class="tag">ARM64</span>
+                                    <span class="tag">AMD64</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="template-category">
+                    <!-- Deployment Templates -->
+                    <div class="template-category" data-category="deployment">
                         <h4><i class="fas fa-rocket"></i> Deployment</h4>
                         <div class="template-grid">
                             <div class="template-item" data-template="k8s-deploy">
+                                <i class="fas fa-dharmachakra"></i>
                                 <h5>Kubernetes Deploy</h5>
                                 <p>Deploy to Kubernetes cluster</p>
                                 <div class="template-tags">
-                                    <span class="tag">Kubernetes</span>
-                                    <span class="tag">Deploy</span>
+                                    <span class="tag">K8s</span>
+                                    <span class="tag">Helm</span>
                                 </div>
                             </div>
                             <div class="template-item" data-template="aws-deploy">
+                                <i class="fab fa-aws"></i>
                                 <h5>AWS Deploy</h5>
                                 <p>Deploy to AWS services</p>
                                 <div class="template-tags">
-                                    <span class="tag">AWS</span>
-                                    <span class="tag">Cloud</span>
+                                    <span class="tag">ECS</span>
+                                    <span class="tag">Lambda</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="gcp-deploy">
+                                <i class="fab fa-google"></i>
+                                <h5>GCP Deploy</h5>
+                                <p>Deploy to Google Cloud</p>
+                                <div class="template-tags">
+                                    <span class="tag">GKE</span>
+                                    <span class="tag">Cloud Run</span>
                                 </div>
                             </div>
                             <div class="template-item" data-template="static-deploy">
+                                <i class="fas fa-globe"></i>
                                 <h5>Static Site Deploy</h5>
                                 <p>Deploy static websites</p>
                                 <div class="template-tags">
-                                    <span class="tag">Static</span>
                                     <span class="tag">CDN</span>
+                                    <span class="tag">S3</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Docker Templates -->
+                    <div class="template-category" data-category="docker">
+                        <h4><i class="fab fa-docker"></i> Docker</h4>
+                        <div class="template-grid">
+                            <div class="template-item" data-template="docker-build">
+                                <i class="fas fa-box"></i>
+                                <h5>Docker Build</h5>
+                                <p>Build Docker images</p>
+                                <div class="template-tags">
+                                    <span class="tag">Docker</span>
+                                    <span class="tag">Build</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="docker-compose">
+                                <i class="fas fa-layer-group"></i>
+                                <h5>Docker Compose</h5>
+                                <p>Run with docker-compose</p>
+                                <div class="template-tags">
+                                    <span class="tag">Compose</span>
+                                    <span class="tag">Multi-Container</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="docker-push">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <h5>Docker Push</h5>
+                                <p>Push images to registry</p>
+                                <div class="template-tags">
+                                    <span class="tag">Registry</span>
+                                    <span class="tag">ECR</span>
+                                </div>
+                            </div>
+                            <div class="template-item" data-template="docker-scan">
+                                <i class="fas fa-search-plus"></i>
+                                <h5>Docker Scan</h5>
+                                <p>Scan images for vulnerabilities</p>
+                                <div class="template-tags">
+                                    <span class="tag">Security</span>
+                                    <span class="tag">Trivy</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variable Manager Modal -->
+    <div id="variable-manager-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Pipeline Variables</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="variable-manager">
+                    <div class="variable-section">
+                        <h4>Environment Variables</h4>
+                        <div id="env-variables" class="variable-list">
+                            <div class="empty-state">
+                                <p>No environment variables defined</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" id="add-env-var">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+                    
+                    <div class="variable-section">
+                        <h4>Build Options</h4>
+                        <div id="build-options" class="build-options-form">
+                            <div class="property-group">
+                                <label for="build-branch">Default Branch</label>
+                                <input type="text" id="build-branch" placeholder="main">
+                            </div>
+                            <div class="property-group">
+                                <label for="build-timeout">Global Timeout (minutes)</label>
+                                <input type="number" id="build-timeout" placeholder="60" min="1">
+                            </div>
+                            <div class="property-checkbox">
+                                <input type="checkbox" id="skip-queued">
+                                <label for="skip-queued">Skip intermediate builds</label>
+                            </div>
+                            <div class="property-checkbox">
+                                <input type="checkbox" id="cancel-running">
+                                <label for="cancel-running">Cancel running builds on new commit</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Library Modal -->
+    <div id="pattern-library-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3><i class="fas fa-book"></i> Pipeline Pattern Library</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="pattern-categories">
+                    <button class="pattern-cat active" data-category="all">All Patterns</button>
+                    <button class="pattern-cat" data-category="microservices">Microservices</button>
+                    <button class="pattern-cat" data-category="monorepo">Monorepo</button>
+                    <button class="pattern-cat" data-category="mobile">Mobile Apps</button>
+                    <button class="pattern-cat" data-category="ml">Machine Learning</button>
+                </div>
+                
+                <div id="pattern-list" class="pattern-list">
+                    <!-- Microservices Patterns -->
+                    <div class="pattern-section" data-category="microservices">
+                        <h4>Microservices Patterns</h4>
+                        <div class="pattern-grid">
+                            <div class="pattern-card" data-pattern="microservice-cicd">
+                                <h5><i class="fas fa-cubes"></i> Microservice CI/CD</h5>
+                                <p>Complete microservice pipeline with testing, building, and deployment</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":test_tube: Test"
+    command: "make test"
+    
+  - wait
+  
+  - label: ":docker: Build & Push"
+    plugins:
+      - docker#v3.8.0:
+          image: "myapp"
+          
+  - wait
+  
+  - label: ":kubernetes: Deploy"
+    command: "kubectl apply -f k8s/"
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                            
+                            <div class="pattern-card" data-pattern="service-mesh">
+                                <h5><i class="fas fa-project-diagram"></i> Service Mesh Deploy</h5>
+                                <p>Deploy microservices with Istio/Linkerd integration</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":istio: Service Mesh Config"
+    command: |
+      istioctl analyze
+      kubectl apply -f istio/
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Monorepo Patterns -->
+                    <div class="pattern-section" data-category="monorepo">
+                        <h4>Monorepo Patterns</h4>
+                        <div class="pattern-grid">
+                            <div class="pattern-card" data-pattern="monorepo-pipeline">
+                                <h5><i class="fas fa-code-branch"></i> Monorepo Pipeline</h5>
+                                <p>Handle multiple projects in a monorepo with path-based triggers</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":mag: Detect Changes"
+    command: |
+      ./scripts/detect-changes.sh
+      
+  - wait
+  
+  - label: ":package: Build Changed"
+    command: |
+      ./scripts/build-changed.sh
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                            
+                            <div class="pattern-card" data-pattern="selective-builds">
+                                <h5><i class="fas fa-filter"></i> Selective Builds</h5>
+                                <p>Build only changed packages using Git diff</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":git: Check Changes"
+    plugins:
+      - monorepo-diff#v1.0.0:
+          diff: "git diff --name-only HEAD~1"
+          watch:
+            - path: "services/api"
+              command: "make test-api"
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile Patterns -->
+                    <div class="pattern-section" data-category="mobile">
+                        <h4>Mobile App Patterns</h4>
+                        <div class="pattern-grid">
+                            <div class="pattern-card" data-pattern="ios-pipeline">
+                                <h5><i class="fab fa-apple"></i> iOS App Pipeline</h5>
+                                <p>Build, test, and deploy iOS applications</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":ios: Build iOS"
+    command: |
+      fastlane ios build
+    agents:
+      queue: "mac-os"
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                            
+                            <div class="pattern-card" data-pattern="android-pipeline">
+                                <h5><i class="fab fa-android"></i> Android App Pipeline</h5>
+                                <p>Build, test, and deploy Android applications</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":android: Build APK"
+    command: |
+      ./gradlew assembleRelease
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ML Patterns -->
+                    <div class="pattern-section" data-category="ml">
+                        <h4>Machine Learning Patterns</h4>
+                        <div class="pattern-grid">
+                            <div class="pattern-card" data-pattern="ml-training">
+                                <h5><i class="fas fa-brain"></i> ML Model Training</h5>
+                                <p>Train and validate machine learning models</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":brain: Train Model"
+    command: |
+      python train.py
+    agents:
+      gpu: "true"
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
+                            </div>
+                            
+                            <div class="pattern-card" data-pattern="ml-deployment">
+                                <h5><i class="fas fa-rocket"></i> ML Model Deployment</h5>
+                                <p>Deploy ML models to production</p>
+                                <div class="pattern-preview">
+                                    <code>
+steps:
+  - label: ":package: Package Model"
+    command: |
+      python package_model.py
+      
+  - label: ":rocket: Deploy"
+    command: |
+      kubectl apply -f ml-serving/
+                                    </code>
+                                </div>
+                                <button class="btn btn-primary btn-small use-pattern">Use This Pattern</button>
                             </div>
                         </div>
                     </div>
@@ -402,163 +701,38 @@
     </div>
 
     <!-- Dependency Manager Modal -->
-    <div id="dependency-manager-modal" class="modal hidden">
+    <div id="dependency-manager-modal" class="modal" style="display: none;">
         <div class="modal-content large">
             <div class="modal-header">
                 <h3><i class="fas fa-sitemap"></i> Dependency Manager</h3>
-                <button class="modal-close">&times;</button>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="dependency-manager">
-                    <div class="dependency-types">
-                        <h4>Dependency Types</h4>
-                        <div class="dependency-type-buttons">
-                            <button class="btn btn-outline dependency-type-btn active" data-type="explicit">
-                                <i class="fas fa-link"></i> Explicit Dependencies
-                            </button>
-                            <button class="btn btn-outline dependency-type-btn" data-type="file-based">
-                                <i class="fas fa-file"></i> File-Based Dependencies
-                            </button>
-                            <button class="btn btn-outline dependency-type-btn" data-type="conditional">
-                                <i class="fas fa-code-branch"></i> Conditional Dependencies
-                            </button>
+                    <div class="dependency-visualization">
+                        <h4>Dependency Graph</h4>
+                        <div id="dependency-graph" class="dependency-graph">
+                            <canvas id="dependency-canvas"></canvas>
                         </div>
                     </div>
                     
-                    <div class="dependency-content">
-                        <div id="explicit-dependencies" class="dependency-section">
-                            <div class="step-dependencies">
-                                <h5>Step Dependencies</h5>
-                                <div id="step-dependency-list">
-                                    <!-- Dynamic step dependency UI will be populated here -->
-                                </div>
-                                <button class="btn btn-secondary" id="add-dependency">
-                                    <i class="fas fa-plus"></i> Add Dependency
-                                </button>
-                            </div>
+                    <div class="dependency-configuration">
+                        <h4>Configure Dependencies</h4>
+                        <div class="dependency-list" id="dependency-list">
+                            <!-- Dynamic dependency configuration -->
                         </div>
                         
-                        <div id="file-based-dependencies" class="dependency-section" style="display: none;">
-                            <div class="file-dependency-builder">
-                                <h5>File Change Dependencies</h5>
-                                <div class="file-patterns">
-                                    <div class="property-group">
-                                        <label>Watch Patterns</label>
-                                        <textarea placeholder="src/**/*.js&#10;tests/**/*.test.js&#10;package.json"></textarea>
-                                        <small>File patterns that trigger this step when changed</small>
-                                    </div>
-                                    <div class="property-group">
-                                        <label>Ignore Patterns</label>
-                                        <textarea placeholder="node_modules/**&#10;*.log&#10;.git/**"></textarea>
-                                        <small>File patterns to ignore</small>
-                                    </div>
-                                </div>
+                        <div class="dependency-options">
+                            <h5>Dependency Options</h5>
+                            <div class="property-checkbox">
+                                <input type="checkbox" id="allow-failure">
+                                <label for="allow-failure">Allow dependency failure</label>
+                            </div>
+                            <div class="property-checkbox">
+                                <input type="checkbox" id="soft-fail">
+                                <label for="soft-fail">Continue on soft fail</label>
                             </div>
                         </div>
-                        
-                        <div id="conditional-dependencies" class="dependency-section" style="display: none;">
-                            <div class="conditional-dependency-builder">
-                                <h5>Conditional Dependencies</h5>
-                                <div class="condition-builder">
-                                    <div class="condition-group">
-                                        <div class="condition-header">
-                                            <h4>IF Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="if">
-                                                <i class="fas fa-plus"></i> Add Condition
-                                            </button>
-                                        </div>
-                                        <div id="if-conditions" class="conditions-list">
-                                            <!-- Dynamic conditions will be added here -->
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="condition-group">
-                                        <div class="condition-header">
-                                            <h4>UNLESS Conditions</h4>
-                                            <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="unless">
-                                                <i class="fas fa-plus"></i> Add Condition
-                                            </button>
-                                        </div>
-                                        <div id="unless-conditions" class="conditions-list">
-                                            <!-- Dynamic conditions will be added here -->
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="condition-preview">
-                                    <h4>Generated Condition</h4>
-                                    <pre id="condition-output">No conditions defined</pre>
-                                </div>
-                                
-                                <div class="condition-templates">
-                                    <h4>Quick Templates</h4>
-                                    <div class="template-buttons">
-                                        <button class="btn btn-outline" data-template="main-branch">
-                                            Main Branch Only
-                                        </button>
-                                        <button class="btn btn-outline" data-template="pull-request">
-                                            Pull Request Only
-                                        </button>
-                                        <button class="btn btn-outline" data-template="file-changes">
-                                            File Changes
-                                        </button>
-                                        <button class="btn btn-outline" data-template="env-var">
-                                            Environment Variable
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary modal-close">Cancel</button>
-                <button class="btn btn-primary" id="apply-dependencies">Apply Dependencies</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dependency Graph Modal -->
-    <div id="dependency-graph-modal" class="modal hidden">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h3><i class="fas fa-project-diagram"></i> Pipeline Dependency Graph</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="graph-controls">
-                    <button class="btn btn-secondary" data-action="reset-view">
-                        <i class="fas fa-expand-arrows-alt"></i> Reset View
-                    </button>
-                    <button class="btn btn-secondary" data-action="auto-layout">
-                        <i class="fas fa-magic"></i> Auto Layout
-                    </button>
-                    <button class="btn btn-secondary" data-action="export-graph">
-                        <i class="fas fa-download"></i> Export SVG
-                    </button>
-                    <div class="graph-legend">
-                        <span class="legend-item">
-                            <div class="legend-color" style="background: #667eea;"></div>
-                            Command Steps
-                        </span>
-                        <span class="legend-item">
-                            <div class="legend-color" style="background: #f6ad55;"></div>
-                            Wait Steps
-                        </span>
-                        <span class="legend-item">
-                            <div class="legend-color" style="background: #e53e3e;"></div>
-                            Block Steps
-                        </span>
-                    </div>
-                </div>
-                <div class="dependency-graph-canvas">
-                    <canvas id="dependency-canvas" width="800" height="600"></canvas>
-                </div>
-                <div class="graph-info">
-                    <div id="node-details" class="node-details">
-                        <h4>Select a step to view details</h4>
-                        <p>Click on any step in the graph to see its configuration and dependencies.</p>
                     </div>
                 </div>
             </div>
@@ -566,232 +740,94 @@
     </div>
 
     <!-- Conditional Builder Modal -->
-    <div id="conditional-builder-modal" class="modal hidden">
-        <div class="modal-content large">
+    <div id="conditional-builder-modal" class="modal" style="display: none;">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-code-branch"></i> Conditional Logic Builder</h3>
-                <button class="modal-close">&times;</button>
+                <h3><i class="fas fa-code-branch"></i> Conditional Builder</h3>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="conditional-builder">
-                    <div class="condition-groups" id="condition-groups">
-                        <div class="condition-group">
-                            <div class="condition-header">
-                                <h4>IF Conditions</h4>
-                                <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="if">
-                                    <i class="fas fa-plus"></i> Add Condition
-                                </button>
-                            </div>
-                            <div id="if-conditions" class="conditions-list">
-                                <!-- Dynamic conditions will be added here -->
-                            </div>
+                    <div class="condition-type">
+                        <label>Condition Type</label>
+                        <select id="condition-type">
+                            <option value="if">If (run when true)</option>
+                            <option value="unless">Unless (skip when true)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="condition-presets">
+                        <h4>Common Conditions</h4>
+                        <div class="preset-grid">
+                            <button class="preset-btn" data-condition="build.branch == 'main'">
+                                Main Branch Only
+                            </button>
+                            <button class="preset-btn" data-condition="build.pull_request.id == null">
+                                Not a Pull Request
+                            </button>
+                            <button class="preset-btn" data-condition="build.tag != null">
+                                Tagged Builds Only
+                            </button>
+                            <button class="preset-btn" data-condition="build.source == 'schedule'">
+                                Scheduled Builds
+                            </button>
                         </div>
-                        
-                        <div class="condition-group">
-                            <div class="condition-header">
-                                <h4>UNLESS Conditions</h4>
-                                <button class="btn btn-secondary btn-small" data-action="add-condition" data-type="unless">
-                                    <i class="fas fa-plus"></i> Add Condition
-                                </button>
-                            </div>
-                            <div id="unless-conditions" class="conditions-list">
-                                <!-- Dynamic conditions will be added here -->
-                            </div>
-                        </div>
+                    </div>
+                    
+                    <div class="condition-editor">
+                        <label>Custom Condition</label>
+                        <textarea id="condition-expression" rows="3" placeholder="e.g., build.branch == 'main' && build.pull_request.id == null"></textarea>
+                        <small>Use Buildkite environment variables and logical operators</small>
                     </div>
                     
                     <div class="condition-preview">
-                        <h4>Generated Condition</h4>
-                        <pre id="condition-output">No conditions defined</pre>
-                        <div class="condition-explanation">
-                            <h5>How it works:</h5>
-                            <ul>
-                                <li><strong>IF</strong> conditions must ALL be true for the step to run</li>
-                                <li><strong>UNLESS</strong> conditions must ALL be false for the step to run</li>
-                                <li>Use logical operators (&&, ||) to combine conditions</li>
-                                <li>Access build metadata with <code>build.branch</code>, <code>build.tag</code>, etc.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <div class="condition-templates">
-                        <h4>Quick Templates</h4>
-                        <div class="template-buttons">
-                            <button class="btn btn-outline" data-template="main-branch">
-                                <i class="fas fa-code-branch"></i>
-                                Main Branch Only
-                            </button>
-                            <button class="btn btn-outline" data-template="pull-request">
-                                <i class="fas fa-code-pull-request"></i>
-                                Pull Request Only
-                            </button>
-                            <button class="btn btn-outline" data-template="tag-release">
-                                <i class="fas fa-tag"></i>
-                                Tagged Release
-                            </button>
-                            <button class="btn btn-outline" data-template="file-changes">
-                                <i class="fas fa-file-alt"></i>
-                                File Changes
-                            </button>
-                            <button class="btn btn-outline" data-template="env-var">
-                                <i class="fas fa-cog"></i>
-                                Environment Variable
-                            </button>
-                            <button class="btn btn-outline" data-template="time-based">
-                                <i class="fas fa-clock"></i>
-                                Time Based
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="condition-examples">
-                        <h4>Common Patterns</h4>
-                        <div class="example-grid">
-                            <div class="example-item">
-                                <h5>Production Deploy</h5>
-                                <code>build.branch == "main" && build.tag != null</code>
-                                <p>Only deploy tagged commits on main branch</p>
-                            </div>
-                            <div class="example-item">
-                                <h5>Development Build</h5>
-                                <code>build.branch != "main" && build.pull_request.id != null</code>
-                                <p>Build feature branches in pull requests</p>
-                            </div>
-                            <div class="example-item">
-                                <h5>Skip Drafts</h5>
-                                <code>build.pull_request.draft != true</code>
-                                <p>Skip steps for draft pull requests</p>
-                            </div>
-                        </div>
+                        <h4>Preview</h4>
+                        <code id="condition-preview-text">No condition set</code>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary modal-close">Cancel</button>
-                <button class="btn btn-primary" data-action="apply-conditions">Apply Conditions</button>
+                <button class="btn btn-secondary close-modal">Cancel</button>
+                <button class="btn btn-primary" id="apply-condition">Apply Condition</button>
             </div>
         </div>
     </div>
 
-    <!-- YAML Export Modal -->
-    <div id="yaml-modal" class="modal hidden">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h3><i class="fas fa-code"></i> Pipeline YAML</h3>
-                <button class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="yaml-export">
-                    <div class="yaml-actions">
-                        <button id="copy-yaml" class="btn btn-secondary">
-                            <i class="fas fa-copy"></i> Copy to Clipboard
-                        </button>
-                        <button id="download-yaml-modal" class="btn btn-secondary">
-                            <i class="fas fa-download"></i> Download File
-                        </button>
-                        <button id="validate-yaml-modal" class="btn btn-secondary">
-                            <i class="fas fa-check"></i> Validate
-                        </button>
-                        <button id="format-yaml" class="btn btn-secondary">
-                            <i class="fas fa-align-left"></i> Format
-                        </button>
-                    </div>
-                    <textarea id="yaml-output-modal" readonly placeholder="Your pipeline YAML will appear here..."></textarea>
-                    <div id="yaml-validation-modal" class="validation-results hidden">
-                        <h4>Validation Results</h4>
-                        <div id="validation-content-modal"></div>
-                    </div>
-                    <div class="yaml-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Steps:</span>
-                            <span class="stat-value" id="yaml-step-count">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Lines:</span>
-                            <span class="stat-value" id="yaml-line-count">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Size:</span>
-                            <span class="stat-value" id="yaml-size">0 bytes</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Keyboard Shortcuts Modal -->
-    <div id="shortcuts-modal" class="modal hidden">
+    <!-- Pipeline Validator Modal -->
+    <div id="pipeline-validator-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h3>
-                <button class="modal-close">&times;</button>
+                <h3><i class="fas fa-check-circle"></i> Pipeline Validator</h3>
+                <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="shortcuts-grid">
-                    <div class="shortcut-category">
-                        <h4>General</h4>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>K</kbd>
-                            <span>Command Palette</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>S</kbd>
-                            <span>Export YAML</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>E</kbd>
-                            <span>Load Example</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>N</kbd>
-                            <span>Add Command Step</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>?</kbd>
-                            <span>Show Shortcuts</span>
-                        </div>
+                <div class="validator-content">
+                    <div class="validation-status" id="validation-status">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Validating pipeline...</span>
                     </div>
-                    <div class="shortcut-category">
-                        <h4>Pipeline</h4>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>P</kbd>
-                            <span>Plugin Catalog</span>
+                    
+                    <div class="validation-results" id="validation-results" style="display: none;">
+                        <div class="validation-summary">
+                            <h4>Validation Summary</h4>
+                            <div class="summary-stats">
+                                <div class="stat">
+                                    <span class="stat-value" id="error-count">0</span>
+                                    <span class="stat-label">Errors</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value" id="warning-count">0</span>
+                                    <span class="stat-label">Warnings</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value" id="info-count">0</span>
+                                    <span class="stat-label">Info</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>M</kbd>
-                            <span>Matrix Builder</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>T</kbd>
-                            <span>Step Templates</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>G</kbd>
-                            <span>Dependency Graph</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Delete</kbd>
-                            <span>Remove Selected Step</span>
-                        </div>
-                    </div>
-                    <div class="shortcut-category">
-                        <h4>Navigation</h4>
-                        <div class="shortcut-item">
-                            <kbd>↑</kbd> <kbd>↓</kbd>
-                            <span>Navigate Steps</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Tab</kbd>
-                            <span>Next Property</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Enter</kbd>
-                            <span>Edit Selected</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Escape</kbd>
-                            <span>Cancel/Close</span>
+                        
+                        <div class="validation-details" id="validation-details">
+                            <!-- Dynamic validation results -->
                         </div>
                     </div>
                 </div>
@@ -799,26 +835,57 @@
         </div>
     </div>
 
-    <!-- FIXED: Scripts loaded in proper order -->
-    
-    <!-- 1. Base dependencies first -->
+    <!-- Pipeline Preview Modal -->
+    <div id="pipeline-preview-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3><i class="fas fa-eye"></i> Pipeline Preview</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="preview-tabs">
+                    <button class="tab-btn active" data-tab="visual">Visual</button>
+                    <button class="tab-btn" data-tab="yaml">YAML</button>
+                    <button class="tab-btn" data-tab="timeline">Timeline</button>
+                </div>
+                
+                <div class="preview-content">
+                    <div id="visual-preview" class="preview-tab active">
+                        <div class="pipeline-visualization">
+                            <!-- Dynamic visual representation -->
+                        </div>
+                    </div>
+                    
+                    <div id="yaml-preview-tab" class="preview-tab" style="display: none;">
+                        <pre class="yaml-preview-code"><code id="preview-yaml-content"></code></pre>
+                    </div>
+                    
+                    <div id="timeline-preview" class="preview-tab" style="display: none;">
+                        <div class="timeline-visualization">
+                            <!-- Timeline representation -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Success/Error Notifications -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- Hidden File Input for Import -->
+    <input type="file" id="import-file" accept=".yml,.yaml" style="display: none;">
+
+    <!-- Scripts -->
     <script src="js/yaml-generator.js"></script>
-    <script src="js/pipeline-patterns.js"></script>
-    
-    <!-- 2. Core pipeline builder class -->
     <script src="js/pipeline-builder.js"></script>
-    
-    <!-- 3. Enhanced classes that depend on base classes -->
     <script src="js/enhanced-pipeline-builder.js"></script>
-    <script src="js/dependency-graph.js"></script>
-    
-    <!-- 4. Firebase auth (disabled) -->
-    <script src="js/firebase-auth.js"></script>
-    
-    <!-- 5. Main initialization coordinator - LOADS LAST -->
-    <script src="js/main-init.js"></script>
-    
-    <!-- 6. App-specific UI handlers - LOADS AFTER MAIN INIT -->
     <script src="js/app.js"></script>
 </body>
 </html>
