@@ -4,10 +4,17 @@
  * Coordinates all components and handles top-level application logic
  * Now with matrix builds, conditional logic, enhanced YAML validation, and sharing
  * FIXED: File drag-and-drop no longer conflicts with step drag-and-drop
+ * FIXED: Prevents duplicate initialization and ensures component checks
  */
 
 class BuildkiteApp {
     constructor() {
+        // Singleton pattern to prevent duplicate instances
+        if (window.buildkiteApp) {
+            console.warn('⚠️ BuildkiteApp already exists, returning existing instance');
+            return window.buildkiteApp;
+        }
+        
         this.pipelineBuilder = null;
         this.yamlGenerator = null;
         this.matrixBuilder = null;
@@ -16,6 +23,13 @@ class BuildkiteApp {
         this.yamlVisible = false;
         this.autoSaveEnabled = true;
         this.autoSaveInterval = null;
+        this.isInitialized = false;
+        
+        // Track attached event listeners
+        this.attachedListeners = new Set();
+        
+        // Store as singleton
+        window.buildkiteApp = this;
         
         this.init();
     }
@@ -23,12 +37,22 @@ class BuildkiteApp {
     init() {
         console.log('🚀 Initializing Enhanced Buildkite Pipeline Builder App v3.0...');
         
+        // Check if already initialized
+        if (this.isInitialized) {
+            console.log('✅ BuildkiteApp already initialized');
+            return;
+        }
+        
         // Initialize components
-        this.yamlGenerator = new YAMLGenerator();
+        if (window.YAMLGenerator) {
+            this.yamlGenerator = window.yamlGenerator || new YAMLGenerator();
+        } else {
+            console.warn('⚠️ YAMLGenerator not available');
+        }
         
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
+            document.addEventListener('DOMContentLoaded', () => this.onDOMReady(), { once: true });
         } else {
             this.onDOMReady();
         }
@@ -36,6 +60,12 @@ class BuildkiteApp {
 
     onDOMReady() {
         console.log('📄 DOM Ready, setting up application...');
+        
+        // Prevent multiple initialization
+        if (this.isInitialized) {
+            console.log('✅ BuildkiteApp already initialized in onDOMReady');
+            return;
+        }
         
         // Get references to components
         this.pipelineBuilder = window.pipelineBuilder;
@@ -45,6 +75,8 @@ class BuildkiteApp {
         
         if (!this.pipelineBuilder) {
             console.error('❌ Pipeline Builder not initialized!');
+            // Wait for pipeline builder to be available
+            this.waitForPipelineBuilder();
             return;
         }
         
@@ -63,72 +95,142 @@ class BuildkiteApp {
         // Start auto-save
         this.startAutoSave();
         
+        this.isInitialized = true;
         console.log('✅ Enhanced Buildkite Pipeline Builder App initialized successfully!');
+    }
+
+    waitForPipelineBuilder() {
+        console.log('⏳ Waiting for Pipeline Builder...');
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        const checkInterval = setInterval(() => {
+            attempts++;
+            
+            if (window.pipelineBuilder) {
+                console.log('✅ Pipeline Builder found after', attempts, 'attempts');
+                clearInterval(checkInterval);
+                this.pipelineBuilder = window.pipelineBuilder;
+                this.onDOMReady(); // Try initialization again
+            } else if (attempts >= maxAttempts) {
+                console.error('❌ Pipeline Builder not found after', maxAttempts, 'attempts');
+                clearInterval(checkInterval);
+                this.showNotification('Failed to initialize pipeline builder', 'error');
+            }
+        }, 200);
+    }
+
+    // Helper to prevent duplicate event listeners
+    addEventListenerOnce(element, event, handler, identifier) {
+        if (!element) {
+            console.warn(`⚠️ Element not found for event listener: ${identifier}`);
+            return;
+        }
+        
+        const key = `${element.id || element.tagName}-${event}-${identifier}`;
+        
+        if (this.attachedListeners.has(key)) {
+            console.log(`⚠️ Event listener already attached: ${key}`);
+            return;
+        }
+        
+        element.addEventListener(event, handler);
+        this.attachedListeners.add(key);
+        console.log(`✅ Event listener attached: ${key}`);
     }
 
     setupEventListeners() {
         // Header actions
-        document.getElementById('load-example')?.addEventListener('click', () => {
-            this.pipelineBuilder.loadExample();
-            this.updateYAML();
-            this.showNotification('Example pipeline loaded', 'success');
-        });
+        const loadExampleBtn = document.getElementById('load-example');
+        if (loadExampleBtn) {
+            this.addEventListenerOnce(loadExampleBtn, 'click', () => {
+                if (this.pipelineBuilder && this.pipelineBuilder.loadExample) {
+                    this.pipelineBuilder.loadExample();
+                    this.updateYAML();
+                    this.showNotification('Example pipeline loaded', 'success');
+                }
+            }, 'load-example');
+        }
         
-        document.getElementById('clear-pipeline')?.addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear the entire pipeline?')) {
-                this.pipelineBuilder.clearPipeline();
-                this.updateYAML();
-                this.showNotification('Pipeline cleared', 'success');
-            }
-        });
+        const clearPipelineBtn = document.getElementById('clear-pipeline');
+        if (clearPipelineBtn) {
+            this.addEventListenerOnce(clearPipelineBtn, 'click', () => {
+                if (confirm('Are you sure you want to clear the entire pipeline?')) {
+                    if (this.pipelineBuilder && this.pipelineBuilder.clearPipeline) {
+                        this.pipelineBuilder.clearPipeline();
+                        this.updateYAML();
+                        this.showNotification('Pipeline cleared', 'success');
+                    }
+                }
+            }, 'clear-pipeline');
+        }
         
         // NEW: Share pipeline button
-        document.getElementById('share-pipeline')?.addEventListener('click', () => {
-            if (this.pipelineSharing) {
-                this.pipelineSharing.openShareModal();
-            }
-        });
+        const sharePipelineBtn = document.getElementById('share-pipeline');
+        if (sharePipelineBtn) {
+            this.addEventListenerOnce(sharePipelineBtn, 'click', () => {
+                if (this.pipelineSharing) {
+                    this.pipelineSharing.openShareModal();
+                }
+            }, 'share-pipeline');
+        }
         
-        document.getElementById('export-yaml')?.addEventListener('click', () => {
-            this.exportYAML();
-        });
+        const exportYamlBtn = document.getElementById('export-yaml');
+        if (exportYamlBtn) {
+            this.addEventListenerOnce(exportYamlBtn, 'click', () => {
+                this.exportYAML();
+            }, 'export-yaml');
+        }
         
         // Canvas controls
-        document.getElementById('toggle-yaml')?.addEventListener('click', () => {
-            this.toggleYAML();
-        });
+        const toggleYamlBtn = document.getElementById('toggle-yaml');
+        if (toggleYamlBtn) {
+            this.addEventListenerOnce(toggleYamlBtn, 'click', () => {
+                this.toggleYAML();
+            }, 'toggle-yaml');
+        }
         
-        document.getElementById('copy-yaml')?.addEventListener('click', () => {
-            this.copyYAML();
-        });
+        const copyYamlBtn = document.getElementById('copy-yaml');
+        if (copyYamlBtn) {
+            this.addEventListenerOnce(copyYamlBtn, 'click', () => {
+                this.copyYAML();
+            }, 'copy-yaml');
+        }
         
         // NEW: Validate pipeline button
-        document.getElementById('validate-pipeline')?.addEventListener('click', () => {
-            this.validatePipeline();
-        });
+        const validatePipelineBtn = document.getElementById('validate-pipeline');
+        if (validatePipelineBtn) {
+            this.addEventListenerOnce(validatePipelineBtn, 'click', () => {
+                this.validatePipeline();
+            }, 'validate-pipeline');
+        }
         
-        // Sidebar actions
-        document.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = e.currentTarget.dataset.action;
+        // Sidebar actions - Use event delegation to avoid duplicates
+        this.addEventListenerOnce(document, 'click', (e) => {
+            const actionBtn = e.target.closest('[data-action]');
+            if (actionBtn) {
+                const action = actionBtn.dataset.action;
                 this.handleAction(action);
-            });
-        });
+            }
+        }, 'sidebar-actions');
         
-        // Plugin quick add buttons
-        document.querySelectorAll('.plugin-quick-add').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const plugin = e.currentTarget.dataset.plugin;
-                this.pipelineBuilder.addPluginStep(plugin);
-                this.showNotification(`${plugin} plugin added`, 'success');
-            });
-        });
+        // Plugin quick add buttons - Use event delegation
+        this.addEventListenerOnce(document, 'click', (e) => {
+            const pluginBtn = e.target.closest('.plugin-quick-add');
+            if (pluginBtn) {
+                const plugin = pluginBtn.dataset.plugin;
+                if (this.pipelineBuilder && this.pipelineBuilder.addPluginStep) {
+                    this.pipelineBuilder.addPluginStep(plugin);
+                    this.showNotification(`${plugin} plugin added`, 'success');
+                }
+            }
+        }, 'plugin-quick-add');
         
         // Listen for pipeline changes
-        document.addEventListener('pipelineChanged', () => {
+        this.addEventListenerOnce(document, 'pipelineChanged', () => {
             this.updateYAML();
             this.savePipeline();
-        });
+        }, 'pipeline-changed');
         
         // Keyboard shortcuts
         this.setupKeyboardShortcuts();
@@ -139,7 +241,7 @@ class BuildkiteApp {
         // Import button
         const importBtn = document.getElementById('import-pipeline');
         if (importBtn) {
-            importBtn.addEventListener('click', () => {
+            this.addEventListenerOnce(importBtn, 'click', () => {
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
                 fileInput.accept = '.yml,.yaml,.json';
@@ -150,7 +252,7 @@ class BuildkiteApp {
                     }
                 });
                 fileInput.click();
-            });
+            }, 'import-pipeline');
         }
     }
 
@@ -170,21 +272,23 @@ class BuildkiteApp {
         // Pattern Library Modal
         this.setupPatternLibrary();
         
-        // Close modal on backdrop click
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
+        // Close modal on backdrop click - Use event delegation
+        this.addEventListenerOnce(document, 'click', (e) => {
+            if (e.target.classList.contains('modal') && e.target === e.currentTarget) {
+                e.target.style.display = 'none';
+            }
+        }, 'modal-backdrop-close');
+        
+        // Close modal buttons - Use event delegation
+        this.addEventListenerOnce(document, 'click', (e) => {
+            const closeBtn = e.target.closest('.close-modal');
+            if (closeBtn) {
+                const modal = closeBtn.closest('.modal');
+                if (modal) {
                     modal.style.display = 'none';
                 }
-            });
-        });
-        
-        // Close modal buttons
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.target.closest('.modal').style.display = 'none';
-            });
-        });
+            }
+        }, 'modal-close-buttons');
     }
 
     initializeFeatures() {
@@ -201,7 +305,7 @@ class BuildkiteApp {
     setupAutoSaveIndicator() {
         // Add auto-save indicator to header
         const headerActions = document.querySelector('.header-actions');
-        if (headerActions) {
+        if (headerActions && !document.querySelector('.auto-save-indicator')) {
             const indicator = document.createElement('div');
             indicator.className = 'auto-save-indicator';
             indicator.innerHTML = '<i class="fas fa-check-circle"></i> Auto-saved';
@@ -211,6 +315,11 @@ class BuildkiteApp {
     }
 
     setupFileDragDrop() {
+        // Check if already setup
+        if (document.getElementById('file-drop-overlay')) {
+            return;
+        }
+        
         // FIXED: Create a dedicated file drop overlay that doesn't interfere with step dragging
         const overlay = document.createElement('div');
         overlay.id = 'file-drop-overlay';
@@ -227,35 +336,35 @@ class BuildkiteApp {
         // Global document drag handlers to detect file drags
         let dragCounter = 0;
         
-        document.addEventListener('dragenter', (e) => {
+        this.addEventListenerOnce(document, 'dragenter', (e) => {
             // Only show overlay for file drags, not for step drags
-            if (e.dataTransfer.types.includes('Files')) {
+            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
                 dragCounter++;
                 if (dragCounter === 1) {
                     overlay.classList.add('active');
                 }
                 e.preventDefault();
             }
-        });
+        }, 'file-dragenter');
         
-        document.addEventListener('dragleave', (e) => {
-            if (e.dataTransfer.types.includes('Files')) {
+        this.addEventListenerOnce(document, 'dragleave', (e) => {
+            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
                 dragCounter--;
                 if (dragCounter === 0) {
                     overlay.classList.remove('active');
                 }
             }
-        });
+        }, 'file-dragleave');
         
-        document.addEventListener('dragover', (e) => {
-            if (e.dataTransfer.types.includes('Files')) {
+        this.addEventListenerOnce(document, 'dragover', (e) => {
+            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'copy';
             }
-        });
+        }, 'file-dragover');
         
-        document.addEventListener('drop', (e) => {
-            if (e.dataTransfer.types.includes('Files')) {
+        this.addEventListenerOnce(document, 'drop', (e) => {
+            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
                 e.preventDefault();
                 dragCounter = 0;
                 overlay.classList.remove('active');
@@ -273,60 +382,63 @@ class BuildkiteApp {
                     this.showNotification('Please drop a valid pipeline file (.yml, .yaml, or .json)', 'warning');
                 }
             }
-        });
+        }, 'file-drop');
         
         // Style for the overlay
-        const style = document.createElement('style');
-        style.textContent = `
-            .file-drop-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(102, 126, 234, 0.95);
-                z-index: 10000;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                pointer-events: none;
-            }
-            
-            .file-drop-overlay.active {
-                display: flex;
-                pointer-events: all;
-            }
-            
-            .file-drop-content {
-                text-align: center;
-                color: white;
-                transform: scale(0.9);
-                animation: dropZoomIn 0.3s ease forwards;
-            }
-            
-            .file-drop-content i {
-                font-size: 5rem;
-                margin-bottom: 1rem;
-                opacity: 0.9;
-            }
-            
-            .file-drop-content h3 {
-                font-size: 2rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .file-drop-content p {
-                font-size: 1.2rem;
-                opacity: 0.8;
-            }
-            
-            @keyframes dropZoomIn {
-                to {
-                    transform: scale(1);
+        if (!document.getElementById('file-drop-styles')) {
+            const style = document.createElement('style');
+            style.id = 'file-drop-styles';
+            style.textContent = `
+                .file-drop-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(102, 126, 234, 0.95);
+                    z-index: 10000;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    pointer-events: none;
                 }
-            }
-        `;
-        document.head.appendChild(style);
+                
+                .file-drop-overlay.active {
+                    display: flex;
+                    pointer-events: all;
+                }
+                
+                .file-drop-content {
+                    text-align: center;
+                    color: white;
+                    transform: scale(0.9);
+                    animation: dropZoomIn 0.3s ease forwards;
+                }
+                
+                .file-drop-content i {
+                    font-size: 5rem;
+                    margin-bottom: 1rem;
+                    opacity: 0.9;
+                }
+                
+                .file-drop-content h3 {
+                    font-size: 2rem;
+                    margin-bottom: 0.5rem;
+                }
+                
+                .file-drop-content p {
+                    font-size: 1.2rem;
+                    opacity: 0.8;
+                }
+                
+                @keyframes dropZoomIn {
+                    to {
+                        transform: scale(1);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     setupCommandPalette() {
@@ -338,12 +450,12 @@ class BuildkiteApp {
         
         // Commands
         const commands = [
-            { name: 'Add Command Step', action: () => this.pipelineBuilder.addStep('command'), icon: 'fa-terminal' },
-            { name: 'Add Wait Step', action: () => this.pipelineBuilder.addStep('wait'), icon: 'fa-hourglass-half' },
-            { name: 'Add Block Step', action: () => this.pipelineBuilder.addStep('block'), icon: 'fa-hand-paper' },
-            { name: 'Clear Pipeline', action: () => this.pipelineBuilder.clearPipeline(), icon: 'fa-trash' },
+            { name: 'Add Command Step', action: () => this.pipelineBuilder?.addStep('command'), icon: 'fa-terminal' },
+            { name: 'Add Wait Step', action: () => this.pipelineBuilder?.addStep('wait'), icon: 'fa-hourglass-half' },
+            { name: 'Add Block Step', action: () => this.pipelineBuilder?.addStep('block'), icon: 'fa-hand-paper' },
+            { name: 'Clear Pipeline', action: () => this.pipelineBuilder?.clearPipeline(), icon: 'fa-trash' },
             { name: 'Export YAML', action: () => this.exportYAML(), icon: 'fa-download' },
-            { name: 'Load Example', action: () => this.pipelineBuilder.loadExample(), icon: 'fa-file' },
+            { name: 'Load Example', action: () => this.pipelineBuilder?.loadExample(), icon: 'fa-file' },
             { name: 'Toggle YAML View', action: () => this.toggleYAML(), icon: 'fa-code' },
             { name: 'Validate Pipeline', action: () => this.validatePipeline(), icon: 'fa-check' },
             { name: 'Import Pipeline', action: () => document.getElementById('import-pipeline')?.click(), icon: 'fa-upload' }
@@ -358,6 +470,7 @@ class BuildkiteApp {
         
         // Render results
         const renderResults = (filtered) => {
+            if (!results) return;
             results.innerHTML = filtered.map((cmd, index) => `
                 <div class="command-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
                     <i class="fas ${cmd.icon}"></i>
@@ -367,108 +480,137 @@ class BuildkiteApp {
         };
         
         // Input handler
-        input?.addEventListener('input', (e) => {
-            const filtered = filterCommands(e.target.value);
-            renderResults(filtered);
-        });
-        
-        // Keyboard navigation
-        input?.addEventListener('keydown', (e) => {
-            const items = results.querySelectorAll('.command-item');
-            const selected = results.querySelector('.command-item.selected');
-            const selectedIndex = selected ? parseInt(selected.dataset.index) : 0;
+        if (input) {
+            this.addEventListenerOnce(input, 'input', (e) => {
+                const filtered = filterCommands(e.target.value);
+                renderResults(filtered);
+            }, 'command-input');
             
-            switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    if (selectedIndex < items.length - 1) {
-                        items[selectedIndex].classList.remove('selected');
-                        items[selectedIndex + 1].classList.add('selected');
-                    }
-                    break;
-                    
-                case 'ArrowUp':
-                    e.preventDefault();
-                    if (selectedIndex > 0) {
-                        items[selectedIndex].classList.remove('selected');
-                        items[selectedIndex - 1].classList.add('selected');
-                    }
-                    break;
-                    
-                case 'Enter':
-                    e.preventDefault();
+            // Keyboard navigation
+            this.addEventListenerOnce(input, 'keydown', (e) => {
+                if (!results) return;
+                const items = results.querySelectorAll('.command-item');
+                const selected = results.querySelector('.command-item.selected');
+                const selectedIndex = selected ? parseInt(selected.dataset.index) : 0;
+                
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (selectedIndex < items.length - 1) {
+                            items[selectedIndex]?.classList.remove('selected');
+                            items[selectedIndex + 1]?.classList.add('selected');
+                        }
+                        break;
+                        
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        if (selectedIndex > 0) {
+                            items[selectedIndex]?.classList.remove('selected');
+                            items[selectedIndex - 1]?.classList.add('selected');
+                        }
+                        break;
+                        
+                    case 'Enter':
+                        e.preventDefault();
+                        const filtered = filterCommands(input.value);
+                        if (filtered[selectedIndex]) {
+                            filtered[selectedIndex].action();
+                            palette.style.display = 'none';
+                            input.value = '';
+                        }
+                        break;
+                        
+                    case 'Escape':
+                        palette.style.display = 'none';
+                        input.value = '';
+                        break;
+                }
+            }, 'command-keydown');
+        }
+        
+        // Click handler
+        if (results) {
+            this.addEventListenerOnce(results, 'click', (e) => {
+                const item = e.target.closest('.command-item');
+                if (item && input) {
+                    const index = parseInt(item.dataset.index);
                     const filtered = filterCommands(input.value);
-                    if (filtered[selectedIndex]) {
-                        filtered[selectedIndex].action();
+                    if (filtered[index]) {
+                        filtered[index].action();
                         palette.style.display = 'none';
                         input.value = '';
                     }
-                    break;
-                    
-                case 'Escape':
-                    palette.style.display = 'none';
-                    input.value = '';
-                    break;
-            }
-        });
-        
-        // Click handler
-        results?.addEventListener('click', (e) => {
-            const item = e.target.closest('.command-item');
-            if (item) {
-                const index = parseInt(item.dataset.index);
-                const filtered = filterCommands(input.value);
-                if (filtered[index]) {
-                    filtered[index].action();
-                    palette.style.display = 'none';
-                    input.value = '';
                 }
-            }
-        });
+            }, 'command-results-click');
+        }
         
         // Initial render
         renderResults(commands);
     }
 
     setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S: Save/Export
+        this.addEventListenerOnce(document, 'keydown', (e) => {
+            // Command/Ctrl+K - Open command palette
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                this.openCommandPalette();
+            }
+            
+            // Command/Ctrl+S - Save pipeline
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                this.savePipeline();
+                this.showNotification('Pipeline saved', 'success');
+            }
+            
+            // Command/Ctrl+E - Export YAML
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
                 e.preventDefault();
                 this.exportYAML();
             }
             
-            // Ctrl/Cmd + O: Load example
+            // Command/Ctrl+O - Load example
             if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
                 e.preventDefault();
-                this.pipelineBuilder.loadExample();
-                this.updateYAML();
+                if (this.pipelineBuilder && this.pipelineBuilder.loadExample) {
+                    this.pipelineBuilder.loadExample();
+                    this.updateYAML();
+                }
             }
             
-            // Delete: Delete selected step
-            if (e.key === 'Delete' && this.pipelineBuilder.selectedStep) {
-                e.preventDefault();
-                this.pipelineBuilder.deleteStep(this.pipelineBuilder.selectedStep);
-            }
-            
-            // Ctrl/Cmd + D: Duplicate selected step
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.pipelineBuilder.selectedStep) {
-                e.preventDefault();
-                this.pipelineBuilder.duplicateStep(this.pipelineBuilder.selectedStep);
-            }
-            
-            // Ctrl/Cmd + Y: Toggle YAML
+            // Command/Ctrl+Y - Toggle YAML view
             if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
                 e.preventDefault();
                 this.toggleYAML();
             }
             
-            // Ctrl/Cmd + K: Open command palette
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            // Delete: Delete selected step
+            if (e.key === 'Delete' && this.pipelineBuilder?.selectedStep) {
                 e.preventDefault();
-                this.openCommandPalette();
+                if (this.pipelineBuilder.deleteStep) {
+                    this.pipelineBuilder.deleteStep(this.pipelineBuilder.selectedStep);
+                }
             }
-        });
+            
+            // Ctrl/Cmd + D: Duplicate selected step
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.pipelineBuilder?.selectedStep) {
+                e.preventDefault();
+                if (this.pipelineBuilder.duplicateStep) {
+                    this.pipelineBuilder.duplicateStep(this.pipelineBuilder.selectedStep);
+                }
+            }
+            
+            // Escape - Close modals
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+                const commandPalette = document.getElementById('command-palette');
+                if (commandPalette) {
+                    commandPalette.style.display = 'none';
+                }
+            }
+        }, 'keyboard-shortcuts');
     }
 
     setupPluginCatalog() {
@@ -476,8 +618,15 @@ class BuildkiteApp {
         const searchInput = document.getElementById('plugin-search');
         const pluginList = document.getElementById('plugin-list');
         
+        if (!modal || !pluginList) return;
+        
         // Render plugins
         const renderPlugins = (filter = '') => {
+            if (!this.pipelineBuilder?.pluginCatalog) {
+                pluginList.innerHTML = '<p>No plugins available</p>';
+                return;
+            }
+            
             const plugins = Object.entries(this.pipelineBuilder.pluginCatalog)
                 .filter(([key, plugin]) => 
                     key.toLowerCase().includes(filter.toLowerCase()) ||
@@ -501,20 +650,24 @@ class BuildkiteApp {
             pluginList.querySelectorAll('.plugin-card').forEach(card => {
                 card.addEventListener('click', () => {
                     const pluginKey = card.dataset.plugin;
-                    this.pipelineBuilder.addPluginStep(pluginKey);
-                    modal.style.display = 'none';
-                    this.showNotification(`${pluginKey} plugin added`, 'success');
+                    if (this.pipelineBuilder && this.pipelineBuilder.addPluginStep) {
+                        this.pipelineBuilder.addPluginStep(pluginKey);
+                        modal.style.display = 'none';
+                        this.showNotification(`${pluginKey} plugin added`, 'success');
+                    }
                 });
             });
         };
         
         // Search functionality
-        searchInput?.addEventListener('input', (e) => {
-            renderPlugins(e.target.value);
-        });
+        if (searchInput) {
+            this.addEventListenerOnce(searchInput, 'input', (e) => {
+                renderPlugins(e.target.value);
+            }, 'plugin-search');
+        }
         
         // Initial render when modal opens
-        modal?.addEventListener('show', () => renderPlugins());
+        this.addEventListenerOnce(modal, 'show', () => renderPlugins(), 'plugin-catalog-show');
         
         console.log('✅ Plugin catalog setup complete');
     }
@@ -532,7 +685,9 @@ class BuildkiteApp {
     setupStepTemplates() {
         const modal = document.getElementById('step-templates-modal');
         const templateList = document.getElementById('template-list');
-        const categoryButtons = modal.querySelectorAll('.template-cat');
+        const categoryButtons = modal?.querySelectorAll('.template-cat');
+        
+        if (!modal || !templateList) return;
         
         const templates = {
             testing: [
@@ -604,7 +759,7 @@ class BuildkiteApp {
         };
         
         // Category buttons
-        categoryButtons.forEach(btn => {
+        categoryButtons?.forEach(btn => {
             btn.addEventListener('click', () => {
                 categoryButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -621,11 +776,18 @@ class BuildkiteApp {
         const variableList = document.getElementById('pipeline-variables');
         const addBtn = document.getElementById('add-pipeline-variable');
         
+        if (!modal || !variableList) return;
+        
         const renderVariables = () => {
+            if (!this.pipelineBuilder?.steps) {
+                variableList.innerHTML = '<p class="no-data">No pipeline loaded</p>';
+                return;
+            }
+            
             // Get all environment variables from pipeline
             const allVars = {};
             this.pipelineBuilder.steps.forEach(step => {
-                if (step.properties.env) {
+                if (step.properties?.env) {
                     Object.assign(allVars, step.properties.env);
                 }
             });
@@ -640,36 +802,44 @@ class BuildkiteApp {
                 '<p class="no-data">No pipeline variables defined</p>';
         };
         
-        addBtn?.addEventListener('click', () => {
-            const key = prompt('Variable name:');
-            if (!key) return;
-            
-            const value = prompt('Variable value:');
-            if (value === null) return;
-            
-            // Add to all command steps
-            this.pipelineBuilder.steps.forEach(step => {
-                if (step.type === 'command') {
-                    if (!step.properties.env) {
-                        step.properties.env = {};
+        if (addBtn) {
+            this.addEventListenerOnce(addBtn, 'click', () => {
+                const key = prompt('Variable name:');
+                if (!key) return;
+                
+                const value = prompt('Variable value:');
+                if (value === null) return;
+                
+                // Add to all command steps
+                if (this.pipelineBuilder?.steps) {
+                    this.pipelineBuilder.steps.forEach(step => {
+                        if (step.type === 'command') {
+                            if (!step.properties.env) {
+                                step.properties.env = {};
+                            }
+                            step.properties.env[key] = value;
+                        }
+                    });
+                    
+                    if (this.pipelineBuilder.renderPipeline) {
+                        this.pipelineBuilder.renderPipeline();
                     }
-                    step.properties.env[key] = value;
+                    renderVariables();
+                    this.showNotification('Variable added to all command steps', 'success');
                 }
-            });
-            
-            this.pipelineBuilder.renderPipeline();
-            renderVariables();
-            this.showNotification('Variable added to all command steps', 'success');
-        });
+            }, 'add-pipeline-variable');
+        }
         
         // Initial render when modal opens
-        modal.addEventListener('show', renderVariables);
+        this.addEventListenerOnce(modal, 'show', renderVariables, 'variable-manager-show');
     }
 
     setupPatternLibrary() {
         const modal = document.getElementById('pattern-library-modal');
         const patternList = document.getElementById('pattern-list');
-        const categoryButtons = modal.querySelectorAll('.pattern-cat');
+        const categoryButtons = modal?.querySelectorAll('.pattern-cat');
+        
+        if (!modal || !patternList) return;
         
         const patterns = {
             monorepo: [
@@ -719,7 +889,7 @@ class BuildkiteApp {
         };
         
         // Category buttons
-        categoryButtons.forEach(btn => {
+        categoryButtons?.forEach(btn => {
             btn.addEventListener('click', () => {
                 categoryButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -737,6 +907,7 @@ class BuildkiteApp {
         
         if (palette && input) {
             palette.classList.remove('hidden');
+            palette.style.display = 'block';
             input.value = '';
             input.focus();
             
@@ -750,53 +921,15 @@ class BuildkiteApp {
         const palette = document.getElementById('command-palette');
         if (palette) {
             palette.classList.add('hidden');
+            palette.style.display = 'none';
         }
-    }
-        document.addEventListener('keydown', (e) => {
-            // Command/Ctrl+K - Open command palette
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                const palette = document.getElementById('command-palette');
-                const input = document.getElementById('command-input');
-                if (palette) {
-                    palette.style.display = 'block';
-                    input?.focus();
-                }
-            }
-            
-            // Command/Ctrl+S - Save pipeline
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                this.savePipeline();
-                this.showNotification('Pipeline saved', 'success');
-            }
-            
-            // Command/Ctrl+E - Export YAML
-            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-                e.preventDefault();
-                this.exportYAML();
-            }
-            
-            // Command/Ctrl+Y - Toggle YAML view
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-                e.preventDefault();
-                this.toggleYAML();
-            }
-            
-            // Escape - Close modals
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal').forEach(modal => {
-                    modal.style.display = 'none';
-                });
-                document.getElementById('command-palette').style.display = 'none';
-            }
-        });
     }
 
     handleAction(action) {
         switch (action) {
             case 'plugin-catalog':
-                document.getElementById('plugin-catalog-modal').style.display = 'block';
+                const pluginModal = document.getElementById('plugin-catalog-modal');
+                if (pluginModal) pluginModal.style.display = 'block';
                 break;
             case 'matrix-builder':
                 this.showNotification('Select a command step and click "Configure Matrix" in properties', 'info');
@@ -805,13 +938,16 @@ class BuildkiteApp {
                 this.showNotification('Select a step and click "Configure Conditions" in properties', 'info');
                 break;
             case 'step-templates':
-                document.getElementById('step-templates-modal').style.display = 'block';
+                const templateModal = document.getElementById('step-templates-modal');
+                if (templateModal) templateModal.style.display = 'block';
                 break;
             case 'variable-manager':
-                document.getElementById('variable-manager-modal').style.display = 'block';
+                const varModal = document.getElementById('variable-manager-modal');
+                if (varModal) varModal.style.display = 'block';
                 break;
             case 'pattern-library':
-                document.getElementById('pattern-library-modal').style.display = 'block';
+                const patternModal = document.getElementById('pattern-library-modal');
+                if (patternModal) patternModal.style.display = 'block';
                 break;
             case 'dependency-manager':
                 this.showNotification('Click on a step and configure dependencies in the properties panel', 'info');
@@ -822,9 +958,6 @@ class BuildkiteApp {
             case 'pipeline-preview':
                 this.showNotification('Pipeline preview coming soon!', 'info');
                 break;
-        }
-    }
-        switch (action) {
             case 'open-plugin-catalog':
                 const modal = document.getElementById('plugin-catalog-modal');
                 if (modal) modal.style.display = 'block';
@@ -850,11 +983,11 @@ class BuildkiteApp {
         const yaml = this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
         const output = document.getElementById('yaml-output');
         if (output) {
-            output.innerHTML = this.yamlGenerator.prettify(yaml);
+            output.innerHTML = this.yamlGenerator.prettify ? this.yamlGenerator.prettify(yaml) : yaml;
         }
         
         // Update validation
-        const validation = this.yamlGenerator.validate(yaml);
+        const validation = this.yamlGenerator.validate ? this.yamlGenerator.validate(yaml) : { valid: true };
         const validationEl = document.getElementById('yaml-validation');
         if (validationEl) {
             if (validation.valid) {
@@ -888,52 +1021,75 @@ class BuildkiteApp {
     
     setupYAMLExportButtons() {
         // Download YAML button
-        document.getElementById('download-yaml-file')?.addEventListener('click', () => {
-            const config = this.pipelineBuilder.getPipelineConfig();
-            const yaml = this.yamlGenerator.generate(config);
-            this.yamlGenerator.downloadYAML(yaml, 'pipeline.yml');
-            this.showNotification('Pipeline downloaded as pipeline.yml', 'success');
-        });
+        const downloadBtn = document.getElementById('download-yaml-file');
+        if (downloadBtn) {
+            this.addEventListenerOnce(downloadBtn, 'click', () => {
+                if (this.pipelineBuilder && this.yamlGenerator) {
+                    const config = this.pipelineBuilder.getPipelineConfig ? 
+                        this.pipelineBuilder.getPipelineConfig() : 
+                        { steps: this.pipelineBuilder.steps };
+                    const yaml = this.yamlGenerator.generate ? 
+                        this.yamlGenerator.generate(config) : 
+                        this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
+                    
+                    if (this.yamlGenerator.downloadYAML) {
+                        this.yamlGenerator.downloadYAML(yaml, 'pipeline.yml');
+                    }
+                    this.showNotification('Pipeline downloaded as pipeline.yml', 'success');
+                }
+            }, 'download-yaml-file');
+        }
         
         // Copy YAML button
-        document.getElementById('copy-yaml-clipboard')?.addEventListener('click', () => {
-            const yamlOutput = document.getElementById('export-yaml-output');
-            if (yamlOutput) {
-                const yaml = yamlOutput.textContent;
-                navigator.clipboard.writeText(yaml).then(() => {
-                    this.showNotification('YAML copied to clipboard!', 'success');
-                }).catch(err => {
-                    console.error('Failed to copy:', err);
-                    this.showNotification('Failed to copy YAML', 'error');
-                });
-            }
-        });
+        const copyBtn = document.getElementById('copy-yaml-clipboard');
+        if (copyBtn) {
+            this.addEventListenerOnce(copyBtn, 'click', () => {
+                const yamlOutput = document.getElementById('export-yaml-output');
+                if (yamlOutput) {
+                    const yaml = yamlOutput.textContent;
+                    navigator.clipboard.writeText(yaml).then(() => {
+                        this.showNotification('YAML copied to clipboard!', 'success');
+                    }).catch(err => {
+                        console.error('Failed to copy:', err);
+                        this.showNotification('Failed to copy YAML', 'error');
+                    });
+                }
+            }, 'copy-yaml-clipboard');
+        }
         
         // Validate YAML button
-        document.getElementById('validate-yaml-export')?.addEventListener('click', () => {
-            const yamlOutput = document.getElementById('export-yaml-output');
-            if (yamlOutput && this.yamlGenerator) {
-                const yaml = yamlOutput.textContent;
-                const validation = this.yamlGenerator.validate(yaml);
-                
-                const statusDiv = document.getElementById('export-validation-status');
-                if (statusDiv) {
-                    if (validation.valid) {
-                        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> YAML validation passed!';
-                        statusDiv.className = 'validation-success';
-                        this.showNotification('YAML validation passed!', 'success');
-                    } else {
-                        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Validation issues: ' + validation.issues.join(', ');
-                        statusDiv.className = 'validation-error';
-                        this.showNotification('YAML validation failed', 'error');
+        const validateBtn = document.getElementById('validate-yaml-export');
+        if (validateBtn) {
+            this.addEventListenerOnce(validateBtn, 'click', () => {
+                const yamlOutput = document.getElementById('export-yaml-output');
+                if (yamlOutput && this.yamlGenerator) {
+                    const yaml = yamlOutput.textContent;
+                    const validation = this.yamlGenerator.validate ? 
+                        this.yamlGenerator.validate(yaml) : 
+                        { valid: true, issues: [] };
+                    
+                    const statusDiv = document.getElementById('export-validation-status');
+                    if (statusDiv) {
+                        if (validation.valid) {
+                            statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> YAML validation passed!';
+                            statusDiv.className = 'validation-success';
+                            this.showNotification('YAML validation passed!', 'success');
+                        } else {
+                            statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Validation issues: ' + validation.issues.join(', ');
+                            statusDiv.className = 'validation-error';
+                            this.showNotification('YAML validation failed', 'error');
+                        }
                     }
                 }
-            }
-        });
+            }, 'validate-yaml-export');
+        }
     }
 
     copyYAML() {
-        const yaml = this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
+        if (!this.yamlGenerator || !this.pipelineBuilder) return;
+        
+        const yaml = this.yamlGenerator.generateYAML ? 
+            this.yamlGenerator.generateYAML(this.pipelineBuilder.steps) : '';
         
         navigator.clipboard.writeText(yaml).then(() => {
             this.showNotification('YAML copied to clipboard!', 'success');
@@ -958,8 +1114,11 @@ class BuildkiteApp {
     validatePipeline() {
         if (!this.yamlGenerator || !this.pipelineBuilder) return;
         
-        const yaml = this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
-        const validation = this.yamlGenerator.validate(yaml);
+        const yaml = this.yamlGenerator.generateYAML ? 
+            this.yamlGenerator.generateYAML(this.pipelineBuilder.steps) : '';
+        const validation = this.yamlGenerator.validate ? 
+            this.yamlGenerator.validate(yaml) : 
+            { valid: true, issues: [] };
         
         // Show validation results
         const validationDiv = document.getElementById('validation-results');
@@ -967,18 +1126,20 @@ class BuildkiteApp {
             validationDiv.classList.remove('hidden');
             
             const validationContent = validationDiv.querySelector('.validation-content');
-            if (validation.valid) {
-                validationDiv.classList.remove('error');
-                validationDiv.classList.add('success');
-                validationContent.innerHTML = '<p><i class="fas fa-check-circle"></i> Pipeline is valid!</p>';
-                this.showNotification('Pipeline validation passed!', 'success');
-            } else {
-                validationDiv.classList.add('error');
-                validationContent.innerHTML = `
-                    <p style="color: #f56565;"><i class="fas fa-exclamation-circle"></i> Validation issues found:</p>
-                    <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
-                `;
-                this.showNotification('Pipeline validation failed', 'error');
+            if (validationContent) {
+                if (validation.valid) {
+                    validationDiv.classList.remove('error');
+                    validationDiv.classList.add('success');
+                    validationContent.innerHTML = '<p><i class="fas fa-check-circle"></i> Pipeline is valid!</p>';
+                    this.showNotification('Pipeline validation passed!', 'success');
+                } else {
+                    validationDiv.classList.add('error');
+                    validationContent.innerHTML = `
+                        <p style="color: #f56565;"><i class="fas fa-exclamation-circle"></i> Validation issues found:</p>
+                        <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+                    `;
+                    this.showNotification('Pipeline validation failed', 'error');
+                }
             }
             
             // Auto-hide after 5 seconds
@@ -989,22 +1150,30 @@ class BuildkiteApp {
     }
 
     exportYAML() {
-        this.pipelineBuilder.exportYAML();
+        if (this.pipelineBuilder && this.pipelineBuilder.exportYAML) {
+            this.pipelineBuilder.exportYAML();
+        }
     }
 
     savePipeline() {
-        if (!this.autoSaveEnabled) return;
+        if (!this.autoSaveEnabled || !this.pipelineBuilder) return;
         
-        const config = this.pipelineBuilder.getPipelineConfig();
-        localStorage.setItem('buildkite-pipeline', JSON.stringify(config));
-        
-        // Show auto-save indicator
-        const indicator = document.querySelector('.auto-save-indicator');
-        if (indicator) {
-            indicator.style.display = 'flex';
-            setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 2000);
+        try {
+            const config = this.pipelineBuilder.getPipelineConfig ? 
+                this.pipelineBuilder.getPipelineConfig() : 
+                { steps: this.pipelineBuilder.steps };
+            localStorage.setItem('buildkite-pipeline', JSON.stringify(config));
+            
+            // Show auto-save indicator
+            const indicator = document.querySelector('.auto-save-indicator');
+            if (indicator) {
+                indicator.style.display = 'flex';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 2000);
+            }
+        } catch (err) {
+            console.error('Failed to save pipeline:', err);
         }
     }
 
@@ -1014,7 +1183,7 @@ class BuildkiteApp {
         
         try {
             const config = JSON.parse(saved);
-            if (this.pipelineSharing) {
+            if (this.pipelineSharing && this.pipelineSharing.loadPipelineConfig) {
                 this.pipelineSharing.loadPipelineConfig(config);
             }
             console.log('Loaded saved pipeline from localStorage');
@@ -1031,7 +1200,7 @@ class BuildkiteApp {
     }
 
     importPipelineFile(file) {
-        if (this.pipelineSharing) {
+        if (this.pipelineSharing && this.pipelineSharing.importFromFile) {
             this.pipelineSharing.importFromFile(file);
         }
     }
@@ -1040,50 +1209,64 @@ class BuildkiteApp {
         // Template implementations
         const templates = {
             'node-test': () => {
-                this.pipelineBuilder.addStep('command').properties = {
-                    label: 'Node.js Tests',
-                    command: 'npm ci\nnpm test',
-                    plugins: {
-                        'test-collector': {
-                            files: 'test-results/**/*.xml',
-                            format: 'junit'
-                        }
+                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
+                    const step = this.pipelineBuilder.addStep('command');
+                    if (step) {
+                        step.properties = {
+                            label: 'Node.js Tests',
+                            command: 'npm ci\nnpm test',
+                            plugins: {
+                                'test-collector': {
+                                    files: 'test-results/**/*.xml',
+                                    format: 'junit'
+                                }
+                            }
+                        };
                     }
-                };
+                }
             },
             'docker-build': () => {
-                const step = this.pipelineBuilder.addStep('command');
-                step.properties = {
-                    label: 'Build Docker Image',
-                    command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
-                    plugins: {
-                        'docker': {
-                            image: 'myapp:$BUILDKITE_BUILD_NUMBER',
-                            dockerfile: 'Dockerfile'
-                        }
+                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
+                    const step = this.pipelineBuilder.addStep('command');
+                    if (step) {
+                        step.properties = {
+                            label: 'Build Docker Image',
+                            command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
+                            plugins: {
+                                'docker': {
+                                    image: 'myapp:$BUILDKITE_BUILD_NUMBER',
+                                    dockerfile: 'Dockerfile'
+                                }
+                            }
+                        };
                     }
-                };
+                }
             },
             'slack-notify': () => {
-                const step = this.pipelineBuilder.addStep('notify');
-                step.properties = {
-                    label: 'Notify Slack',
-                    slack: '#builds',
-                    if: 'build.state == "failed"'
-                };
+                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
+                    const step = this.pipelineBuilder.addStep('notify');
+                    if (step) {
+                        step.properties = {
+                            label: 'Notify Slack',
+                            slack: '#builds',
+                            if: 'build.state == "failed"'
+                        };
+                    }
+                }
             }
         };
         
         if (templates[templateId]) {
             templates[templateId]();
-            this.pipelineBuilder.renderPipeline();
+            if (this.pipelineBuilder && this.pipelineBuilder.renderPipeline) {
+                this.pipelineBuilder.renderPipeline();
+            }
             this.showNotification('Template applied', 'success');
         }
     }
 
     showNotification(message, type = 'info') {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
+        const container = document.getElementById('notification-container') || this.createNotificationContainer();
         
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
@@ -1106,31 +1289,51 @@ class BuildkiteApp {
         setTimeout(() => {
             notification.style.animation = 'notificationSlideOut 0.3s ease';
             setTimeout(() => {
-                notification.remove();
+                if (notification.parentNode) {
+                    notification.remove();
+                }
             }, 300);
         }, 5000);
+    }
+
+    createNotificationContainer() {
+        const container = document.createElement('div');
+        container.id = 'notification-container';
+        container.className = 'notification-container';
+        document.body.appendChild(container);
+        return container;
     }
 }
 
 // CSS for enhanced YAML syntax highlighting
-const yamlStyles = `
-    .yaml-key { color: #e06c75; font-weight: 600; }
-    .yaml-string { color: #98c379; }
-    .yaml-number { color: #d19a66; }
-    .yaml-boolean { color: #56b6c2; }
-    .yaml-array { color: #c678dd; }
-    .yaml-variable { color: #61afef; font-style: italic; }
-`;
+if (!document.getElementById('yaml-syntax-styles')) {
+    const yamlStyles = `
+        .yaml-key { color: #e06c75; font-weight: 600; }
+        .yaml-string { color: #98c379; }
+        .yaml-number { color: #d19a66; }
+        .yaml-boolean { color: #56b6c2; }
+        .yaml-array { color: #c678dd; }
+        .yaml-variable { color: #61afef; font-style: italic; }
+    `;
+    
+    // Add styles to document
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'yaml-syntax-styles';
+    styleSheet.textContent = yamlStyles;
+    document.head.appendChild(styleSheet);
+}
 
-// Add styles to document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = yamlStyles;
-document.head.appendChild(styleSheet);
+// Initialize app - singleton pattern prevents duplicates
+if (!window.buildkiteApp) {
+    window.buildkiteApp = new BuildkiteApp();
+    
+    // Export for debugging
+    console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
+    console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
+    console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
+}
 
-// Initialize app
-window.buildkiteApp = new BuildkiteApp();
-
-// Export for debugging
-console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
-console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
-console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
+// Export for modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = BuildkiteApp;
+}
