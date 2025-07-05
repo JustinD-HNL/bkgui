@@ -8,6 +8,7 @@
  * - All step types
  * - Complete plugin catalog
  * - Enhanced templates
+ * FIXED: Event listener issues for step selection
  */
 
 class PipelineBuilder {
@@ -627,6 +628,41 @@ class PipelineBuilder {
             }
         });
         
+        // FIXED: Add step selection event delegation
+        document.addEventListener('click', (e) => {
+            const stepElement = e.target.closest('.pipeline-step');
+            if (stepElement && !e.target.closest('.step-action')) {
+                // Only select if not clicking on an action button
+                const stepId = stepElement.dataset.stepId;
+                if (stepId) {
+                    this.selectStep(stepId);
+                }
+            }
+        });
+        
+        // FIXED: Add event listeners for step action buttons with proper event stopping
+        document.addEventListener('click', (e) => {
+            const actionButton = e.target.closest('.step-action');
+            if (actionButton) {
+                e.stopPropagation(); // Prevent step selection when clicking action buttons
+                
+                const stepElement = actionButton.closest('.pipeline-step');
+                const stepId = stepElement?.dataset.stepId;
+                
+                if (!stepId) return;
+                
+                if (actionButton.classList.contains('move-up')) {
+                    this.moveStepUp(stepId);
+                } else if (actionButton.classList.contains('move-down')) {
+                    this.moveStepDown(stepId);
+                } else if (actionButton.classList.contains('duplicate')) {
+                    this.duplicateStep(stepId);
+                } else if (actionButton.classList.contains('delete')) {
+                    this.deleteStep(stepId);
+                }
+            }
+        });
+        
         console.log('✅ Event listeners configured');
     }
 
@@ -924,29 +960,22 @@ class PipelineBuilder {
                     ` : ''}
                 </div>
                 <div class="step-actions">
-                    <button class="step-action move-up" title="Move Up" onclick="window.pipelineBuilder.moveStepUp('${step.id}')">
+                    <button class="step-action move-up" title="Move Up">
                         <i class="fas fa-chevron-up"></i>
                     </button>
-                    <button class="step-action move-down" title="Move Down" onclick="window.pipelineBuilder.moveStepDown('${step.id}')">
+                    <button class="step-action move-down" title="Move Down">
                         <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="step-action duplicate" title="Duplicate" onclick="window.pipelineBuilder.duplicateStep('${step.id}')">
+                    <button class="step-action duplicate" title="Duplicate">
                         <i class="fas fa-copy"></i>
                     </button>
-                    <button class="step-action delete" title="Delete" onclick="window.pipelineBuilder.deleteStep('${step.id}')">
+                    <button class="step-action delete" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
             ${this.renderStepDetails(step)}
         `;
-
-        // Add click handler
-        stepEl.addEventListener('click', (e) => {
-            if (!e.target.closest('.step-action')) {
-                this.selectStep(step.id);
-            }
-        });
 
         return stepEl;
     }
@@ -2741,6 +2770,81 @@ class PipelineBuilder {
         if (window.buildkiteApp) {
             window.buildkiteApp.showNotification(`Template "${templateName}" loaded`, 'success');
         }
+    }
+
+    // Pattern loading - PRESERVED FROM ORIGINAL
+    loadPattern(patternName, index = -1) {
+        console.log(`🎨 Loading pattern: ${patternName}`);
+        
+        const patterns = {
+            'parallel-tests': [
+                { type: 'command', properties: { 
+                    label: 'Parallel Tests', 
+                    command: 'npm test', 
+                    key: 'parallel-tests',
+                    parallelism: 5 
+                }}
+            ],
+            'conditional-deploy': [
+                { type: 'block', properties: { 
+                    prompt: 'Deploy to production?', 
+                    key: 'deploy-gate',
+                    fields: [
+                        { type: 'text', key: 'release_notes', hint: 'What changed in this release?' }
+                    ]
+                }},
+                { type: 'command', properties: { 
+                    label: 'Deploy to Production', 
+                    command: './deploy-prod.sh', 
+                    key: 'deploy-prod',
+                    depends_on: 'deploy-gate',
+                    if: 'build.branch == "main"'
+                }}
+            ],
+            'matrix-build': [
+                { type: 'command', properties: {
+                    label: 'Matrix Build',
+                    command: 'npm test',
+                    key: 'matrix-test',
+                    matrix: {
+                        'node': ['14', '16', '18'],
+                        'os': ['linux', 'macos']
+                    }
+                }}
+            ]
+        };
+        
+        const pattern = patterns[patternName];
+        if (!pattern) {
+            console.warn(`Pattern not found: ${patternName}`);
+            return;
+        }
+        
+        // Add pattern steps at index
+        pattern.forEach((stepConfig, i) => {
+            const step = this.createStep(stepConfig.type);
+            Object.assign(step.properties, stepConfig.properties);
+            
+            if (index >= 0) {
+                this.steps.splice(index + i, 0, step);
+            } else {
+                this.steps.push(step);
+            }
+            
+            this.stepCounter++;
+        });
+        
+        this.renderPipeline();
+        this.renderProperties();
+        this.updateStepCount();
+        
+        if (window.buildkiteApp) {
+            window.buildkiteApp.showNotification(`Pattern "${patternName}" added`, 'success');
+        }
+    }
+
+    loadPatternAtIndex(patternType, index) {
+        this.loadPattern(patternType, index);
     }
 
     loadExample() {
