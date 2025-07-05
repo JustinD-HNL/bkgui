@@ -24,6 +24,14 @@ class PipelineBuilder {
         this.dropZones = [];
         this.dropHandled = false; // FIXED: Prevent duplicate drops
         
+        // Add these lines to your existing constructor
+        this.boundHandlers = {
+            dragOver: this.handleDragOver.bind(this),
+            drop: this.handleDrop.bind(this),
+            dragLeave: this.handleDragLeave.bind(this)
+        };
+        this.isDragging = false;
+        
         // Complete plugin catalog - MERGED FROM BOTH VERSIONS
         this.pluginCatalog = {
             'docker-compose': {
@@ -192,46 +200,82 @@ class PipelineBuilder {
 
     // Enhanced drag and drop functionality - FIXED VERSION
     setupEnhancedDragAndDrop() {
-        console.log('🎯 Setting up enhanced drag and drop...');
+        console.log('🎯 Setting up FIXED drag and drop...');
         
+        // FIXED: Use setTimeout to ensure DOM is fully ready
+        setTimeout(() => {
+            this.setupDraggableElements();
+            this.setupPipelineDropZones();
+        }, 50);
+    }
+
+    setupDraggableElements() {
         // Make step types draggable
         const stepTypes = document.querySelectorAll('.step-type');
+        console.log(`🔧 Found ${stepTypes.length} step types to make draggable`);
+        
         stepTypes.forEach(stepType => {
+            if (!stepType.hasAttribute('draggable')) {
+                stepType.draggable = true;
+            }
+            
+            // Remove existing listeners to prevent duplicates
+            stepType.removeEventListener('dragstart', this.handleDragStart);
+            stepType.removeEventListener('dragend', this.handleDragEnd);
+            
+            // Add new listeners with proper binding
             stepType.addEventListener('dragstart', this.handleDragStart.bind(this));
             stepType.addEventListener('dragend', this.handleDragEnd.bind(this));
         });
 
         // Make template and pattern items draggable
         const templateItems = document.querySelectorAll('.template-item, .pattern-item');
+        console.log(`🔧 Found ${templateItems.length} template/pattern items to make draggable`);
+        
         templateItems.forEach(item => {
-            item.draggable = true;
+            if (!item.hasAttribute('draggable')) {
+                item.draggable = true;
+            }
+            
+            // Remove existing listeners
+            item.removeEventListener('dragstart', this.handleDragStart);
+            item.removeEventListener('dragend', this.handleDragEnd);
+            item.removeEventListener('click', this.handleTemplateClick);
+            
+            // Add new listeners with proper binding
             item.addEventListener('dragstart', this.handleDragStart.bind(this));
             item.addEventListener('dragend', this.handleDragEnd.bind(this));
             item.addEventListener('click', this.handleTemplateClick.bind(this));
         });
-
-        // Setup drop zones for pipeline container
-        this.setupPipelineDropZones();
         
         console.log('✅ Enhanced drag and drop configured');
     }
 
     setupPipelineDropZones() {
         const pipelineSteps = document.getElementById('pipeline-steps');
-        if (!pipelineSteps) return;
+        if (!pipelineSteps) {
+            console.warn('⚠️ Pipeline steps container not found');
+            return;
+        }
 
-        // Clear existing listeners
-        pipelineSteps.removeEventListener('dragover', this.handleDragOver);
-        pipelineSteps.removeEventListener('drop', this.handleDrop);
-        pipelineSteps.removeEventListener('dragleave', this.handleDragLeave);
+        console.log('🎯 Setting up pipeline drop zones...');
 
-        // Add new listeners
-        pipelineSteps.addEventListener('dragover', this.handleDragOver.bind(this));
-        pipelineSteps.addEventListener('drop', this.handleDrop.bind(this));
-        pipelineSteps.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        // FIXED: Remove existing listeners using stored bound references
+        pipelineSteps.removeEventListener('dragover', this.boundHandlers.dragOver);
+        pipelineSteps.removeEventListener('drop', this.boundHandlers.drop);
+        pipelineSteps.removeEventListener('dragleave', this.boundHandlers.dragLeave);
+
+        // Add new listeners using stored bound references
+        pipelineSteps.addEventListener('dragover', this.boundHandlers.dragOver);
+        pipelineSteps.addEventListener('drop', this.boundHandlers.drop);
+        pipelineSteps.addEventListener('dragleave', this.boundHandlers.dragLeave);
+        
+        console.log('✅ Pipeline drop zones configured');
     }
 
     handleDragStart(e) {
+        console.log('🎯 Drag start detected');
+        
         const stepType = e.target.closest('.step-type');
         const template = e.target.closest('.template-item');
         const pattern = e.target.closest('.pattern-item');
@@ -244,6 +288,7 @@ class PipelineBuilder {
             };
             e.dataTransfer.effectAllowed = 'copy';
             e.dataTransfer.setData('stepType', stepType.dataset.stepType);
+            console.log(`🎯 Dragging step type: ${stepType.dataset.stepType}`);
         } else if (template) {
             this.draggedElement = {
                 type: 'template',
@@ -252,6 +297,7 @@ class PipelineBuilder {
             };
             e.dataTransfer.effectAllowed = 'copy';
             e.dataTransfer.setData('template', template.dataset.template);
+            console.log(`🎯 Dragging template: ${template.dataset.template}`);
         } else if (pattern) {
             this.draggedElement = {
                 type: 'pattern',
@@ -260,9 +306,12 @@ class PipelineBuilder {
             };
             e.dataTransfer.effectAllowed = 'copy';
             e.dataTransfer.setData('pattern', pattern.dataset.pattern);
+            console.log(`🎯 Dragging pattern: ${pattern.dataset.pattern}`);
         }
         
-        this.dropHandled = false; // FIXED: Reset flag on new drag
+        // FIXED: Reset state properly
+        this.dropHandled = false;
+        this.isDragging = true;
         
         if (this.draggedElement) {
             this.draggedElement.element.classList.add('dragging');
@@ -271,40 +320,60 @@ class PipelineBuilder {
     }
 
     handleDragEnd(e) {
+        console.log('🎯 Drag end detected');
+        
         e.target.classList.remove('dragging');
         this.hideDropZones();
         this.draggedElement = null;
-        this.dropHandled = false; // FIXED: Reset flag
+        this.dropHandled = false;
+        this.isDragging = false;
         this.removeDropIndicator();
     }
 
     handleDragOver(e) {
-        if (e.dataTransfer.types.includes('stepType') || 
-            e.dataTransfer.types.includes('template') ||
-            e.dataTransfer.types.includes('pattern')) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            
-            const pipelineSteps = document.getElementById('pipeline-steps');
-            if (pipelineSteps) {
-                pipelineSteps.classList.add('drag-over');
-            }
+        // FIXED: Only handle our drag types, ignore file drags
+        if (!this.isDragging && 
+            !e.dataTransfer.types.includes('stepType') && 
+            !e.dataTransfer.types.includes('template') &&
+            !e.dataTransfer.types.includes('pattern')) {
+            return; // Ignore file drags and other drag types
+        }
 
-            // Calculate drop position
-            const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
-            const indicator = this.getOrCreateDropIndicator();
-            
-            if (afterElement == null) {
-                pipelineSteps.appendChild(indicator);
-            } else {
-                pipelineSteps.insertBefore(indicator, afterElement);
-            }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            pipelineSteps.classList.add('drag-over');
+        }
+
+        // Calculate drop position
+        const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
+        const indicator = this.getOrCreateDropIndicator();
+        
+        if (afterElement == null) {
+            pipelineSteps.appendChild(indicator);
+        } else {
+            pipelineSteps.insertBefore(indicator, afterElement);
         }
     }
 
     handleDrop(e) {
+        console.log('🎯 Drop detected');
+        
+        // FIXED: Only handle our drag types, ignore file drags
+        const stepType = e.dataTransfer.getData('stepType');
+        const template = e.dataTransfer.getData('template');
+        const pattern = e.dataTransfer.getData('pattern');
+        
+        // If this is a file drop or other type, ignore it
+        if (!stepType && !template && !pattern) {
+            console.log('🎯 Ignoring non-step drop');
+            return;
+        }
+        
         e.preventDefault();
-        e.stopPropagation(); // FIXED: Stop event propagation
+        e.stopPropagation();
         
         // FIXED: Check if drop was already handled
         if (this.dropHandled) {
@@ -312,36 +381,33 @@ class PipelineBuilder {
             return;
         }
         
-        this.dropHandled = true; // FIXED: Mark as handled
+        this.dropHandled = true;
+        console.log(`🎯 Processing drop: stepType=${stepType}, template=${template}, pattern=${pattern}`);
         
         const pipelineSteps = document.getElementById('pipeline-steps');
         pipelineSteps.classList.remove('drag-over');
         
-        const stepType = e.dataTransfer.getData('stepType');
-        const template = e.dataTransfer.getData('template');
-        const pattern = e.dataTransfer.getData('pattern');
+        // Calculate insert position
+        const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
+        let insertIndex = this.steps.length;
         
-        if (stepType || template || pattern) {
-            // Calculate insert position
-            const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
-            let insertIndex = this.steps.length;
-            
-            if (afterElement && afterElement.dataset.stepId) {
-                const afterStep = this.steps.find(s => s.id === afterElement.dataset.stepId);
-                if (afterStep) {
-                    insertIndex = this.steps.indexOf(afterStep);
-                }
+        if (afterElement && afterElement.dataset.stepId) {
+            const afterStep = this.steps.find(s => s.id === afterElement.dataset.stepId);
+            if (afterStep) {
+                insertIndex = this.steps.indexOf(afterStep);
             }
-            
-            // Add the step/template/pattern at the calculated position - ONLY ONCE
-            if (stepType) {
-                console.log(`📍 Adding single step at index ${insertIndex}`);
-                this.addStep(stepType, insertIndex);
-            } else if (template) {
-                this.loadTemplate(template, insertIndex);
-            } else if (pattern) {
-                this.loadPattern(pattern, insertIndex);
-            }
+        }
+        
+        // Add the step/template/pattern at the calculated position - ONLY ONCE
+        if (stepType) {
+            console.log(`📍 Adding single step '${stepType}' at index ${insertIndex}`);
+            this.addStep(stepType, insertIndex);
+        } else if (template) {
+            console.log(`📍 Loading template '${template}' at index ${insertIndex}`);
+            this.loadTemplate(template, insertIndex);
+        } else if (pattern) {
+            console.log(`📍 Loading pattern '${pattern}' at index ${insertIndex}`);
+            this.loadPattern(pattern, insertIndex);
         }
         
         this.removeDropIndicator();
@@ -350,11 +416,10 @@ class PipelineBuilder {
         // FIXED: Reset flag after a delay to handle any lingering events
         setTimeout(() => {
             this.dropHandled = false;
-        }, 100);
+        }, 200);
     }
 
     handleDragLeave(e) {
-        // Only remove styles if we're leaving the container
         const pipelineSteps = document.getElementById('pipeline-steps');
         if (e.target === pipelineSteps && !pipelineSteps.contains(e.relatedTarget)) {
             pipelineSteps.classList.remove('drag-over');
