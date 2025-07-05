@@ -4,6 +4,7 @@
  * VERIFIED: No drag & drop event handlers - only CSS styles for visual feedback
  * Drag & drop functionality is handled exclusively by pipeline-builder.js
  * INCLUDES: All modal management, UI listeners, enhanced styles, template handling, command palette, etc.
+ * FIXED: Singleton pattern to prevent multiple initializations
  */
 
 // Global state
@@ -13,6 +14,12 @@ window.pipelinePatterns = null;
 
 class MainInitializer {
     constructor() {
+        // Singleton pattern - prevent multiple instances
+        if (window.mainInitializer) {
+            console.warn('⚠️ MainInitializer already exists, returning existing instance');
+            return window.mainInitializer;
+        }
+        
         this.initializationSteps = [
             { name: 'YAML Generator', check: () => window.yamlGenerator, init: () => this.initYamlGenerator() },
             { name: 'Pipeline Patterns', check: () => window.PipelinePatterns, init: () => this.initPipelinePatterns() },
@@ -27,6 +34,12 @@ class MainInitializer {
         this.debugMode = true;
         this.isInitialized = false; // Prevent duplicate initialization
         this.currentCommandIndex = 0; // For command palette navigation
+        
+        // Track attached event listeners to prevent duplicates
+        this.attachedListeners = new Set();
+        
+        // Store as singleton
+        window.mainInitializer = this;
     }
 
     async initialize() {
@@ -42,7 +55,7 @@ class MainInitializer {
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             await new Promise(resolve => {
-                document.addEventListener('DOMContentLoaded', resolve);
+                document.addEventListener('DOMContentLoaded', resolve, { once: true });
             });
         }
 
@@ -109,6 +122,7 @@ class MainInitializer {
     }
 
     async initYamlGenerator() {
+        // Check if already exists from other initialization
         if (window.yamlGenerator) {
             console.log('✅ YAML Generator already available');
         } else {
@@ -293,6 +307,13 @@ class MainInitializer {
     }
 
     async initPipelineBuilder() {
+        // Skip if already initialized from another source
+        if (window.pipelineBuilder) {
+            console.log('✅ Pipeline Builder already initialized');
+            this.addMissingUIMethodsToPipelineBuilder();
+            return;
+        }
+        
         // Try different available classes in order of preference
         let BuilderClass = null;
         
@@ -802,8 +823,8 @@ class MainInitializer {
             };
         }
         
-        // Setup modal event listeners
-        document.addEventListener('click', (e) => {
+        // Setup modal event listeners with listener tracking
+        this.addEventListenerOnce(document, 'click', (e) => {
             // Close button handler
             if (e.target.classList.contains('modal-close') || e.target.closest('.modal-close')) {
                 const modal = e.target.closest('.modal');
@@ -816,17 +837,31 @@ class MainInitializer {
             if (e.target.classList.contains('modal')) {
                 e.target.classList.add('hidden');
             }
-        });
+        }, 'modal-click-handler');
         
         // Keyboard handlers
-        document.addEventListener('keydown', (e) => {
+        this.addEventListenerOnce(document, 'keydown', (e) => {
             if (e.key === 'Escape') {
                 const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
                 visibleModals.forEach(modal => modal.classList.add('hidden'));
             }
-        });
+        }, 'modal-escape-handler');
         
         console.log('✅ Comprehensive modal management configured');
+    }
+
+    // Helper to prevent duplicate event listeners
+    addEventListenerOnce(element, event, handler, identifier) {
+        const key = `${element.tagName || 'document'}-${event}-${identifier}`;
+        
+        if (this.attachedListeners.has(key)) {
+            console.log(`⚠️ Event listener already attached: ${key}`);
+            return;
+        }
+        
+        element.addEventListener(event, handler);
+        this.attachedListeners.add(key);
+        console.log(`✅ Event listener attached: ${key}`);
     }
 
     setupUIEventListeners() {
@@ -857,21 +892,21 @@ class MainInitializer {
         const loadBtn = document.getElementById('load-example');
         const exportBtn = document.getElementById('export-yaml');
         
-        if (clearBtn) {
-            clearBtn.removeEventListener('click', this.handleClearPipeline); // Remove any existing
+        if (clearBtn && !clearBtn.hasAttribute('data-listener-attached')) {
             clearBtn.addEventListener('click', this.handleClearPipeline.bind(this));
+            clearBtn.setAttribute('data-listener-attached', 'true');
             console.log('✅ Clear button configured');
         }
         
-        if (loadBtn) {
-            loadBtn.removeEventListener('click', this.handleLoadExample);
+        if (loadBtn && !loadBtn.hasAttribute('data-listener-attached')) {
             loadBtn.addEventListener('click', this.handleLoadExample.bind(this));
+            loadBtn.setAttribute('data-listener-attached', 'true');
             console.log('✅ Load example button configured');
         }
         
-        if (exportBtn) {
-            exportBtn.removeEventListener('click', this.handleExportYAML);
+        if (exportBtn && !exportBtn.hasAttribute('data-listener-attached')) {
             exportBtn.addEventListener('click', this.handleExportYAML.bind(this));
+            exportBtn.setAttribute('data-listener-attached', 'true');
             console.log('✅ Export YAML button configured');
         }
         
@@ -913,7 +948,7 @@ class MainInitializer {
     setupQuickActionButtons() {
         console.log('🔧 Setting up quick action buttons...');
         
-        document.addEventListener('click', (e) => {
+        this.addEventListenerOnce(document, 'click', (e) => {
             const button = e.target.closest('[data-action]');
             if (!button) return;
             
@@ -940,7 +975,7 @@ class MainInitializer {
                     console.warn(`Unknown action: ${action}`);
                     this.showToast(`Action "${action}" is not available`, 'warning');
             }
-        });
+        }, 'quick-action-buttons');
         
         console.log('✅ Quick action buttons configured');
     }
@@ -948,7 +983,7 @@ class MainInitializer {
     setupPluginQuickAdd() {
         console.log('🔧 Setting up plugin quick add buttons...');
         
-        document.addEventListener('click', (e) => {
+        this.addEventListenerOnce(document, 'click', (e) => {
             const pluginBtn = e.target.closest('[data-plugin]');
             if (!pluginBtn) return;
             
@@ -963,7 +998,7 @@ class MainInitializer {
                 console.warn(`Plugin functionality not available for: ${plugin}`);
                 this.showToast(`Plugin ${plugin} is not available`, 'warning');
             }
-        });
+        }, 'plugin-quick-add');
         
         console.log('✅ Plugin quick add buttons configured');
     }
@@ -1094,11 +1129,12 @@ class MainInitializer {
     // Add validate button setup
     setupValidateButton() {
         const validateBtn = document.getElementById('validate-pipeline');
-        if (validateBtn) {
+        if (validateBtn && !validateBtn.hasAttribute('data-listener-attached')) {
             validateBtn.addEventListener('click', () => {
                 console.log('✅ Validate pipeline requested');
                 this.validatePipeline();
             });
+            validateBtn.setAttribute('data-listener-attached', 'true');
             console.log('✅ Validate button configured');
         }
     }
@@ -1107,7 +1143,7 @@ class MainInitializer {
         console.log('🔧 Setting up template and pattern handlers...');
         
         // Template item handlers
-        document.addEventListener('click', (e) => {
+        this.addEventListenerOnce(document, 'click', (e) => {
             const templateItem = e.target.closest('[data-template]');
             if (templateItem) {
                 const templateName = templateItem.dataset.template;
@@ -1121,7 +1157,7 @@ class MainInitializer {
                 this.handlePatternClick(patternName);
                 return;
             }
-        });
+        }, 'template-handlers');
         
         console.log('✅ Template and pattern handlers configured');
     }
@@ -1229,7 +1265,7 @@ class MainInitializer {
     setupKeyboardShortcuts() {
         console.log('⌨️ Setting up global keyboard shortcuts...');
         
-        document.addEventListener('keydown', (e) => {
+        this.addEventListenerOnce(document, 'keydown', (e) => {
             // Only handle shortcuts when not in input fields
             if (this.isInputFocused()) return;
             
@@ -1288,7 +1324,7 @@ class MainInitializer {
                         break;
                 }
             }
-        });
+        }, 'keyboard-shortcuts');
         
         console.log('✅ Global keyboard shortcuts configured');
     }
@@ -1531,7 +1567,7 @@ Modal:
         
         // Download YAML button
         const downloadBtn = document.getElementById('download-yaml');
-        if (downloadBtn) {
+        if (downloadBtn && !downloadBtn.hasAttribute('data-listener-attached')) {
             downloadBtn.addEventListener('click', () => {
                 const yamlOutput = document.getElementById('yaml-output');
                 if (yamlOutput && window.yamlGenerator) {
@@ -1540,11 +1576,12 @@ Modal:
                     console.log('💾 YAML downloaded');
                 }
             });
+            downloadBtn.setAttribute('data-listener-attached', 'true');
         }
         
         // Validate YAML button
         const validateYamlBtn = document.getElementById('validate-yaml');
-        if (validateYamlBtn) {
+        if (validateYamlBtn && !validateYamlBtn.hasAttribute('data-listener-attached')) {
             validateYamlBtn.addEventListener('click', () => {
                 const yamlOutput = document.getElementById('yaml-output');
                 const validationDiv = document.getElementById('yaml-validation');
@@ -1570,6 +1607,7 @@ Modal:
                     console.log('🔍 YAML validation completed:', result.valid ? 'valid' : 'invalid');
                 }
             });
+            validateYamlBtn.setAttribute('data-listener-attached', 'true');
         }
         
         console.log('✅ YAML output handlers configured');
@@ -1670,41 +1708,50 @@ Modal:
     }
 }
 
-// Store reference for global access
-window.mainInitializer = null;
-
-// Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🎬 DOM ready, starting initialization...');
+// Initialize only once
+if (!window.mainInitializer) {
+    console.log('🎬 Creating MainInitializer instance...');
     
-    const initializer = new MainInitializer();
-    window.mainInitializer = initializer;
+    // Check if main-init.js should initialize
+    const shouldInitialize = !window.skipMainInit;
     
-    try {
-        await initializer.initialize();
-        console.log('🎉 Application initialization completed successfully!');
-    } catch (error) {
-        console.error('❌ Application initialization failed:', error);
-        
-        // Show user-friendly error message
-        document.body.insertAdjacentHTML('beforeend', `
-            <div style="position: fixed; top: 20px; right: 20px; background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; border: 1px solid #fc8181; z-index: 10000;">
-                <strong>Initialization Error:</strong><br>
-                Some features may not work properly.<br>
-                Please refresh the page to try again.
-                <button onclick="this.parentElement.remove()" style="margin-left: 10px; background: none; border: none; color: #c53030; cursor: pointer;">&times;</button>
-            </div>
-        `);
+    if (shouldInitialize) {
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', async () => {
+                console.log('🎬 DOM ready, starting initialization from main-init.js...');
+                
+                const initializer = new MainInitializer();
+                
+                try {
+                    await initializer.initialize();
+                    console.log('🎉 Application initialization completed successfully!');
+                } catch (error) {
+                    console.error('❌ Application initialization failed:', error);
+                    
+                    // Show user-friendly error message
+                    document.body.insertAdjacentHTML('beforeend', `
+                        <div style="position: fixed; top: 20px; right: 20px; background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; border: 1px solid #fc8181; z-index: 10000;">
+                            <strong>Initialization Error:</strong><br>
+                            Some features may not work properly.<br>
+                            Please refresh the page to try again.
+                            <button onclick="this.parentElement.remove()" style="margin-left: 10px; background: none; border: none; color: #c53030; cursor: pointer;">&times;</button>
+                        </div>
+                    `);
+                }
+            }, { once: true });
+        } else {
+            // DOM already ready
+            console.log('🎬 DOM already ready, initializing immediately from main-init.js...');
+            
+            const initializer = new MainInitializer();
+            initializer.initialize().catch(error => {
+                console.error('❌ Immediate initialization failed:', error);
+            });
+        }
+    } else {
+        console.log('⏭️ Skipping main-init.js initialization (skipMainInit flag set)');
     }
-});
-
-// Also initialize if DOM is already ready
-if (document.readyState !== 'loading') {
-    console.log('🎬 DOM already ready, initializing immediately...');
-    
-    const initializer = new MainInitializer();
-    window.mainInitializer = initializer;
-    initializer.initialize().catch(error => {
-        console.error('❌ Immediate initialization failed:', error);
-    });
+} else {
+    console.log('✅ MainInitializer already exists, skipping creation');
 }
