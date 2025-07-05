@@ -174,6 +174,22 @@ class PipelineBuilder {
         this.renderProperties();
         this.updateStepCount();
         
+        // CRITICAL FIX: Attach drop zone handlers to pipeline area
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            // Remove any existing listeners first
+            pipelineSteps.removeEventListener('dragover', this.boundHandlers.dragOver);
+            pipelineSteps.removeEventListener('drop', this.boundHandlers.drop);
+            pipelineSteps.removeEventListener('dragleave', this.boundHandlers.dragLeave);
+            
+            // Add the listeners
+            pipelineSteps.addEventListener('dragover', this.boundHandlers.dragOver);
+            pipelineSteps.addEventListener('drop', this.boundHandlers.drop);
+            pipelineSteps.addEventListener('dragleave', this.boundHandlers.dragLeave);
+            
+            console.log('✅ Drop zone handlers attached to pipeline area');
+        }
+        
         console.log('✅ Complete Pipeline Builder initialized successfully');
     }
 
@@ -206,6 +222,18 @@ class PipelineBuilder {
         setTimeout(() => {
             this.setupDraggableElements();
             this.setupPipelineDropZones();
+            
+            // CRITICAL FIX: Ensure pipeline area is ready for drops
+            const pipelineSteps = document.getElementById('pipeline-steps');
+            if (pipelineSteps) {
+                // Make sure the pipeline area can receive drops
+                pipelineSteps.classList.add('drop-target');
+                
+                // If pipeline is empty, show the empty state
+                if (this.steps.length === 0) {
+                    this.showEmptyPipeline();
+                }
+            }
         }, 50);
     }
 
@@ -315,7 +343,21 @@ class PipelineBuilder {
         
         if (this.draggedElement) {
             this.draggedElement.element.classList.add('dragging');
-            this.showDropZones();
+            
+            // CRITICAL FIX: Show drop zones immediately
+            setTimeout(() => {
+                this.showDropZones();
+                const pipelineSteps = document.getElementById('pipeline-steps');
+                if (pipelineSteps) {
+                    pipelineSteps.classList.add('drag-active');
+                    
+                    // If pipeline is empty, enhance the empty state
+                    const emptyPipeline = pipelineSteps.querySelector('.empty-pipeline');
+                    if (emptyPipeline) {
+                        emptyPipeline.classList.add('drag-active');
+                    }
+                }
+            }, 0);
         }
     }
 
@@ -328,6 +370,16 @@ class PipelineBuilder {
         this.dropHandled = false;
         this.isDragging = false;
         this.removeDropIndicator();
+        
+        // Remove drag-active classes
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (pipelineSteps) {
+            pipelineSteps.classList.remove('drag-active');
+            const emptyPipeline = pipelineSteps.querySelector('.empty-pipeline');
+            if (emptyPipeline) {
+                emptyPipeline.classList.remove('drag-active');
+            }
+        }
     }
 
     handleDragOver(e) {
@@ -386,6 +438,7 @@ class PipelineBuilder {
         
         const pipelineSteps = document.getElementById('pipeline-steps');
         pipelineSteps.classList.remove('drag-over');
+        pipelineSteps.classList.remove('drag-active');
         
         // Calculate insert position
         const afterElement = this.getDragAfterElement(pipelineSteps, e.clientY);
@@ -394,7 +447,7 @@ class PipelineBuilder {
         if (afterElement && afterElement.dataset.stepId) {
             const afterStep = this.steps.find(s => s.id === afterElement.dataset.stepId);
             if (afterStep) {
-                insertIndex = this.steps.indexOf(afterStep);
+                insertIndex = this.steps.indexOf(afterStep) + 1; // Fixed: +1 for correct insertion
             }
         }
         
@@ -420,9 +473,9 @@ class PipelineBuilder {
     }
 
     handleDragLeave(e) {
-        const pipelineSteps = document.getElementById('pipeline-steps');
-        if (e.target === pipelineSteps && !pipelineSteps.contains(e.relatedTarget)) {
-            pipelineSteps.classList.remove('drag-over');
+        // Only remove drag-over if we're leaving the pipeline area entirely
+        if (e.target.id === 'pipeline-steps' && !e.relatedTarget?.closest('#pipeline-steps')) {
+            e.target.classList.remove('drag-over');
             this.removeDropIndicator();
         }
     }
@@ -459,17 +512,94 @@ class PipelineBuilder {
         }
     }
 
+    // Enhanced drop zone creation and management
     showDropZones() {
+        console.log('📍 Showing drop zones');
         const pipelineSteps = document.getElementById('pipeline-steps');
-        if (pipelineSteps) {
-            pipelineSteps.classList.add('show-drop-zones');
+        if (!pipelineSteps) return;
+        
+        pipelineSteps.classList.add('show-drop-zones');
+        
+        // Create drop zones between existing steps
+        this.dropZones = [];
+        const steps = pipelineSteps.querySelectorAll('.pipeline-step');
+        
+        // Add initial drop zone
+        const firstZone = this.createDropZone();
+        if (steps.length > 0) {
+            pipelineSteps.insertBefore(firstZone, steps[0]);
+        } else {
+            // If no steps, just ensure the pipeline area is ready
+            pipelineSteps.classList.add('empty-drop-zone');
         }
+        this.dropZones.push(firstZone);
+        
+        // Add drop zones after each step
+        steps.forEach(step => {
+            const zone = this.createDropZone();
+            step.insertAdjacentElement('afterend', zone);
+            this.dropZones.push(zone);
+        });
     }
 
     hideDropZones() {
+        console.log('📍 Hiding drop zones');
         const pipelineSteps = document.getElementById('pipeline-steps');
         if (pipelineSteps) {
             pipelineSteps.classList.remove('show-drop-zones');
+            pipelineSteps.classList.remove('empty-drop-zone');
+        }
+        
+        // Remove all drop zones
+        this.dropZones.forEach(zone => zone.remove());
+        this.dropZones = [];
+    }
+
+    createDropZone() {
+        const zone = document.createElement('div');
+        zone.className = 'drop-zone';
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('drag-over');
+        });
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+        });
+        return zone;
+    }
+
+    showEmptyPipeline() {
+        const pipelineSteps = document.getElementById('pipeline-steps');
+        if (!pipelineSteps || pipelineSteps.querySelector('.empty-pipeline')) return;
+        
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-pipeline';
+        emptyState.innerHTML = `
+            <div id="empty-state" class="empty-pipeline">
+                <i class="fas fa-stream"></i>
+                <h3>Start Building Your Pipeline</h3>
+                <p>Drag steps from the sidebar or use quick actions below</p>
+                <div class="quick-start-buttons">
+                    <button class="btn btn-primary" onclick="window.pipelineBuilder.addStep('command')">
+                        <i class="fas fa-plus"></i> Add Command Step
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.pipelineBuilder.loadExample()">
+                        <i class="fas fa-file-import"></i> Load Example
+                    </button>
+                </div>
+            </div>
+        `;
+        pipelineSteps.appendChild(emptyState);
+    }
+
+    hideEmptyPipeline() {
+        const emptyPipeline = document.querySelector('.empty-pipeline');
+        if (emptyPipeline) {
+            emptyPipeline.remove();
         }
     }
 
@@ -730,18 +860,16 @@ class PipelineBuilder {
             return;
         }
 
-        container.innerHTML = '';
-
-        if (this.steps.length === 0) {
-            container.innerHTML = `
-                <div id="empty-state" class="empty-pipeline">
-                    <i class="fas fa-stream"></i>
-                    <h3>Start Building Your Pipeline</h3>
-                    <p>Drag step types from the sidebar to build your pipeline</p>
-                </div>
-            `;
+        // Hide empty state if we have steps, show it if we don't
+        if (this.steps.length > 0) {
+            this.hideEmptyPipeline();
+        } else {
+            this.showEmptyPipeline();
             return;
         }
+
+        // Clear existing content (except empty state)
+        container.querySelectorAll('.pipeline-step').forEach(el => el.remove());
 
         // Render steps with move buttons
         this.steps.forEach(step => {
@@ -2797,6 +2925,18 @@ class PipelineBuilder {
         }
         
         return issues.length === 0;
+    }
+
+    // Helper method to escape HTML
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
     }
 }
 

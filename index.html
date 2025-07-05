@@ -1021,12 +1021,63 @@ steps:
     <input type="file" id="import-file" accept=".yml,.yaml" style="display: none;">
 
     <!-- Scripts - Load in correct order -->
-    <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
+    <script src="js/yaml-generator.js"></script>
+    <script src="js/properties-panel.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/pipeline-templates.js"></script>
     <script src="js/matrix-builder.js"></script>
     <script src="js/conditional-logic-builder.js"></script>
     <script src="js/pipeline-sharing.js"></script>
     <script src="js/enhanced-pipeline-builder.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        // Initialize after all scripts are loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOM loaded, initializing application...');
+            
+            // Initialize the YAML generator first
+            if (window.YAMLGenerator) {
+                window.yamlGenerator = new YAMLGenerator();
+            }
+            
+            // The pipeline builder will auto-initialize from its constructor
+            // Just ensure it's available globally
+            if (!window.pipelineBuilder) {
+                window.pipelineBuilder = new PipelineBuilder();
+            }
+            
+            // Initialize other components
+            if (window.PropertiesPanel) {
+                window.propertiesPanel = new PropertiesPanel();
+            }
+            
+            if (window.CommandPalette) {
+                window.commandPalette = new CommandPalette();
+            }
+            
+            if (window.PipelineTemplates) {
+                window.pipelineTemplates = new PipelineTemplates();
+            }
+            
+            if (window.PipelineSharing) {
+                window.pipelineSharing = new PipelineSharing();
+            }
+            
+            if (window.BuildkiteApp) {
+                window.buildkiteApp = new BuildkiteApp();
+            }
+            
+            // Connect the Load Example button
+            const loadExampleBtn = document.getElementById('load-example');
+            if (loadExampleBtn && window.pipelineBuilder) {
+                loadExampleBtn.addEventListener('click', () => {
+                    window.pipelineBuilder.loadExample();
+                });
+            }
+            
+            console.log('✅ Application initialized successfully');
+        });
+    </script>
 </body>
 </html>

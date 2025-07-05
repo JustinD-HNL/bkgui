@@ -1,5 +1,5 @@
 /* styles.css */
-/* Buildkite Pipeline Builder - Complete Merged Styles v5.0 */
+/* Buildkite Pipeline Builder - Complete Merged Styles v5.1 */
 /* Combines all features including enhanced drag & drop functionality */
 
 /* CSS Variables for Theming - Enhanced with both color schemes */
@@ -377,6 +377,7 @@ body {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     position: relative;
+    cursor: grabbing;
 }
 
 .step-type:focus {
@@ -608,6 +609,44 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Additional ID-based styles for pipeline steps */
+#pipeline-steps {
+    min-height: 400px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+#pipeline-steps.drop-target {
+    /* Make sure the area can receive drops */
+    position: relative;
+}
+
+#pipeline-steps.drag-active {
+    background: rgba(102, 126, 234, 0.05);
+    border-color: #667eea;
+}
+
+#pipeline-steps.drag-over {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Show drop zones when dragging */
+#pipeline-steps.show-drop-zones .drop-zone {
+    opacity: 1;
+    pointer-events: all;
+    height: 60px;
+    margin: 8px 0;
+}
+
+/* Empty pipeline drop zone */
+#pipeline-steps.empty-drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .pipeline-steps.show-drop-zones {
     background: rgba(102, 126, 234, 0.08);
     border: 2px dashed rgba(102, 126, 234, 0.4);
@@ -693,7 +732,7 @@ body {
     justify-content: center;
 }
 
-/* Enhanced Drop Zones */
+/* Enhanced Drop Zones - Combined styles */
 .drop-zone {
     position: relative;
     min-height: 60px;
@@ -706,6 +745,9 @@ body {
     justify-content: center;
     opacity: 0;
     pointer-events: none;
+    height: 0;
+    border: 2px dashed transparent;
+    z-index: 998;
 }
 
 .drop-zone.active {
@@ -713,12 +755,13 @@ body {
     pointer-events: all;
     background: rgba(102, 126, 234, 0.05);
     border: 2px dashed rgba(102, 126, 234, 0.3);
+    height: 60px;
 }
 
 .drop-zone.drag-over {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(102, 126, 234, 0.15);
     border-color: #667eea;
-    transform: scaleY(1.2);
+    transform: scale(1.02);
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
 }
 
@@ -731,10 +774,29 @@ body {
     pointer-events: none;
 }
 
+.drop-zone::after {
+    content: 'Drop here to add step';
+    position: absolute;
+    color: #667eea;
+    font-size: 0.9rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.drop-zone.active::after {
+    opacity: 0.7;
+}
+
 .drop-zone.drag-over::before {
     content: 'Release to add step';
     opacity: 1;
     animation: pulse 1s ease-in-out infinite;
+}
+
+.drop-zone.drag-over::after {
+    opacity: 1;
+    content: 'Release to add step';
 }
 
 /* Drop Zone Placeholders */
@@ -773,7 +835,7 @@ body {
     opacity: 0.7;
 }
 
-/* Enhanced Drag Insertion Indicator */
+/* Enhanced Drag Insertion Indicator - Combined styles */
 .drag-indicator {
     height: 4px;
     background: linear-gradient(90deg, #667eea, #764ba2);
@@ -786,7 +848,7 @@ body {
     overflow: hidden;
     width: 100%;
     pointer-events: none;
-    z-index: 1000;
+    z-index: 999;
     will-change: transform, opacity;
     contain: layout style paint;
 }
@@ -2280,6 +2342,11 @@ body {
     border-left-color: var(--warning);
 }
 
+/* Z-index management for drag operations */
+.dragging {
+    z-index: 1000;
+}
+
 /* Animations */
 @keyframes fadeInUp {
     from {
@@ -2346,9 +2413,11 @@ body {
 @keyframes pulse {
     0%, 100% {
         opacity: 0.7;
+        transform: scaleX(1);
     }
     50% {
         opacity: 1;
+        transform: scaleX(1.1);
     }
 }
 
