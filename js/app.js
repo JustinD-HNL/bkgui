@@ -5,6 +5,7 @@
  * Now with matrix builds, conditional logic, enhanced YAML validation, and sharing
  * FIXED: File drag-and-drop no longer conflicts with step drag-and-drop
  * FIXED: Prevents duplicate initialization and ensures component checks
+ * FIXED: Proper initialization of pipeline builder in DOMContentLoaded
  */
 
 class BuildkiteApp {
@@ -67,6 +68,26 @@ class BuildkiteApp {
             return;
         }
         
+        // Initialize pipeline builder if not already present
+        if (!window.pipelineBuilder) {
+            console.log('🔧 Initializing PipelineBuilder...');
+            if (window.PipelineBuilder) {
+                window.pipelineBuilder = new PipelineBuilder();
+                console.log('✅ PipelineBuilder initialized');
+            } else {
+                console.error('❌ PipelineBuilder class not found!');
+                this.showNotification('Failed to initialize pipeline builder', 'error');
+                return;
+            }
+        }
+        
+        // Ensure properties panel is visible
+        const propertiesPanel = document.getElementById('properties-panel');
+        if (propertiesPanel) {
+            propertiesPanel.style.display = 'block';
+            console.log('✅ Properties panel made visible');
+        }
+        
         // Get references to components
         this.pipelineBuilder = window.pipelineBuilder;
         this.matrixBuilder = window.matrixBuilder;
@@ -107,10 +128,17 @@ class BuildkiteApp {
         const checkInterval = setInterval(() => {
             attempts++;
             
-            if (window.pipelineBuilder) {
-                console.log('✅ Pipeline Builder found after', attempts, 'attempts');
+            if (window.pipelineBuilder || (window.PipelineBuilder && (window.pipelineBuilder = new PipelineBuilder()))) {
+                console.log('✅ Pipeline Builder found/created after', attempts, 'attempts');
                 clearInterval(checkInterval);
                 this.pipelineBuilder = window.pipelineBuilder;
+                
+                // Ensure properties panel is visible
+                const propertiesPanel = document.getElementById('properties-panel');
+                if (propertiesPanel) {
+                    propertiesPanel.style.display = 'block';
+                }
+                
                 this.onDOMReady(); // Try initialization again
             } else if (attempts >= maxAttempts) {
                 console.error('❌ Pipeline Builder not found after', maxAttempts, 'attempts');
@@ -1334,15 +1362,33 @@ if (!document.getElementById('yaml-syntax-styles')) {
     document.head.appendChild(styleSheet);
 }
 
-// Initialize app - singleton pattern prevents duplicates
-if (!window.buildkiteApp) {
-    window.buildkiteApp = new BuildkiteApp();
+// Initialize on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔄 DOMContentLoaded - Starting initialization...');
     
-    // Export for debugging
-    console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
-    console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
-    console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
-}
+    // Initialize pipeline builder first if not already present
+    if (!window.pipelineBuilder && window.PipelineBuilder) {
+        console.log('🔧 Creating PipelineBuilder instance...');
+        window.pipelineBuilder = new PipelineBuilder();
+    }
+    
+    // Ensure properties panel is visible
+    const propertiesPanel = document.getElementById('properties-panel');
+    if (propertiesPanel) {
+        propertiesPanel.style.display = 'block';
+        console.log('✅ Properties panel made visible');
+    }
+    
+    // Initialize app - singleton pattern prevents duplicates
+    if (!window.buildkiteApp) {
+        window.buildkiteApp = new BuildkiteApp();
+        
+        // Export for debugging
+        console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
+        console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
+        console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
+    }
+});
 
 // Export for modules
 if (typeof module !== 'undefined' && module.exports) {

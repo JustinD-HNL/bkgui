@@ -10,6 +10,7 @@
     --primary-light: #7c8eef;
     --primary-alt: #14cc80;
     --primary-alt-dark: #0fa968;
+    --primary-color: #667eea; /* Added for compatibility */
     
     /* Secondary Colors */
     --secondary: #667eea;
@@ -963,6 +964,17 @@ body {
 .pipeline-step.success {
     border-color: #38a169;
     background: rgba(154, 230, 180, 0.1);
+}
+
+/* Step Card Selected State - Added for compatibility */
+.step-card.selected {
+    border: 2px solid var(--primary-color, #667eea);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.step-card.selected .step-header {
+    background-color: var(--primary-color, #667eea);
+    color: white;
 }
 
 /* Step Header */
