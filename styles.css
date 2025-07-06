@@ -1,6 +1,6 @@
 /* styles.css */
-/* Buildkite Pipeline Builder - Complete Merged Styles v5.1 */
-/* Combines all features including enhanced drag & drop functionality */
+/* Buildkite Pipeline Builder - Complete Merged Styles v5.2 */
+/* Includes all features: enhanced drag & drop, artifact paths, retry config, and soft fail */
 
 /* CSS Variables for Theming - Enhanced with both color schemes */
 :root {
@@ -1474,6 +1474,51 @@ body {
     border-radius: 0.25rem;
 }
 
+/* Artifact Paths - NEW SECTION */
+.artifact-path {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.path-value {
+    color: #4a5568;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+}
+
+/* Retry Configuration - NEW SECTION */
+.retry-config {
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    border: 1px solid #e2e8f0;
+}
+
+.retry-config .property-group {
+    margin-bottom: 0.75rem;
+}
+
+.retry-config .property-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Soft Fail Configuration - NEW SECTION */
+#step-soft-fail-type {
+    width: 100%;
+}
+
+#step-soft-fail-codes {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+}
+
 /* Matrix Builder */
 .matrix-builder {
     background: white;
@@ -1638,15 +1683,16 @@ body {
     margin-bottom: 0.25rem;
 }
 
-/* Empty States */
+/* Empty States - Enhanced to avoid duplication */
 .empty-list {
     color: #a0aec0;
     font-style: italic;
-    padding: 0.75rem;
+    padding: 1rem;
     text-align: center;
     background: #f8fafc;
     border-radius: 6px;
     font-size: 0.875rem;
+    border: 1px dashed #e2e8f0;
 }
 
 .no-selection {
