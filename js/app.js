@@ -3,6 +3,7 @@
 /**
  * Coordinates all components and handles top-level application logic
  * Now with matrix builds, conditional logic, enhanced YAML validation, and sharing
+ * FIXED: Properties panel initialization and visibility
  * FIXED: File drag-and-drop no longer conflicts with step drag-and-drop
  * FIXED: Prevents duplicate initialization and ensures component checks
  * FIXED: Proper initialization of pipeline builder in DOMContentLoaded
@@ -81,12 +82,8 @@ class BuildkiteApp {
             }
         }
         
-        // Ensure properties panel is visible
-        const propertiesPanel = document.getElementById('properties-panel');
-        if (propertiesPanel) {
-            propertiesPanel.style.display = 'block';
-            console.log('✅ Properties panel made visible');
-        }
+        // FIXED: Ensure properties panel structure exists and is visible
+        this.ensurePropertiesPanel();
         
         // Get references to components
         this.pipelineBuilder = window.pipelineBuilder;
@@ -120,6 +117,64 @@ class BuildkiteApp {
         console.log('✅ Enhanced Buildkite Pipeline Builder App initialized successfully!');
     }
 
+    // FIXED: Ensure properties panel exists and is properly set up
+    ensurePropertiesPanel() {
+        console.log('🔍 Ensuring properties panel structure...');
+        
+        // Check if properties panel exists
+        let propertiesPanel = document.getElementById('properties-panel');
+        if (!propertiesPanel) {
+            console.error('❌ Properties panel not found in DOM!');
+            return;
+        }
+        
+        // Ensure it's visible
+        propertiesPanel.style.display = 'block';
+        console.log('✅ Properties panel made visible');
+        
+        // Check if properties content exists
+        let propertiesContent = document.getElementById('properties-content');
+        if (!propertiesContent) {
+            console.warn('⚠️ Properties content not found, checking for alternatives...');
+            
+            // Look for alternative content container
+            propertiesContent = propertiesPanel.querySelector('.properties-content, .panel-content');
+            if (propertiesContent && !propertiesContent.id) {
+                propertiesContent.id = 'properties-content';
+                console.log('✅ Added properties-content ID to existing element');
+            } else if (!propertiesContent) {
+                // Create properties content if it doesn't exist
+                console.log('📝 Creating properties content element...');
+                propertiesContent = document.createElement('div');
+                propertiesContent.id = 'properties-content';
+                propertiesContent.className = 'properties-content panel-content';
+                propertiesContent.innerHTML = `
+                    <div class="no-selection">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Select a step to view its properties</p>
+                    </div>
+                `;
+                
+                // Find or create header
+                let header = propertiesPanel.querySelector('.properties-header, .panel-header');
+                if (header) {
+                    header.insertAdjacentElement('afterend', propertiesContent);
+                } else {
+                    propertiesPanel.appendChild(propertiesContent);
+                }
+                console.log('✅ Created and added properties content element');
+            }
+        }
+        
+        // Verify final structure
+        const finalCheck = document.getElementById('properties-content');
+        if (finalCheck) {
+            console.log('✅ Properties panel structure verified and ready');
+        } else {
+            console.error('❌ Failed to set up properties panel structure');
+        }
+    }
+
     waitForPipelineBuilder() {
         console.log('⏳ Waiting for Pipeline Builder...');
         let attempts = 0;
@@ -134,18 +189,25 @@ class BuildkiteApp {
                 this.pipelineBuilder = window.pipelineBuilder;
                 
                 // Ensure properties panel is visible
-                const propertiesPanel = document.getElementById('properties-panel');
-                if (propertiesPanel) {
-                    propertiesPanel.style.display = 'block';
-                }
+                this.ensurePropertiesPanel();
                 
-                this.onDOMReady(); // Try initialization again
+                this.continueInitialization();
             } else if (attempts >= maxAttempts) {
                 console.error('❌ Pipeline Builder not found after', maxAttempts, 'attempts');
                 clearInterval(checkInterval);
                 this.showNotification('Failed to initialize pipeline builder', 'error');
             }
         }, 200);
+    }
+
+    continueInitialization() {
+        // Continue with the rest of the initialization
+        this.setupEventListeners();
+        this.setupModals();
+        this.initializeFeatures();
+        this.startAutoSave();
+        this.isInitialized = true;
+        console.log('✅ Continued initialization completed');
     }
 
     // Helper to prevent duplicate event listeners
@@ -1342,41 +1404,158 @@ class BuildkiteApp {
         document.body.appendChild(container);
         return container;
     }
+
+    // Additional utility methods that were missing
+
+    showToast(message, type = 'info') {
+        this.showNotification(message, type);
+    }
+
+    manualLoadPipeline() {
+        console.log('📂 Manual pipeline load triggered');
+        this.loadSavedPipeline();
+    }
+
+    debugState() {
+        console.log('🔍 BuildkiteApp Debug State:');
+        console.log('- Initialized:', this.isInitialized);
+        console.log('- Pipeline Builder:', this.pipelineBuilder ? '✅' : '❌');
+        console.log('- YAML Generator:', this.yamlGenerator ? '✅' : '❌');
+        console.log('- Matrix Builder:', this.matrixBuilder ? '✅' : '❌');
+        console.log('- Conditional Logic:', this.conditionalLogicBuilder ? '✅' : '❌');
+        console.log('- Pipeline Sharing:', this.pipelineSharing ? '✅' : '❌');
+        console.log('- YAML Visible:', this.yamlVisible);
+        console.log('- Auto-save Enabled:', this.autoSaveEnabled);
+        console.log('- Properties Panel:', document.getElementById('properties-content') ? '✅' : '❌');
+    }
+
+    refreshPipeline() {
+        if (this.pipelineBuilder) {
+            this.pipelineBuilder.renderPipeline();
+            this.pipelineBuilder.renderProperties();
+            this.updateYAML();
+            console.log('🔄 Pipeline view refreshed');
+        }
+    }
+
+    exportConfig() {
+        if (this.pipelineBuilder) {
+            const config = this.pipelineBuilder.getPipelineConfig();
+            console.log('📤 Pipeline Config:', config);
+            return config;
+        }
+        return null;
+    }
+
+    importConfig(config) {
+        if (this.pipelineBuilder && this.pipelineSharing && config) {
+            this.pipelineSharing.loadPipelineConfig(config);
+            console.log('📥 Pipeline Config imported');
+        }
+    }
+
+    getStepCount() {
+        if (this.pipelineBuilder) {
+            return this.pipelineBuilder.steps.length;
+        }
+        return 0;
+    }
+
+    hasPipelineSteps() {
+        return this.getStepCount() > 0;
+    }
+
+    toggleAutoSave() {
+        this.autoSaveEnabled = !this.autoSaveEnabled;
+        console.log(`💾 Auto-save ${this.autoSaveEnabled ? 'enabled' : 'disabled'}`);
+        this.showNotification(`Auto-save ${this.autoSaveEnabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+
+    forceSave() {
+        this.savePipeline();
+        console.log('💾 Pipeline force saved');
+    }
+
+    clearLocalStorage() {
+        if (confirm('Are you sure you want to clear all saved data? This cannot be undone.')) {
+            localStorage.removeItem('buildkite-pipeline');
+            this.showNotification('Local storage cleared', 'info');
+            console.log('🗑️ Local storage cleared');
+        }
+    }
+
+    resetApplication() {
+        if (confirm('Are you sure you want to reset the application? This will clear the pipeline and reload the page.')) {
+            this.clearLocalStorage();
+            this.pipelineBuilder?.clearPipeline();
+            window.location.reload();
+        }
+    }
+
+    getVersion() {
+        return 'Enhanced Buildkite Pipeline Builder v3.0';
+    }
+
+    showHelp() {
+        const helpText = `
+        🎯 Keyboard Shortcuts:
+        - Ctrl/Cmd + K: Open command palette
+        - Ctrl/Cmd + S: Save pipeline
+        - Ctrl/Cmd + E: Export YAML
+        - Ctrl/Cmd + O: Load example
+        - Ctrl/Cmd + Y: Toggle YAML view
+        - Delete: Delete selected step
+        - Ctrl/Cmd + D: Duplicate selected step
+        - Escape: Close modals
+        
+        📚 Available in console:
+        - window.buildkiteApp: Main application
+        - window.pipelineBuilder: Pipeline builder
+        - buildkiteApp.debugState(): Show debug info
+        - buildkiteApp.exportConfig(): Export pipeline config
+        - buildkiteApp.importConfig(config): Import pipeline config
+        - buildkiteApp.toggleAutoSave(): Toggle auto-save
+        - buildkiteApp.refreshPipeline(): Refresh pipeline view
+        - buildkiteApp.forceSave(): Force save pipeline
+        - buildkiteApp.clearLocalStorage(): Clear saved data
+        - buildkiteApp.resetApplication(): Reset application
+        `;
+        console.log(helpText);
+        this.showNotification('Help information logged to console', 'info');
+    }
 }
 
 // CSS for enhanced YAML syntax highlighting
-if (!document.getElementById('yaml-syntax-styles')) {
-    const yamlStyles = `
-        .yaml-key { color: #e06c75; font-weight: 600; }
-        .yaml-string { color: #98c379; }
-        .yaml-number { color: #d19a66; }
-        .yaml-boolean { color: #56b6c2; }
-        .yaml-array { color: #c678dd; }
-        .yaml-variable { color: #61afef; font-style: italic; }
-    `;
-    
-    // Add styles to document
-    const styleSheet = document.createElement('style');
-    styleSheet.id = 'yaml-syntax-styles';
-    styleSheet.textContent = yamlStyles;
-    document.head.appendChild(styleSheet);
+function initializeYAMLSyntaxStyles() {
+    if (!document.getElementById('yaml-syntax-styles')) {
+        const yamlStyles = `
+            .yaml-key { color: #e06c75; font-weight: 600; }
+            .yaml-string { color: #98c379; }
+            .yaml-number { color: #d19a66; }
+            .yaml-boolean { color: #56b6c2; }
+            .yaml-array { color: #c678dd; }
+            .yaml-variable { color: #61afef; font-style: italic; }
+        `;
+        
+        // Add styles to document
+        const styleSheet = document.createElement('style');
+        styleSheet.id = 'yaml-syntax-styles';
+        styleSheet.textContent = yamlStyles;
+        document.head.appendChild(styleSheet);
+    }
 }
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔄 DOMContentLoaded - Starting initialization...');
     
+    // Initialize YAML syntax styles
+    initializeYAMLSyntaxStyles();
+    
     // Initialize pipeline builder first if not already present
     if (!window.pipelineBuilder && window.PipelineBuilder) {
         console.log('🔧 Creating PipelineBuilder instance...');
         window.pipelineBuilder = new PipelineBuilder();
-    }
-    
-    // Ensure properties panel is visible
-    const propertiesPanel = document.getElementById('properties-panel');
-    if (propertiesPanel) {
-        propertiesPanel.style.display = 'block';
-        console.log('✅ Properties panel made visible');
     }
     
     // Initialize app - singleton pattern prevents duplicates
@@ -1387,6 +1566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
         console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
         console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
+        console.log('❓ Type buildkiteApp.showHelp() for keyboard shortcuts and tips');
     }
 });
 
