@@ -1182,63 +1182,72 @@ class PipelineBuilder {
     }
 
     // Properties panel management - ENHANCED WITH NEW FEATURES
+    // js/pipeline-builder.js - renderProperties method fix
+// Add this method to replace the existing renderProperties method in pipeline-builder.js
+
+    // Properties panel management - ENHANCED WITH FALLBACK SUPPORT
     renderProperties() {
-        const container = document.getElementById('properties-content');
+        console.log('🎨 Rendering properties panel...');
+        
+        // Try primary container first
+        let container = document.getElementById('properties-content');
+        
+        // If not found, try to find and fix the structure
         if (!container) {
-            console.error('❌ Properties container #properties-content not found!');
+            console.warn('⚠️ Properties container #properties-content not found, attempting to fix...');
             
-            // Try to find alternative containers
-            const alternatives = [
-                '.properties-content',
-                '.properties-panel .content',
-                '.properties-panel-content',
-                '#properties-panel .properties-content'
-            ];
-            
-            for (const selector of alternatives) {
-                const altContainer = document.querySelector(selector);
-                if (altContainer) {
-                    console.log(`✅ Found alternative container: ${selector}`);
-                    this.renderPropertiesToContainer(altContainer);
-                    return;
+            // Find the properties panel
+            const propertiesPanel = document.getElementById('properties-panel');
+            if (propertiesPanel) {
+                // Look for existing content container
+                container = propertiesPanel.querySelector('.properties-content, .panel-content');
+                
+                if (container) {
+                    // Add the ID if missing
+                    container.id = 'properties-content';
+                    console.log('✅ Fixed properties content container ID');
+                } else {
+                    // Create the content container
+                    container = document.createElement('div');
+                    container.id = 'properties-content';
+                    container.className = 'properties-content panel-content';
+                    
+                    // Find where to insert it
+                    const header = propertiesPanel.querySelector('.properties-header, .panel-header');
+                    if (header) {
+                        header.insertAdjacentElement('afterend', container);
+                    } else {
+                        propertiesPanel.appendChild(container);
+                    }
+                    console.log('✅ Created properties content container');
                 }
+            } else {
+                console.error('❌ Properties panel not found in DOM!');
+                return;
             }
-            
-            console.error('❌ No properties container found anywhere in DOM!');
-            return;
         }
-
-        console.log(`🎨 Rendering properties for step: ${this.selectedStep || 'none'}`);
-
+        
         if (!this.selectedStep) {
             container.innerHTML = `
                 <div class="no-selection">
                     <i class="fas fa-info-circle"></i>
                     <p>Select a step to view its properties</p>
-                    <div class="help-content">
-                        <h4>Available Properties</h4>
-                        <ul>
-                            <li><strong>Label:</strong> Display name for the step</li>
-                            <li><strong>Command:</strong> Shell command to execute</li>
-                            <li><strong>Key:</strong> Unique identifier for dependencies</li>
-                            <li><strong>Agents:</strong> Agent targeting requirements</li>
-                            <li><strong>Environment:</strong> Environment variables</li>
-                            <li><strong>Plugins:</strong> Buildkite plugins to use</li>
-                            <li><strong>Dependencies:</strong> Step dependencies</li>
-                            <li><strong>Conditions:</strong> Conditional execution rules</li>
-                            <li><strong>Matrix:</strong> Matrix build configuration</li>
-                        </ul>
-                    </div>
                 </div>
             `;
+            console.log('ℹ️ No step selected');
             return;
         }
-
+        
         const step = this.steps.find(s => s.id === this.selectedStep);
         if (!step) {
             console.warn(`⚠️ Selected step ${this.selectedStep} not found in steps array`);
             this.selectedStep = null;
-            this.renderProperties();
+            container.innerHTML = `
+                <div class="no-selection">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Select a step to view its properties</p>
+                </div>
+            `;
             return;
         }
 
@@ -1247,26 +1256,7 @@ class PipelineBuilder {
         this.setupPropertyFormListeners(step);
     }
     
-    // Helper method for alternative containers
-    renderPropertiesToContainer(container, step = null) {
-        if (!step && this.selectedStep) {
-            step = this.steps.find(s => s.id === this.selectedStep);
-        }
-        
-        if (!step) {
-            container.innerHTML = `
-                <div class="no-selection">
-                    <i class="fas fa-info-circle"></i>
-                    <p>Select a step to view its properties</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = this.generatePropertyForm(step);
-        this.setupPropertyFormListeners(step);
-        console.log(`✅ Properties rendered to alternative container for step ${step.id}`);
-    }
+    
 
     // Property form generation - ALL STEP TYPES PRESERVED
     generatePropertyForm(step) {
