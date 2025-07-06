@@ -84,7 +84,10 @@ class ConditionalLogicBuilder {
         
         // Close handlers
         this.modal.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => this.closeModal());
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeModal();
+            });
         });
         
         this.modal.addEventListener('click', (e) => {
@@ -122,8 +125,10 @@ class ConditionalLogicBuilder {
     }
 
     closeModal() {
-        this.modal.style.display = 'none';
-        this.modal.classList.add('hidden');
+        if (this.modal) {
+            this.modal.style.display = 'none';
+            this.modal.classList.add('hidden');
+        }
         this.currentStep = null;
         this.conditions = [];
     }

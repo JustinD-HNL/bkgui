@@ -89,8 +89,8 @@ class BuildkiteApp {
         // Initialize features
         this.initializeFeatures();
         
-        // Load saved pipeline if exists
-        this.loadSavedPipeline();
+        // Load saved pipeline if exists - COMMENTED OUT for manual loading
+        // this.loadSavedPipeline();
         
         // Start auto-save
         this.startAutoSave();
@@ -163,6 +163,15 @@ class BuildkiteApp {
                     }
                 }
             }, 'clear-pipeline');
+        }
+        
+        // NEW: Load saved pipeline button
+        const loadSavedBtn = document.getElementById('load-saved-pipeline');
+        if (loadSavedBtn) {
+            this.addEventListenerOnce(loadSavedBtn, 'click', () => {
+                this.loadSavedPipeline();
+                this.showNotification('Loaded saved pipeline', 'success');
+            }, 'load-saved');
         }
         
         // NEW: Share pipeline button
@@ -272,23 +281,22 @@ class BuildkiteApp {
         // Pattern Library Modal
         this.setupPatternLibrary();
         
-        // Close modal on backdrop click - Use event delegation
+        // Single modal close handler using event delegation
         this.addEventListenerOnce(document, 'click', (e) => {
-            if (e.target.classList.contains('modal') && e.target === e.currentTarget) {
-                e.target.style.display = 'none';
-            }
-        }, 'modal-backdrop-close');
-        
-        // Close modal buttons - Use event delegation
-        this.addEventListenerOnce(document, 'click', (e) => {
-            const closeBtn = e.target.closest('.close-modal');
-            if (closeBtn) {
-                const modal = closeBtn.closest('.modal');
+            // Close button clicked
+            if (e.target.matches('.close-modal, .close-modal *')) {
+                const modal = e.target.closest('.modal');
                 if (modal) {
                     modal.style.display = 'none';
+                    modal.classList.add('hidden');
                 }
             }
-        }, 'modal-close-buttons');
+            // Modal backdrop clicked
+            else if (e.target.matches('.modal')) {
+                e.target.style.display = 'none';
+                e.target.classList.add('hidden');
+            }
+        }, 'unified-modal-close');
     }
 
     initializeFeatures() {
@@ -300,6 +308,9 @@ class BuildkiteApp {
         
         // Set up command palette
         this.setupCommandPalette();
+        
+        // Load saved pipeline if exists - REMOVED for manual loading
+        // this.loadSavedPipeline();
     }
 
     setupAutoSaveIndicator() {

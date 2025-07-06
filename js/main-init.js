@@ -793,61 +793,61 @@ class MainInitializer {
     }
 
     setupModalManagement() {
-        console.log('🔧 Setting up comprehensive modal management...');
+        console.log('🔧 Setting up modal management...');
         
         // Global modal close function
-        if (!window.closeModal) {
-            window.closeModal = function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.add('hidden');
-                    console.log(`📋 Closed modal: ${modalId}`);
-                }
-            };
-        }
+        window.closeModal = function(modalId) {
+            const modal = modalId instanceof HTMLElement ? modalId : document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+            }
+        };
         
         // Global modal show function
-        if (!window.showModal) {
-            window.showModal = function(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.remove('hidden');
-                    console.log(`📋 Opened modal: ${modalId}`);
-                    
-                    // Focus first input if available
-                    const firstInput = modal.querySelector('input, textarea, select');
-                    if (firstInput) {
-                        setTimeout(() => firstInput.focus(), 100);
-                    }
+        window.showModal = function(modalId) {
+            const modal = modalId instanceof HTMLElement ? modalId : document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'block';
+                modal.classList.remove('hidden');
+                
+                // Focus first input
+                const firstInput = modal.querySelector('input:not([type="hidden"]), textarea, select');
+                if (firstInput) {
+                    setTimeout(() => firstInput.focus(), 100);
                 }
-            };
-        }
+            }
+        };
         
-        // Setup modal event listeners with listener tracking
+        // Single unified modal handler
         this.addEventListenerOnce(document, 'click', (e) => {
-            // Close button handler
-            if (e.target.classList.contains('modal-close') || e.target.closest('.modal-close')) {
+            // Handle close button clicks
+            if (e.target.matches('.close-modal, .close-modal *, .modal-close, .modal-close *')) {
                 const modal = e.target.closest('.modal');
                 if (modal) {
+                    modal.style.display = 'none';
                     modal.classList.add('hidden');
                 }
             }
-            
-            // Background click handler
-            if (e.target.classList.contains('modal')) {
+            // Handle backdrop clicks
+            else if (e.target.matches('.modal')) {
+                e.target.style.display = 'none';
                 e.target.classList.add('hidden');
             }
-        }, 'modal-click-handler');
+        }, 'global-modal-handler');
         
-        // Keyboard handlers
+        // Escape key handler
         this.addEventListenerOnce(document, 'keydown', (e) => {
             if (e.key === 'Escape') {
                 const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
-                visibleModals.forEach(modal => modal.classList.add('hidden'));
+                visibleModals.forEach(modal => {
+                    modal.style.display = 'none';
+                    modal.classList.add('hidden');
+                });
             }
         }, 'modal-escape-handler');
         
-        console.log('✅ Comprehensive modal management configured');
+        console.log('✅ Modal management configured');
     }
 
     // Helper to prevent duplicate event listeners

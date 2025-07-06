@@ -21,7 +21,8 @@ class PipelineSharing {
         }
         
         this.setupEventListeners();
-        this.checkForSharedPipeline();
+        // Commented out auto-check for shared pipeline
+        // this.checkForSharedPipeline();
         
         console.log('✅ Pipeline Sharing initialized');
     }
@@ -80,8 +81,10 @@ class PipelineSharing {
     }
 
     closeModal() {
-        this.modal.style.display = 'none';
-        this.modal.classList.add('hidden');
+        if (this.modal) {
+            this.modal.style.display = 'none';
+            this.modal.classList.add('hidden');
+        }
     }
 
     generateShareLink() {
@@ -220,6 +223,11 @@ class PipelineSharing {
             console.log('📥 Found shared pipeline in URL');
             this.importSharedPipeline(sharedPipeline);
         }
+    }
+
+    manualCheckForSharedPipeline() {
+        console.log('🔍 Manually checking for shared pipeline...');
+        this.checkForSharedPipeline();
     }
 
     importSharedPipeline(compressed) {
