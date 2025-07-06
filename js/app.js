@@ -1,12 +1,10 @@
 // js/app.js
 // Main Application Controller for Buildkite Pipeline Builder - Enhanced v3.0
+// COMPLETE CONSOLIDATED VERSION - Includes all initialization from main-init.js
 /**
  * Coordinates all components and handles top-level application logic
- * Now with matrix builds, conditional logic, enhanced YAML validation, and sharing
- * FIXED: Properties panel initialization and visibility
- * FIXED: File drag-and-drop no longer conflicts with step drag-and-drop
- * FIXED: Prevents duplicate initialization and ensures component checks
- * FIXED: Proper initialization of pipeline builder in DOMContentLoaded
+ * Now includes ALL initialization, modal management, event listeners, and UI setup
+ * Previously split between app.js and main-init.js
  */
 
 class BuildkiteApp {
@@ -17,17 +15,25 @@ class BuildkiteApp {
             return window.buildkiteApp;
         }
         
+        // Core components
         this.pipelineBuilder = null;
         this.yamlGenerator = null;
         this.matrixBuilder = null;
         this.conditionalLogicBuilder = null;
         this.pipelineSharing = null;
+        this.commandPalette = null;
+        this.pipelinePatterns = null;
+        this.dependencyGraph = null;
+        
+        // App state
         this.yamlVisible = false;
         this.autoSaveEnabled = true;
         this.autoSaveInterval = null;
         this.isInitialized = false;
+        this.currentCommandIndex = 0;
+        this.debugMode = true;
         
-        // Track attached event listeners
+        // Track attached event listeners to prevent duplicates
         this.attachedListeners = new Set();
         
         // Store as singleton
@@ -38,18 +44,12 @@ class BuildkiteApp {
 
     init() {
         console.log('🚀 Initializing Enhanced Buildkite Pipeline Builder App v3.0...');
+        console.log('📦 COMPLETE CONSOLIDATED VERSION - All features included');
         
         // Check if already initialized
         if (this.isInitialized) {
             console.log('✅ BuildkiteApp already initialized');
             return;
-        }
-        
-        // Initialize components
-        if (window.YAMLGenerator) {
-            this.yamlGenerator = window.yamlGenerator || new YAMLGenerator();
-        } else {
-            console.warn('⚠️ YAMLGenerator not available');
         }
         
         // Wait for DOM to be ready
@@ -60,157 +60,1341 @@ class BuildkiteApp {
         }
     }
 
-    onDOMReady() {
-        console.log('📄 DOM Ready, setting up application...');
+    async onDOMReady() {
+        console.log('📄 DOM Ready, starting complete initialization...');
         
         // Prevent multiple initialization
         if (this.isInitialized) {
             console.log('✅ BuildkiteApp already initialized in onDOMReady');
             return;
         }
+
+        try {
+            // Initialize in correct order
+            await this.initializeComponents();
+            this.injectEnhancedStyles();
+            this.setupModalManagement();
+            this.setupAllEventListeners();
+            this.setupKeyboardShortcuts();
+            this.initializeFeatures();
+            this.startAutoSave();
+            
+            // Setup file drop zone
+            this.setupFileDropZone();
+            
+            // Mark as initialized
+            this.isInitialized = true;
+            
+            // Final setup
+            this.finalizeInitialization();
+            
+            console.log('✅ Application initialization completed successfully!');
+            console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
+            console.log('✨ All features active: Matrix Builds, Conditional Logic, Templates, Plugins');
+            console.log('❓ Type buildkiteApp.showHelp() for keyboard shortcuts and tips');
+            
+        } catch (error) {
+            console.error('❌ Application initialization failed:', error);
+            this.showErrorMessage('Initialization failed. Please refresh the page.');
+        }
+    }
+
+    async initializeComponents() {
+        console.log('🔧 Initializing core components...');
         
-        // Initialize pipeline builder if not already present
+        // Initialize YAML Generator
+        if (window.YAMLGenerator) {
+            this.yamlGenerator = window.yamlGenerator || new YAMLGenerator();
+            window.yamlGenerator = this.yamlGenerator;
+            console.log('✅ YAML Generator initialized');
+        } else {
+            console.warn('⚠️ YAMLGenerator not available, creating minimal version');
+            this.createMinimalYamlGenerator();
+        }
+        
+        // Initialize Pipeline Builder
         if (!window.pipelineBuilder) {
-            console.log('🔧 Initializing PipelineBuilder...');
             if (window.PipelineBuilder) {
                 window.pipelineBuilder = new PipelineBuilder();
-                console.log('✅ PipelineBuilder initialized');
+                this.pipelineBuilder = window.pipelineBuilder;
+                console.log('✅ Pipeline Builder initialized');
             } else {
                 console.error('❌ PipelineBuilder class not found!');
-                this.showNotification('Failed to initialize pipeline builder', 'error');
+                this.createMinimalPipelineBuilder();
+            }
+        } else {
+            this.pipelineBuilder = window.pipelineBuilder;
+            console.log('✅ Pipeline Builder already exists');
+        }
+        
+        // Initialize other components
+        if (window.MatrixBuilder) {
+            this.matrixBuilder = new MatrixBuilder();
+            window.matrixBuilder = this.matrixBuilder;
+            console.log('✅ Matrix Builder initialized');
+        }
+        
+        if (window.ConditionalLogicBuilder) {
+            this.conditionalLogicBuilder = new ConditionalLogicBuilder();
+            window.conditionalLogicBuilder = this.conditionalLogicBuilder;
+            console.log('✅ Conditional Logic Builder initialized');
+        }
+        
+        if (window.PipelineSharing) {
+            this.pipelineSharing = new PipelineSharing();
+            window.pipelineSharing = this.pipelineSharing;
+            console.log('✅ Pipeline Sharing initialized');
+        }
+        
+        if (window.CommandPalette) {
+            this.commandPalette = new CommandPalette();
+            window.commandPalette = this.commandPalette;
+            console.log('✅ Command Palette initialized');
+        }
+        
+        if (window.PipelinePatterns) {
+            this.pipelinePatterns = new PipelinePatterns();
+            window.pipelinePatterns = this.pipelinePatterns;
+            console.log('✅ Pipeline Patterns initialized');
+        }
+        
+        if (window.DependencyGraphManager) {
+            this.dependencyGraph = new DependencyGraphManager();
+            window.dependencyGraph = this.dependencyGraph;
+            console.log('✅ Dependency Graph initialized');
+        }
+        
+        // Check for missing methods and add them
+        this.ensurePipelineBuilderMethods();
+    }
+
+    ensurePipelineBuilderMethods() {
+        if (!this.pipelineBuilder) return;
+        
+        const requiredMethods = [
+            'addStep', 'deleteStep', 'duplicateStep', 'clearPipeline',
+            'loadExample', 'renderPipeline', 'renderProperties', 'selectStep',
+            'exportConfig', 'saveToLocalStorage', 'loadFromLocalStorage'
+        ];
+        
+        const missingMethods = requiredMethods.filter(method => 
+            typeof this.pipelineBuilder[method] !== 'function'
+        );
+        
+        if (missingMethods.length > 0) {
+            console.warn('⚠️ Missing pipeline builder methods:', missingMethods);
+            this.addMissingEssentialMethods(missingMethods);
+        }
+    }
+
+    addMissingEssentialMethods(missingMethods) {
+        console.log('🔧 Adding missing essential methods...');
+        
+        missingMethods.forEach(methodName => {
+            if (!this.pipelineBuilder[methodName]) {
+                this.pipelineBuilder[methodName] = function(...args) {
+                    console.log(`⚠️ Called missing method: ${methodName}`, args);
+                    return null;
+                };
+            }
+        });
+        
+        console.log('✅ Missing methods added');
+    }
+
+    createMinimalYamlGenerator() {
+        window.yamlGenerator = {
+            generate: (config) => {
+                if (!config || !config.steps) return 'steps: []';
+                return 'steps:\n' + config.steps.map(step => {
+                    if (step === 'wait') return '  - wait';
+                    return `  - label: "${step.properties?.label || 'Step'}"\n    command: "${step.properties?.command || 'echo "No command"'}"`;
+                }).join('\n');
+            },
+            validateYAML: (yamlString) => {
+                try {
+                    const errors = [];
+                    if (!yamlString || yamlString.trim() === '') {
+                        errors.push('YAML content is empty');
+                    }
+                    if (!yamlString.includes('steps:')) {
+                        errors.push('Missing required "steps:" field');
+                    }
+                    return { valid: errors.length === 0, errors: errors };
+                } catch (error) {
+                    return { valid: false, errors: [error.message] };
+                }
+            },
+            formatYAML: (yamlString) => {
+                return yamlString.split('\n').map(line => line.trimEnd()).join('\n').replace(/\n\n\n+/g, '\n\n');
+            },
+            downloadYAML: (content, filename) => {
+                const blob = new Blob([content], { type: 'text/yaml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        };
+        this.yamlGenerator = window.yamlGenerator;
+        console.log('✅ Minimal YAML Generator created');
+    }
+
+    createMinimalPipelineBuilder() {
+        window.pipelineBuilder = {
+            steps: [],
+            selectedStep: null,
+            stepCounter: 0,
+            pluginCatalog: {},
+            
+            addStep: function(type) {
+                console.log(`Adding step of type: ${type}`);
+                const step = {
+                    id: `step-${++this.stepCounter}-${Date.now()}`,
+                    type: type,
+                    properties: { label: `New ${type} step` }
+                };
+                this.steps.push(step);
+                return step;
+            },
+            
+            deleteStep: function(stepId) {
+                const index = this.steps.findIndex(s => s.id === stepId);
+                if (index > -1) {
+                    this.steps.splice(index, 1);
+                    if (this.selectedStep?.id === stepId) {
+                        this.selectedStep = null;
+                    }
+                }
+            },
+            
+            duplicateStep: function(stepId) {
+                const step = this.steps.find(s => s.id === stepId);
+                if (!step) return;
+                
+                const newStep = {
+                    id: `step-${++this.stepCounter}-${Date.now()}`,
+                    type: step.type,
+                    properties: JSON.parse(JSON.stringify(step.properties))
+                };
+                
+                const index = this.steps.findIndex(s => s.id === stepId);
+                this.steps.splice(index + 1, 0, newStep);
+                return newStep;
+            },
+            
+            clearPipeline: function() {
+                this.steps = [];
+                this.selectedStep = null;
+                console.log('Pipeline cleared');
+            },
+            
+            loadExample: function() {
+                this.clearPipeline();
+                this.addStep('command');
+                console.log('Example loaded');
+            },
+            
+            selectStep: function(step) {
+                this.selectedStep = step;
+                this.renderProperties();
+            },
+            
+            exportConfig: function() {
+                return { steps: this.steps };
+            },
+            
+            renderPipeline: function() {
+                console.log('Pipeline render requested');
+            },
+            
+            renderProperties: function() {
+                console.log('Properties render requested');
+            },
+            
+            saveToLocalStorage: function() {
+                const config = this.exportConfig();
+                localStorage.setItem('buildkite-pipeline', JSON.stringify(config));
+            },
+            
+            loadFromLocalStorage: function() {
+                const saved = localStorage.getItem('buildkite-pipeline');
+                if (saved) {
+                    try {
+                        const config = JSON.parse(saved);
+                        this.steps = config.steps || [];
+                        console.log('Pipeline loaded from localStorage');
+                    } catch (e) {
+                        console.error('Failed to load from localStorage:', e);
+                    }
+                }
+            }
+        };
+        this.pipelineBuilder = window.pipelineBuilder;
+        console.log('✅ Minimal pipeline builder created');
+    }
+
+    injectEnhancedStyles() {
+        console.log('🎨 Injecting enhanced styles...');
+        
+        if (!document.getElementById('enhanced-styles')) {
+            const enhancedStyles = document.createElement('style');
+            enhancedStyles.id = 'enhanced-styles';
+            enhancedStyles.textContent = `
+                /* Enhanced styles for complete functionality */
+                /* Drag and drop visual feedback */
+                .dragging { opacity: 0.5; cursor: grabbing !important; }
+                .drag-over { background-color: #e3f2fd !important; border: 2px dashed #2196f3 !important; }
+                .drop-zone { min-height: 60px; transition: all 0.3s ease; }
+                .drop-zone.active { background-color: #e8f5e9; border: 2px dashed #4caf50; }
+                
+                /* Modal improvements */
+                .modal { backdrop-filter: blur(4px); }
+                .modal-content { animation: modalSlideIn 0.3s ease; }
+                @keyframes modalSlideIn {
+                    from { transform: translateY(-50px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                
+                /* Command palette enhancements */
+                .command-palette { animation: paletteSlideDown 0.2s ease; }
+                @keyframes paletteSlideDown {
+                    from { transform: translateY(-10px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                
+                /* Properties panel improvements */
+                .property-group { transition: all 0.2s ease; }
+                .property-group:hover { background-color: #f8f9fa; }
+                
+                /* Button enhancements */
+                .btn { transition: all 0.2s ease; position: relative; overflow: hidden; }
+                .btn:active { transform: scale(0.98); }
+                
+                /* Step card improvements */
+                .step-card { transition: all 0.3s ease; }
+                .step-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                .step-card.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+                
+                /* Toast notifications */
+                .toast { animation: toastSlideIn 0.3s ease; }
+                @keyframes toastSlideIn {
+                    from { transform: translateX(100%); }
+                    to { transform: translateX(0); }
+                }
+                
+                /* Loading states */
+                .loading { position: relative; color: transparent !important; }
+                .loading::after {
+                    content: '';
+                    position: absolute;
+                    width: 16px;
+                    height: 16px;
+                    top: 50%;
+                    left: 50%;
+                    margin-left: -8px;
+                    margin-top: -8px;
+                    border: 2px solid #f3f3f3;
+                    border-top: 2px solid #3b82f6;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                /* Dependency dropdown styles */
+                .dependency-dropdown {
+                    position: relative;
+                    display: inline-block;
+                    width: 100%;
+                }
+                
+                .dependency-dropdown select {
+                    width: 100%;
+                    padding: 0.5rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    background-color: white;
+                    cursor: pointer;
+                }
+                
+                /* Enhanced tooltips */
+                [data-tooltip] {
+                    position: relative;
+                    cursor: help;
+                }
+                
+                [data-tooltip]:hover::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    padding: 0.5rem;
+                    background: #1a202c;
+                    color: white;
+                    border-radius: 4px;
+                    font-size: 0.875rem;
+                    white-space: nowrap;
+                    z-index: 1000;
+                    margin-bottom: 0.5rem;
+                }
+                
+                /* Matrix builder grid */
+                .matrix-grid {
+                    display: grid;
+                    gap: 1rem;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                }
+                
+                /* Plugin catalog grid */
+                .plugin-grid {
+                    display: grid;
+                    gap: 1rem;
+                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                }
+                
+                .plugin-card {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                
+                .plugin-card:hover {
+                    border-color: #3b82f6;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                
+                /* Template cards */
+                .template-card {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 1.5rem;
+                    margin-bottom: 1rem;
+                    transition: all 0.2s ease;
+                }
+                
+                .template-card:hover {
+                    border-color: #3b82f6;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                
+                /* YAML syntax highlighting */
+                .yaml-key { color: #e06c75; font-weight: 600; }
+                .yaml-string { color: #98c379; }
+                .yaml-number { color: #d19a66; }
+                .yaml-boolean { color: #56b6c2; }
+                .yaml-variable { color: #61afef; font-style: italic; }
+                .yaml-comment { color: #5c6370; font-style: italic; }
+                
+                /* File drop zone */
+                .file-drop-zone {
+                    border: 2px dashed #cbd5e0;
+                    border-radius: 8px;
+                    padding: 2rem;
+                    text-align: center;
+                    transition: all 0.3s ease;
+                }
+                
+                .file-drop-zone.drag-over {
+                    border-color: #3b82f6;
+                    background-color: #ebf8ff;
+                }
+                
+                /* Fade out animation */
+                .fade-out {
+                    animation: fadeOut 0.3s ease forwards;
+                }
+                
+                @keyframes fadeOut {
+                    to { opacity: 0; transform: translateY(-10px); }
+                }
+            `;
+            document.head.appendChild(enhancedStyles);
+            console.log('✅ Enhanced styles injected');
+        }
+    }
+
+    setupModalManagement() {
+        console.log('🔧 Setting up modal management...');
+        
+        // Global modal functions
+        window.closeModal = (modalId) => {
+            const modal = modalId ? document.getElementById(modalId) : 
+                          document.querySelector('.modal:not(.hidden)');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.add('hidden');
+            }
+        };
+        
+        window.showModal = (modalId) => {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'block';
+                modal.classList.remove('hidden');
+            }
+        };
+        
+        // Close modal on click outside
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                window.closeModal();
+            }
+        });
+        
+        // Close modal buttons
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            this.addEventListenerOnce(btn, 'click', () => {
+                const modal = btn.closest('.modal');
+                if (modal) window.closeModal(modal.id);
+            }, `close-modal-${btn.id || 'unknown'}`);
+        });
+        
+        // ESC key to close modals
+        this.addEventListenerOnce(document, 'keydown', (e) => {
+            if (e.key === 'Escape') {
+                const openModal = document.querySelector('.modal:not(.hidden)');
+                if (openModal) {
+                    e.preventDefault();
+                    window.closeModal(openModal.id);
+                }
+            }
+        }, 'modal-escape-handler');
+        
+        console.log('✅ Modal management configured');
+    }
+
+    setupAllEventListeners() {
+        console.log('🔧 Setting up all event listeners...');
+        
+        // Header buttons
+        this.setupHeaderButtons();
+        
+        // Quick action buttons
+        this.setupQuickActionButtons();
+        
+        // Plugin catalog
+        this.setupPluginCatalog();
+        
+        // Matrix builder
+        this.setupMatrixBuilder();
+        
+        // Step templates
+        this.setupStepTemplates();
+        
+        // Command palette
+        this.setupCommandPalette();
+        
+        // YAML output handlers
+        this.setupYamlOutputHandlers();
+        
+        // Import/Export handlers
+        this.setupImportExportHandlers();
+        
+        // Pipeline sharing
+        this.setupPipelineSharing();
+        
+        // Validation handlers
+        this.setupValidationHandlers();
+        
+        // Step count updater
+        this.setupStepCountUpdater();
+        
+        // Properties panel updates
+        this.setupPropertiesUpdates();
+        
+        console.log('✅ All event listeners configured');
+    }
+
+    setupHeaderButtons() {
+        console.log('🔧 Setting up header buttons...');
+        
+        // Load Example
+        this.addEventListenerOnce(document.getElementById('load-example'), 'click', () => {
+            if (this.pipelineBuilder?.loadExample) {
+                this.pipelineBuilder.loadExample();
+                this.updateYAML();
+                this.updateStepCount();
+                this.showNotification('Example pipeline loaded', 'success');
+            }
+        }, 'load-example');
+        
+        // Clear Pipeline
+        this.addEventListenerOnce(document.getElementById('clear-pipeline'), 'click', () => {
+            if (this.pipelineBuilder?.steps?.length === 0) {
+                this.showNotification('Pipeline is already empty', 'info');
                 return;
             }
-        }
-        
-        // FIXED: Ensure properties panel structure exists and is visible
-        this.ensurePropertiesPanel();
-        
-        // Get references to components
-        this.pipelineBuilder = window.pipelineBuilder;
-        this.matrixBuilder = window.matrixBuilder;
-        this.conditionalLogicBuilder = window.conditionalLogicBuilder;
-        this.pipelineSharing = window.pipelineSharing;
-        
-        if (!this.pipelineBuilder) {
-            console.error('❌ Pipeline Builder not initialized!');
-            // Wait for pipeline builder to be available
-            this.waitForPipelineBuilder();
-            return;
-        }
-        
-        // Setup event listeners
-        this.setupEventListeners();
-        
-        // Setup modals
-        this.setupModals();
-        
-        // Initialize features
-        this.initializeFeatures();
-        
-        // Load saved pipeline if exists - COMMENTED OUT for manual loading
-        // this.loadSavedPipeline();
-        
-        // Start auto-save
-        this.startAutoSave();
-        
-        this.isInitialized = true;
-        console.log('✅ Enhanced Buildkite Pipeline Builder App initialized successfully!');
-    }
-
-    // FIXED: Ensure properties panel exists and is properly set up
-    ensurePropertiesPanel() {
-        console.log('🔍 Ensuring properties panel structure...');
-        
-        // Check if properties panel exists
-        let propertiesPanel = document.getElementById('properties-panel');
-        if (!propertiesPanel) {
-            console.error('❌ Properties panel not found in DOM!');
-            return;
-        }
-        
-        // Ensure it's visible
-        propertiesPanel.style.display = 'block';
-        console.log('✅ Properties panel made visible');
-        
-        // Check if properties content exists
-        let propertiesContent = document.getElementById('properties-content');
-        if (!propertiesContent) {
-            console.warn('⚠️ Properties content not found, checking for alternatives...');
             
-            // Look for alternative content container
-            propertiesContent = propertiesPanel.querySelector('.properties-content, .panel-content');
-            if (propertiesContent && !propertiesContent.id) {
-                propertiesContent.id = 'properties-content';
-                console.log('✅ Added properties-content ID to existing element');
-            } else if (!propertiesContent) {
-                // Create properties content if it doesn't exist
-                console.log('📝 Creating properties content element...');
-                propertiesContent = document.createElement('div');
-                propertiesContent.id = 'properties-content';
-                propertiesContent.className = 'properties-content panel-content';
-                propertiesContent.innerHTML = `
-                    <div class="no-selection">
-                        <i class="fas fa-info-circle"></i>
-                        <p>Select a step to view its properties</p>
-                    </div>
-                `;
-                
-                // Find or create header
-                let header = propertiesPanel.querySelector('.properties-header, .panel-header');
-                if (header) {
-                    header.insertAdjacentElement('afterend', propertiesContent);
-                } else {
-                    propertiesPanel.appendChild(propertiesContent);
+            if (confirm('Are you sure you want to clear the entire pipeline? This action cannot be undone.')) {
+                this.pipelineBuilder?.clearPipeline();
+                this.updateYAML();
+                this.updateStepCount();
+                this.showNotification('Pipeline cleared', 'info');
+            }
+        }, 'clear-pipeline');
+        
+        // Export YAML
+        this.addEventListenerOnce(document.getElementById('export-yaml'), 'click', () => {
+            this.exportYAML();
+        }, 'export-yaml');
+        
+        // Share Pipeline
+        this.addEventListenerOnce(document.getElementById('share-pipeline'), 'click', () => {
+            if (this.pipelineSharing) {
+                this.pipelineSharing.sharePipeline();
+            } else {
+                this.showNotification('Sharing feature not available', 'warning');
+            }
+        }, 'share-pipeline');
+        
+        // Load Saved
+        this.addEventListenerOnce(document.getElementById('load-saved-pipeline'), 'click', () => {
+            const saved = localStorage.getItem('buildkite-pipeline');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    this.pipelineBuilder.steps = config.steps || [];
+                    this.pipelineBuilder.renderPipeline();
+                    this.updateYAML();
+                    this.updateStepCount();
+                    this.showNotification('Saved pipeline loaded', 'success');
+                } catch (e) {
+                    this.showNotification('Failed to load saved pipeline', 'error');
                 }
-                console.log('✅ Created and added properties content element');
+            } else {
+                this.showNotification('No saved pipeline found', 'info');
             }
+        }, 'load-saved');
+        
+        console.log('✅ Header buttons configured');
+    }
+
+    setupQuickActionButtons() {
+        console.log('🔧 Setting up quick action buttons...');
+        
+        // Plugin Catalog
+        this.addEventListenerOnce(document.getElementById('plugin-catalog-btn'), 'click', () => {
+            window.showModal('plugin-catalog-modal');
+            this.populatePluginCatalog();
+        }, 'plugin-catalog-btn');
+        
+        // Matrix Builder
+        this.addEventListenerOnce(document.getElementById('matrix-builder-btn'), 'click', () => {
+            if (this.pipelineBuilder?.selectedStep?.type === 'command') {
+                window.showModal('matrix-builder-modal');
+                if (this.matrixBuilder) {
+                    this.matrixBuilder.open(this.pipelineBuilder.selectedStep);
+                }
+            } else {
+                this.showNotification('Please select a command step first', 'info');
+            }
+        }, 'matrix-builder-btn');
+        
+        // Templates
+        this.addEventListenerOnce(document.getElementById('templates-btn'), 'click', () => {
+            window.showModal('step-templates-modal');
+            this.populateTemplates();
+        }, 'templates-btn');
+        
+        // Validate Pipeline
+        this.addEventListenerOnce(document.getElementById('validate-pipeline-btn'), 'click', () => {
+            this.validatePipeline();
+        }, 'validate-pipeline-btn');
+        
+        console.log('✅ Quick action buttons configured');
+    }
+
+    setupPluginCatalog() {
+        const modal = document.getElementById('plugin-catalog-modal');
+        if (!modal) return;
+        
+        const searchInput = document.getElementById('plugin-search');
+        const filterBtns = modal.querySelectorAll('.filter-btn');
+        
+        // Search functionality
+        if (searchInput) {
+            this.addEventListenerOnce(searchInput, 'input', (e) => {
+                this.filterPlugins(e.target.value);
+            }, 'plugin-search');
         }
         
-        // Verify final structure
-        const finalCheck = document.getElementById('properties-content');
-        if (finalCheck) {
-            console.log('✅ Properties panel structure verified and ready');
-        } else {
-            console.error('❌ Failed to set up properties panel structure');
+        // Filter buttons
+        filterBtns.forEach(btn => {
+            this.addEventListenerOnce(btn, 'click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.filterPlugins(searchInput?.value || '', btn.dataset.filter);
+            }, `plugin-filter-${btn.dataset.filter}`);
+        });
+        
+        console.log('✅ Plugin catalog setup complete');
+    }
+
+    populatePluginCatalog() {
+        const pluginList = document.getElementById('plugin-list');
+        if (!pluginList || !this.pipelineBuilder?.pluginCatalog) return;
+        
+        const plugins = Object.entries(this.pipelineBuilder.pluginCatalog);
+        
+        pluginList.innerHTML = `
+            <div class="plugin-grid">
+                ${plugins.map(([key, plugin]) => `
+                    <div class="plugin-card" data-plugin="${key}" data-category="${plugin.category || 'other'}">
+                        <h4><i class="fas ${plugin.icon || 'fa-plug'}"></i> ${plugin.name}</h4>
+                        <p>${plugin.description}</p>
+                        <div class="plugin-meta">
+                            <span class="plugin-category">${plugin.category || 'Other'}</span>
+                            ${plugin.official ? '<span class="plugin-official">Official</span>' : ''}
+                        </div>
+                        <button class="btn btn-primary btn-small add-plugin-btn" data-plugin-key="${key}">
+                            <i class="fas fa-plus"></i> Add to Pipeline
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Add click handlers for plugin cards
+        pluginList.querySelectorAll('.add-plugin-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pluginKey = btn.dataset.pluginKey;
+                this.addPluginToPipeline(pluginKey);
+            });
+        });
+    }
+
+    addPluginToPipeline(pluginKey) {
+        if (!this.pipelineBuilder) return;
+        
+        const step = this.pipelineBuilder.addStep('command');
+        if (step) {
+            step.properties.label = `${this.pipelineBuilder.pluginCatalog[pluginKey].name} Step`;
+            step.properties.plugins = {
+                [pluginKey]: this.getDefaultPluginConfig(pluginKey)
+            };
+            this.pipelineBuilder.renderPipeline();
+            this.updateYAML();
+            this.updateStepCount();
+            window.closeModal('plugin-catalog-modal');
+            this.showNotification(`Added ${pluginKey} plugin to pipeline`, 'success');
         }
     }
 
-    waitForPipelineBuilder() {
-        console.log('⏳ Waiting for Pipeline Builder...');
-        let attempts = 0;
-        const maxAttempts = 20;
+    getDefaultPluginConfig(pluginKey) {
+        const plugin = this.pipelineBuilder?.pluginCatalog[pluginKey];
+        if (!plugin?.config) return {};
         
-        const checkInterval = setInterval(() => {
-            attempts++;
+        const config = {};
+        Object.entries(plugin.config).forEach(([key, def]) => {
+            config[key] = def.default || '';
+        });
+        return config;
+    }
+
+    filterPlugins(searchTerm = '', category = 'all') {
+        const pluginCards = document.querySelectorAll('.plugin-card');
+        
+        pluginCards.forEach(card => {
+            const matchesSearch = !searchTerm || 
+                card.textContent.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = category === 'all' || 
+                card.dataset.category === category;
             
-            if (window.pipelineBuilder || (window.PipelineBuilder && (window.pipelineBuilder = new PipelineBuilder()))) {
-                console.log('✅ Pipeline Builder found/created after', attempts, 'attempts');
-                clearInterval(checkInterval);
-                this.pipelineBuilder = window.pipelineBuilder;
-                
-                // Ensure properties panel is visible
-                this.ensurePropertiesPanel();
-                
-                this.continueInitialization();
-            } else if (attempts >= maxAttempts) {
-                console.error('❌ Pipeline Builder not found after', maxAttempts, 'attempts');
-                clearInterval(checkInterval);
-                this.showNotification('Failed to initialize pipeline builder', 'error');
+            card.style.display = matchesSearch && matchesCategory ? 'block' : 'none';
+        });
+    }
+
+    setupMatrixBuilder() {
+        const modal = document.getElementById('matrix-builder-modal');
+        if (!modal) return;
+        
+        // Add dimension button
+        this.addEventListenerOnce(document.getElementById('add-matrix-dimension'), 'click', () => {
+            this.addMatrixDimension();
+        }, 'add-matrix-dimension');
+        
+        // Apply matrix button
+        this.addEventListenerOnce(document.getElementById('apply-matrix'), 'click', () => {
+            this.applyMatrixConfiguration();
+        }, 'apply-matrix');
+        
+        console.log('✅ Matrix Builder setup complete');
+    }
+
+    addMatrixDimension() {
+        const dimensionsList = document.getElementById('matrix-dimensions-list');
+        if (!dimensionsList) return;
+        
+        const dimensionId = `dimension-${Date.now()}`;
+        const dimensionHtml = `
+            <div class="matrix-dimension" id="${dimensionId}">
+                <input type="text" class="dimension-name" placeholder="Variable name (e.g., os)">
+                <input type="text" class="dimension-values" placeholder="Values (comma-separated, e.g., ubuntu, macos, windows)">
+                <button class="btn btn-danger btn-small remove-dimension">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        dimensionsList.insertAdjacentHTML('beforeend', dimensionHtml);
+        
+        // Add remove handler
+        const dimension = document.getElementById(dimensionId);
+        dimension.querySelector('.remove-dimension').addEventListener('click', () => {
+            dimension.remove();
+            this.updateMatrixPreview();
+        });
+        
+        // Update preview on input
+        dimension.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => this.updateMatrixPreview());
+        });
+    }
+
+    updateMatrixPreview() {
+        const dimensions = document.querySelectorAll('.matrix-dimension');
+        const previewContent = document.getElementById('matrix-preview-content');
+        
+        if (!previewContent) return;
+        
+        const matrix = {};
+        dimensions.forEach(dim => {
+            const name = dim.querySelector('.dimension-name').value.trim();
+            const values = dim.querySelector('.dimension-values').value
+                .split(',')
+                .map(v => v.trim())
+                .filter(v => v);
+            
+            if (name && values.length > 0) {
+                matrix[name] = values;
             }
-        }, 200);
+        });
+        
+        if (Object.keys(matrix).length === 0) {
+            previewContent.innerHTML = '<p class="empty-state">Add dimensions to see matrix preview</p>';
+            return;
+        }
+        
+        // Calculate combinations
+        const combinations = this.calculateMatrixCombinations(matrix);
+        
+        previewContent.innerHTML = `
+            <div class="matrix-stats">
+                <strong>Total combinations: ${combinations.length}</strong>
+                ${combinations.length > this.pipelineBuilder?.limits?.maxMatrixJobs ? 
+                    `<span class="warning"> (exceeds limit of ${this.pipelineBuilder.limits.maxMatrixJobs})</span>` : ''}
+            </div>
+            <div class="matrix-combinations">
+                ${combinations.slice(0, 10).map(combo => `
+                    <div class="combination-item">
+                        ${Object.entries(combo).map(([k, v]) => `<span class="combo-var">${k}=${v}</span>`).join('')}
+                    </div>
+                `).join('')}
+                ${combinations.length > 10 ? `<p>... and ${combinations.length - 10} more</p>` : ''}
+            </div>
+        `;
     }
 
-    continueInitialization() {
-        // Continue with the rest of the initialization
-        this.setupEventListeners();
-        this.setupModals();
-        this.initializeFeatures();
-        this.startAutoSave();
-        this.isInitialized = true;
-        console.log('✅ Continued initialization completed');
+    calculateMatrixCombinations(matrix) {
+        const keys = Object.keys(matrix);
+        if (keys.length === 0) return [];
+        
+        const combinations = [];
+        const generate = (index, current) => {
+            if (index === keys.length) {
+                combinations.push({...current});
+                return;
+            }
+            
+            const key = keys[index];
+            matrix[key].forEach(value => {
+                current[key] = value;
+                generate(index + 1, current);
+            });
+        };
+        
+        generate(0, {});
+        return combinations;
     }
 
-    // Helper to prevent duplicate event listeners
+    applyMatrixConfiguration() {
+        if (!this.pipelineBuilder?.selectedStep) {
+            this.showNotification('Please select a step first', 'warning');
+            return;
+        }
+        
+        const dimensions = document.querySelectorAll('.matrix-dimension');
+        const matrix = [];
+        
+        dimensions.forEach(dim => {
+            const name = dim.querySelector('.dimension-name').value.trim();
+            const values = dim.querySelector('.dimension-values').value
+                .split(',')
+                .map(v => v.trim())
+                .filter(v => v);
+            
+            if (name && values.length > 0) {
+                const matrixItem = {};
+                matrixItem[name] = values;
+                matrix.push(matrixItem);
+            }
+        });
+        
+        if (matrix.length > 0) {
+            this.pipelineBuilder.selectedStep.properties.matrix = matrix;
+            this.pipelineBuilder.renderProperties();
+            this.updateYAML();
+            window.closeModal('matrix-builder-modal');
+            this.showNotification('Matrix configuration applied', 'success');
+        } else {
+            this.showNotification('Please add at least one dimension', 'warning');
+        }
+    }
+
+    setupStepTemplates() {
+        console.log('✅ Step templates setup complete');
+    }
+
+    populateTemplates() {
+        const templateList = document.getElementById('template-list');
+        if (!templateList || !window.pipelineTemplates) return;
+        
+        const templates = window.pipelineTemplates.templates;
+        
+        templateList.innerHTML = Object.entries(templates).map(([key, template]) => `
+            <div class="template-card" data-template="${key}">
+                <h4><i class="fas ${template.icon}"></i> ${template.name}</h4>
+                <p>${template.description}</p>
+                <div class="template-meta">
+                    <span class="template-steps">${template.pipeline.steps.length} steps</span>
+                </div>
+                <button class="btn btn-primary btn-small use-template-btn" data-template-key="${key}">
+                    Use Template
+                </button>
+            </div>
+        `).join('');
+        
+        // Add click handlers
+        templateList.querySelectorAll('.use-template-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const templateKey = btn.dataset.templateKey;
+                if (window.pipelineTemplates) {
+                    window.pipelineTemplates.loadTemplate(templateKey);
+                    window.closeModal('step-templates-modal');
+                    this.updateYAML();
+                    this.updateStepCount();
+                }
+            });
+        });
+    }
+
+    setupCommandPalette() {
+        const input = document.getElementById('command-search');
+        if (!input) return;
+        
+        this.addEventListenerOnce(input, 'input', (e) => {
+            this.filterCommands(e.target.value);
+        }, 'command-search');
+        
+        // Handle command selection
+        this.addEventListenerOnce(input, 'keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const selected = document.querySelector('.command-item.selected');
+                if (selected) {
+                    const action = selected.dataset.action;
+                    this.executeCommand(action);
+                    this.closeCommandPalette();
+                }
+            } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.navigateCommands(e.key === 'ArrowDown' ? 1 : -1);
+            }
+        }, 'command-navigation');
+        
+        // Click handlers for command items
+        document.querySelectorAll('.command-item').forEach(item => {
+            this.addEventListenerOnce(item, 'click', () => {
+                this.executeCommand(item.dataset.action);
+                this.closeCommandPalette();
+            }, `command-${item.dataset.action}`);
+        });
+        
+        console.log('✅ Command palette setup complete');
+    }
+
+    filterCommands(searchTerm) {
+        const commandItems = document.querySelectorAll('.command-item');
+        let visibleIndex = 0;
+        
+        commandItems.forEach((item, index) => {
+            const matches = !searchTerm || 
+                item.textContent.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            item.style.display = matches ? 'flex' : 'none';
+            item.classList.remove('selected');
+            
+            if (matches && visibleIndex === 0) {
+                item.classList.add('selected');
+                this.currentCommandIndex = index;
+            }
+            
+            if (matches) visibleIndex++;
+        });
+    }
+
+    navigateCommands(direction) {
+        const visibleCommands = Array.from(document.querySelectorAll('.command-item')).filter(
+            item => item.style.display !== 'none'
+        );
+        
+        if (visibleCommands.length === 0) return;
+        
+        const currentSelected = visibleCommands.findIndex(item => item.classList.contains('selected'));
+        let newIndex = currentSelected + direction;
+        
+        if (newIndex < 0) newIndex = visibleCommands.length - 1;
+        if (newIndex >= visibleCommands.length) newIndex = 0;
+        
+        visibleCommands.forEach((item, index) => {
+            item.classList.toggle('selected', index === newIndex);
+        });
+        
+        this.currentCommandIndex = newIndex;
+    }
+
+    executeCommand(action) {
+        const actions = {
+            'add-command-step': () => this.pipelineBuilder?.addStep('command'),
+            'add-wait-step': () => this.pipelineBuilder?.addStep('wait'),
+            'add-block-step': () => this.pipelineBuilder?.addStep('block'),
+            'add-input-step': () => this.pipelineBuilder?.addStep('input'),
+            'add-trigger-step': () => this.pipelineBuilder?.addStep('trigger'),
+            'add-group-step': () => this.pipelineBuilder?.addStep('group'),
+            'export-yaml': () => this.exportYAML(),
+            'import-yaml': () => document.getElementById('import-file')?.click(),
+            'clear-pipeline': () => {
+                if (confirm('Are you sure you want to clear the pipeline?')) {
+                    this.pipelineBuilder?.clearPipeline();
+                }
+            },
+            'load-example': () => this.pipelineBuilder?.loadExample(),
+            'toggle-yaml': () => this.toggleYAMLView(),
+            'save-pipeline': () => this.savePipeline(),
+            'plugin-catalog': () => {
+                window.showModal('plugin-catalog-modal');
+                this.populatePluginCatalog();
+            },
+            'matrix-builder': () => {
+                if (this.pipelineBuilder?.selectedStep?.type === 'command') {
+                    window.showModal('matrix-builder-modal');
+                } else {
+                    this.showNotification('Select a command step first', 'info');
+                }
+            },
+            'step-templates': () => {
+                window.showModal('step-templates-modal');
+                this.populateTemplates();
+            },
+            'validate-pipeline': () => this.validatePipeline(),
+            'share-pipeline': () => this.pipelineSharing?.sharePipeline(),
+            'keyboard-shortcuts': () => this.showKeyboardShortcuts(),
+        };
+        
+        const action_fn = actions[action];
+        if (action_fn) {
+            action_fn();
+            this.updateYAML();
+            this.updateStepCount();
+        }
+    }
+
+    setupYamlOutputHandlers() {
+        const copyBtn = document.getElementById('copy-yaml');
+        const downloadBtn = document.getElementById('download-yaml');
+        const validateBtn = document.getElementById('validate-yaml');
+        const copyInlineBtn = document.getElementById('copy-yaml-inline');
+        const validateInlineBtn = document.getElementById('validate-yaml-inline');
+        
+        if (copyBtn) {
+            this.addEventListenerOnce(copyBtn, 'click', () => {
+                const yamlContent = document.getElementById('yaml-content')?.textContent;
+                if (yamlContent) {
+                    navigator.clipboard.writeText(yamlContent).then(() => {
+                        this.showNotification('YAML copied to clipboard', 'success');
+                    }).catch(() => {
+                        this.showNotification('Failed to copy YAML', 'error');
+                    });
+                }
+            }, 'copy-yaml');
+        }
+        
+        if (copyInlineBtn) {
+            this.addEventListenerOnce(copyInlineBtn, 'click', () => {
+                const yamlContent = document.getElementById('yaml-output')?.textContent;
+                if (yamlContent) {
+                    navigator.clipboard.writeText(yamlContent).then(() => {
+                        this.showNotification('YAML copied to clipboard', 'success');
+                    }).catch(() => {
+                        this.showNotification('Failed to copy YAML', 'error');
+                    });
+                }
+            }, 'copy-yaml-inline');
+        }
+        
+        if (downloadBtn) {
+            this.addEventListenerOnce(downloadBtn, 'click', () => {
+                const yamlContent = document.getElementById('yaml-content')?.textContent;
+                if (yamlContent && this.yamlGenerator) {
+                    this.yamlGenerator.downloadYAML(yamlContent, 'pipeline.yml');
+                    this.showNotification('YAML downloaded', 'success');
+                }
+            }, 'download-yaml');
+        }
+        
+        if (validateBtn) {
+            this.addEventListenerOnce(validateBtn, 'click', () => {
+                this.validateYAML();
+            }, 'validate-yaml');
+        }
+        
+        if (validateInlineBtn) {
+            this.addEventListenerOnce(validateInlineBtn, 'click', () => {
+                this.validateYAML();
+            }, 'validate-yaml-inline');
+        }
+        
+        console.log('✅ YAML output handlers configured');
+    }
+
+    setupImportExportHandlers() {
+        const importFile = document.getElementById('import-file');
+        if (importFile) {
+            this.addEventListenerOnce(importFile, 'change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.importYAMLFile(file);
+                }
+            }, 'import-file');
+        }
+        
+        console.log('✅ Import/Export handlers configured');
+    }
+
+    setupPipelineSharing() {
+        // Check URL for shared pipeline on load
+        if (this.pipelineSharing) {
+            this.pipelineSharing.checkForSharedPipeline();
+        }
+        
+        console.log('✅ Pipeline sharing configured');
+    }
+
+    setupValidationHandlers() {
+        console.log('✅ Validation handlers configured');
+    }
+
+    setupStepCountUpdater() {
+        // Update step count whenever pipeline changes
+        if (this.pipelineBuilder) {
+            // Override renderPipeline to update count
+            const originalRender = this.pipelineBuilder.renderPipeline;
+            this.pipelineBuilder.renderPipeline = function() {
+                originalRender.call(this);
+                if (window.buildkiteApp) {
+                    window.buildkiteApp.updateStepCount();
+                }
+            };
+        }
+        
+        console.log('✅ Step count updater configured');
+    }
+
+    setupPropertiesUpdates() {
+        // Ensure properties update triggers YAML update
+        if (this.pipelineBuilder) {
+            const originalRenderProps = this.pipelineBuilder.renderProperties;
+            this.pipelineBuilder.renderProperties = function() {
+                originalRenderProps.call(this);
+                if (window.buildkiteApp) {
+                    window.buildkiteApp.updateYAML();
+                }
+            };
+        }
+        
+        console.log('✅ Properties update handlers configured');
+    }
+
+    setupFileDropZone() {
+        const dropZone = document.getElementById('pipeline-steps');
+        if (!dropZone) return;
+        
+        // Prevent default file drop on the whole page
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.addEventListener(eventName, (e) => {
+                if (e.dataTransfer?.files?.length > 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, false);
+        });
+        
+        console.log('✅ File drop zone configured');
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Command palette
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                this.toggleCommandPalette();
+            }
+            
+            // Save pipeline
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                this.savePipeline();
+            }
+            
+            // Export YAML
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                this.exportYAML();
+            }
+            
+            // Load example
+            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                e.preventDefault();
+                this.pipelineBuilder?.loadExample();
+                this.updateYAML();
+                this.updateStepCount();
+            }
+            
+            // Toggle YAML view
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault();
+                this.toggleYAMLView();
+            }
+            
+            // Delete selected step
+            if (e.key === 'Delete' && this.pipelineBuilder?.selectedStep) {
+                e.preventDefault();
+                const stepId = this.pipelineBuilder.selectedStep.id;
+                if (confirm('Delete this step?')) {
+                    this.pipelineBuilder.deleteStep(stepId);
+                    this.updateYAML();
+                    this.updateStepCount();
+                }
+            }
+            
+            // Duplicate selected step
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.pipelineBuilder?.selectedStep) {
+                e.preventDefault();
+                const stepId = this.pipelineBuilder.selectedStep.id;
+                this.pipelineBuilder.duplicateStep(stepId);
+                this.updateYAML();
+                this.updateStepCount();
+            }
+        });
+        
+        console.log('✅ Keyboard shortcuts configured');
+    }
+
+    initializeFeatures() {
+        // Load from localStorage if available
+        this.loadFromLocalStorage();
+        
+        // Update YAML on first load
+        this.updateYAML();
+        
+        // Update step count
+        this.updateStepCount();
+        
+        // Check for shared pipeline
+        if (this.pipelineSharing) {
+            this.pipelineSharing.checkForSharedPipeline();
+        }
+        
+        // Initialize syntax highlighting styles
+        this.initializeYAMLSyntaxStyles();
+        
+        console.log('✅ Features initialized');
+    }
+
+    initializeYAMLSyntaxStyles() {
+        if (!document.getElementById('yaml-syntax-styles')) {
+            const yamlStyles = `
+                .yaml-key { color: #e06c75; font-weight: 600; }
+                .yaml-string { color: #98c379; }
+                .yaml-number { color: #d19a66; }
+                .yaml-boolean { color: #56b6c2; }
+                .yaml-array { color: #c678dd; }
+                .yaml-variable { color: #61afef; font-style: italic; }
+            `;
+            
+            const styleSheet = document.createElement('style');
+            styleSheet.id = 'yaml-syntax-styles';
+            styleSheet.textContent = yamlStyles;
+            document.head.appendChild(styleSheet);
+        }
+    }
+
+    startAutoSave() {
+        if (this.autoSaveEnabled) {
+            this.autoSaveInterval = setInterval(() => {
+                this.saveToLocalStorage();
+            }, 30000); // Auto-save every 30 seconds
+        }
+        
+        console.log('✅ Auto-save started');
+    }
+
+    finalizeInitialization() {
+        // Remove loading overlay if exists
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // Show welcome message
+        if (!localStorage.getItem('buildkite-welcome-shown')) {
+            this.showNotification('Welcome to Buildkite Pipeline Builder! Press Ctrl+K to open command palette.', 'info', 5000);
+            localStorage.setItem('buildkite-welcome-shown', 'true');
+        }
+        
+        // Debug final state
+        if (this.debugMode) {
+            this.debugFinalState();
+        }
+        
+        console.log('✅ Finalization complete');
+    }
+
+    debugFinalState() {
+        console.log('🔍 Final state debug:');
+        console.log(`🏗️ Pipeline Builder: ${this.pipelineBuilder ? '✅' : '❌'}`);
+        console.log(`📋 YAML Generator: ${this.yamlGenerator ? '✅' : '❌'}`);
+        console.log(`🔢 Matrix Builder: ${this.matrixBuilder ? '✅' : '❌'}`);
+        console.log(`🔀 Conditional Logic: ${this.conditionalLogicBuilder ? '✅' : '❌'}`);
+        console.log(`🔗 Pipeline Sharing: ${this.pipelineSharing ? '✅' : '❌'}`);
+        console.log(`⌨️ Command Palette: ${this.commandPalette ? '✅' : '❌'}`);
+        console.log(`📊 Steps in pipeline: ${this.pipelineBuilder?.steps?.length || 0}`);
+        console.log(`💾 Auto-save: ${this.autoSaveEnabled ? '✅' : '❌'}`);
+        console.log('🚀 COMPLETE Pipeline Builder ready!');
+    }
+
+    // Helper Methods
     addEventListenerOnce(element, event, handler, identifier) {
         if (!element) {
             console.warn(`⚠️ Element not found for event listener: ${identifier}`);
@@ -226,795 +1410,73 @@ class BuildkiteApp {
         
         element.addEventListener(event, handler);
         this.attachedListeners.add(key);
-        console.log(`✅ Event listener attached: ${key}`);
-    }
-
-    setupEventListeners() {
-        // Header actions
-        const loadExampleBtn = document.getElementById('load-example');
-        if (loadExampleBtn) {
-            this.addEventListenerOnce(loadExampleBtn, 'click', () => {
-                if (this.pipelineBuilder && this.pipelineBuilder.loadExample) {
-                    this.pipelineBuilder.loadExample();
-                    this.updateYAML();
-                    this.showNotification('Example pipeline loaded', 'success');
-                }
-            }, 'load-example');
-        }
         
-        const clearPipelineBtn = document.getElementById('clear-pipeline');
-        if (clearPipelineBtn) {
-            this.addEventListenerOnce(clearPipelineBtn, 'click', () => {
-                if (confirm('Are you sure you want to clear the entire pipeline?')) {
-                    if (this.pipelineBuilder && this.pipelineBuilder.clearPipeline) {
-                        this.pipelineBuilder.clearPipeline();
-                        this.updateYAML();
-                        this.showNotification('Pipeline cleared', 'success');
-                    }
-                }
-            }, 'clear-pipeline');
-        }
-        
-        // NEW: Load saved pipeline button
-        const loadSavedBtn = document.getElementById('load-saved-pipeline');
-        if (loadSavedBtn) {
-            this.addEventListenerOnce(loadSavedBtn, 'click', () => {
-                this.loadSavedPipeline();
-                this.showNotification('Loaded saved pipeline', 'success');
-            }, 'load-saved');
-        }
-        
-        // NEW: Share pipeline button
-        const sharePipelineBtn = document.getElementById('share-pipeline');
-        if (sharePipelineBtn) {
-            this.addEventListenerOnce(sharePipelineBtn, 'click', () => {
-                if (this.pipelineSharing) {
-                    this.pipelineSharing.openShareModal();
-                }
-            }, 'share-pipeline');
-        }
-        
-        const exportYamlBtn = document.getElementById('export-yaml');
-        if (exportYamlBtn) {
-            this.addEventListenerOnce(exportYamlBtn, 'click', () => {
-                this.exportYAML();
-            }, 'export-yaml');
-        }
-        
-        // Canvas controls
-        const toggleYamlBtn = document.getElementById('toggle-yaml');
-        if (toggleYamlBtn) {
-            this.addEventListenerOnce(toggleYamlBtn, 'click', () => {
-                this.toggleYAML();
-            }, 'toggle-yaml');
-        }
-        
-        const copyYamlBtn = document.getElementById('copy-yaml');
-        if (copyYamlBtn) {
-            this.addEventListenerOnce(copyYamlBtn, 'click', () => {
-                this.copyYAML();
-            }, 'copy-yaml');
-        }
-        
-        // NEW: Validate pipeline button
-        const validatePipelineBtn = document.getElementById('validate-pipeline');
-        if (validatePipelineBtn) {
-            this.addEventListenerOnce(validatePipelineBtn, 'click', () => {
-                this.validatePipeline();
-            }, 'validate-pipeline');
-        }
-        
-        // Sidebar actions - Use event delegation to avoid duplicates
-        this.addEventListenerOnce(document, 'click', (e) => {
-            const actionBtn = e.target.closest('[data-action]');
-            if (actionBtn) {
-                const action = actionBtn.dataset.action;
-                this.handleAction(action);
-            }
-        }, 'sidebar-actions');
-        
-        // Plugin quick add buttons - Use event delegation
-        this.addEventListenerOnce(document, 'click', (e) => {
-            const pluginBtn = e.target.closest('.plugin-quick-add');
-            if (pluginBtn) {
-                const plugin = pluginBtn.dataset.plugin;
-                if (this.pipelineBuilder && this.pipelineBuilder.addPluginStep) {
-                    this.pipelineBuilder.addPluginStep(plugin);
-                    this.showNotification(`${plugin} plugin added`, 'success');
-                }
-            }
-        }, 'plugin-quick-add');
-        
-        // Listen for pipeline changes
-        this.addEventListenerOnce(document, 'pipelineChanged', () => {
-            this.updateYAML();
-            this.savePipeline();
-        }, 'pipeline-changed');
-        
-        // Keyboard shortcuts
-        this.setupKeyboardShortcuts();
-        
-        // YAML Export Modal buttons
-        this.setupYAMLExportButtons();
-        
-        // Import button
-        const importBtn = document.getElementById('import-pipeline');
-        if (importBtn) {
-            this.addEventListenerOnce(importBtn, 'click', () => {
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = '.yml,.yaml,.json';
-                fileInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        this.importPipelineFile(file);
-                    }
-                });
-                fileInput.click();
-            }, 'import-pipeline');
+        if (this.debugMode) {
+            console.log(`✅ Event listener attached: ${key}`);
         }
     }
 
-    setupModals() {
-        // Plugin Catalog Modal
-        this.setupPluginCatalog();
+    showNotification(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('notification-container') || 
+                         document.getElementById('toast-container');
         
-        // Matrix Builder Modal - NEW
-        this.setupMatrixBuilder();
-        
-        // Step Templates Modal
-        this.setupStepTemplates();
-        
-        // Variable Manager Modal
-        this.setupVariableManager();
-        
-        // Pattern Library Modal
-        this.setupPatternLibrary();
-        
-        // Single modal close handler using event delegation
-        this.addEventListenerOnce(document, 'click', (e) => {
-            // Close button clicked
-            if (e.target.matches('.close-modal, .close-modal *')) {
-                const modal = e.target.closest('.modal');
-                if (modal) {
-                    modal.style.display = 'none';
-                    modal.classList.add('hidden');
-                }
-            }
-            // Modal backdrop clicked
-            else if (e.target.matches('.modal')) {
-                e.target.style.display = 'none';
-                e.target.classList.add('hidden');
-            }
-        }, 'unified-modal-close');
-    }
-
-    initializeFeatures() {
-        // Set up auto-save indicator
-        this.setupAutoSaveIndicator();
-        
-        // Set up file drag-drop (FIXED: Now uses overlay instead of conflicting with pipeline-steps)
-        this.setupFileDragDrop();
-        
-        // Set up command palette
-        this.setupCommandPalette();
-        
-        // Load saved pipeline if exists - REMOVED for manual loading
-        // this.loadSavedPipeline();
-    }
-
-    setupAutoSaveIndicator() {
-        // Add auto-save indicator to header
-        const headerActions = document.querySelector('.header-actions');
-        if (headerActions && !document.querySelector('.auto-save-indicator')) {
-            const indicator = document.createElement('div');
-            indicator.className = 'auto-save-indicator';
-            indicator.innerHTML = '<i class="fas fa-check-circle"></i> Auto-saved';
-            indicator.style.display = 'none';
-            headerActions.appendChild(indicator);
-        }
-    }
-
-    setupFileDragDrop() {
-        // Check if already setup
-        if (document.getElementById('file-drop-overlay')) {
+        if (!container) {
+            console.warn('No notification container found');
             return;
         }
         
-        // FIXED: Create a dedicated file drop overlay that doesn't interfere with step dragging
-        const overlay = document.createElement('div');
-        overlay.id = 'file-drop-overlay';
-        overlay.className = 'file-drop-overlay';
-        overlay.innerHTML = `
-            <div class="file-drop-content">
-                <i class="fas fa-file-upload"></i>
-                <h3>Drop pipeline file here</h3>
-                <p>Supports .yml, .yaml, and .json files</p>
-            </div>
+        const notification = document.createElement('div');
+        notification.className = `toast toast-${type}`;
+        notification.innerHTML = `
+            <i class="fas ${this.getNotificationIcon(type)}"></i>
+            <span>${message}</span>
         `;
-        document.body.appendChild(overlay);
         
-        // Global document drag handlers to detect file drags
-        let dragCounter = 0;
+        container.appendChild(notification);
         
-        this.addEventListenerOnce(document, 'dragenter', (e) => {
-            // Only show overlay for file drags, not for step drags
-            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
-                dragCounter++;
-                if (dragCounter === 1) {
-                    overlay.classList.add('active');
-                }
-                e.preventDefault();
-            }
-        }, 'file-dragenter');
-        
-        this.addEventListenerOnce(document, 'dragleave', (e) => {
-            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
-                dragCounter--;
-                if (dragCounter === 0) {
-                    overlay.classList.remove('active');
-                }
-            }
-        }, 'file-dragleave');
-        
-        this.addEventListenerOnce(document, 'dragover', (e) => {
-            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-            }
-        }, 'file-dragover');
-        
-        this.addEventListenerOnce(document, 'drop', (e) => {
-            if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
-                e.preventDefault();
-                dragCounter = 0;
-                overlay.classList.remove('active');
-                
-                const files = Array.from(e.dataTransfer.files);
-                const pipelineFile = files.find(file => 
-                    file.name.endsWith('.yml') || 
-                    file.name.endsWith('.yaml') || 
-                    file.name.endsWith('.json')
-                );
-                
-                if (pipelineFile) {
-                    this.importPipelineFile(pipelineFile);
-                } else if (files.length > 0) {
-                    this.showNotification('Please drop a valid pipeline file (.yml, .yaml, or .json)', 'warning');
-                }
-            }
-        }, 'file-drop');
-        
-        // Style for the overlay
-        if (!document.getElementById('file-drop-styles')) {
-            const style = document.createElement('style');
-            style.id = 'file-drop-styles';
-            style.textContent = `
-                .file-drop-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(102, 126, 234, 0.95);
-                    z-index: 10000;
-                    display: none;
-                    align-items: center;
-                    justify-content: center;
-                    pointer-events: none;
-                }
-                
-                .file-drop-overlay.active {
-                    display: flex;
-                    pointer-events: all;
-                }
-                
-                .file-drop-content {
-                    text-align: center;
-                    color: white;
-                    transform: scale(0.9);
-                    animation: dropZoomIn 0.3s ease forwards;
-                }
-                
-                .file-drop-content i {
-                    font-size: 5rem;
-                    margin-bottom: 1rem;
-                    opacity: 0.9;
-                }
-                
-                .file-drop-content h3 {
-                    font-size: 2rem;
-                    margin-bottom: 0.5rem;
-                }
-                
-                .file-drop-content p {
-                    font-size: 1.2rem;
-                    opacity: 0.8;
-                }
-                
-                @keyframes dropZoomIn {
-                    to {
-                        transform: scale(1);
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
+        // Auto remove
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 300);
+        }, duration);
     }
 
-    setupCommandPalette() {
+    showToast(message, type = 'info') {
+        this.showNotification(message, type);
+    }
+
+    getNotificationIcon(type) {
+        const icons = {
+            'success': 'fa-check-circle',
+            'error': 'fa-exclamation-circle',
+            'warning': 'fa-exclamation-triangle',
+            'info': 'fa-info-circle'
+        };
+        return icons[type] || icons.info;
+    }
+
+    showErrorMessage(message) {
+        this.showNotification(message, 'error', 5000);
+    }
+
+    // Command Palette Methods
+    toggleCommandPalette() {
         const palette = document.getElementById('command-palette');
         if (!palette) return;
         
-        const input = document.getElementById('command-input');
-        const results = document.getElementById('command-results');
+        const isHidden = palette.classList.contains('hidden');
         
-        // Commands
-        const commands = [
-            { name: 'Add Command Step', action: () => this.pipelineBuilder?.addStep('command'), icon: 'fa-terminal' },
-            { name: 'Add Wait Step', action: () => this.pipelineBuilder?.addStep('wait'), icon: 'fa-hourglass-half' },
-            { name: 'Add Block Step', action: () => this.pipelineBuilder?.addStep('block'), icon: 'fa-hand-paper' },
-            { name: 'Clear Pipeline', action: () => this.pipelineBuilder?.clearPipeline(), icon: 'fa-trash' },
-            { name: 'Export YAML', action: () => this.exportYAML(), icon: 'fa-download' },
-            { name: 'Load Example', action: () => this.pipelineBuilder?.loadExample(), icon: 'fa-file' },
-            { name: 'Toggle YAML View', action: () => this.toggleYAML(), icon: 'fa-code' },
-            { name: 'Validate Pipeline', action: () => this.validatePipeline(), icon: 'fa-check' },
-            { name: 'Import Pipeline', action: () => document.getElementById('import-pipeline')?.click(), icon: 'fa-upload' }
-        ];
-        
-        // Filter function
-        const filterCommands = (query) => {
-            return commands.filter(cmd => 
-                cmd.name.toLowerCase().includes(query.toLowerCase())
-            );
-        };
-        
-        // Render results
-        const renderResults = (filtered) => {
-            if (!results) return;
-            results.innerHTML = filtered.map((cmd, index) => `
-                <div class="command-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
-                    <i class="fas ${cmd.icon}"></i>
-                    <span>${cmd.name}</span>
-                </div>
-            `).join('');
-        };
-        
-        // Input handler
-        if (input) {
-            this.addEventListenerOnce(input, 'input', (e) => {
-                const filtered = filterCommands(e.target.value);
-                renderResults(filtered);
-            }, 'command-input');
-            
-            // Keyboard navigation
-            this.addEventListenerOnce(input, 'keydown', (e) => {
-                if (!results) return;
-                const items = results.querySelectorAll('.command-item');
-                const selected = results.querySelector('.command-item.selected');
-                const selectedIndex = selected ? parseInt(selected.dataset.index) : 0;
-                
-                switch (e.key) {
-                    case 'ArrowDown':
-                        e.preventDefault();
-                        if (selectedIndex < items.length - 1) {
-                            items[selectedIndex]?.classList.remove('selected');
-                            items[selectedIndex + 1]?.classList.add('selected');
-                        }
-                        break;
-                        
-                    case 'ArrowUp':
-                        e.preventDefault();
-                        if (selectedIndex > 0) {
-                            items[selectedIndex]?.classList.remove('selected');
-                            items[selectedIndex - 1]?.classList.add('selected');
-                        }
-                        break;
-                        
-                    case 'Enter':
-                        e.preventDefault();
-                        const filtered = filterCommands(input.value);
-                        if (filtered[selectedIndex]) {
-                            filtered[selectedIndex].action();
-                            palette.style.display = 'none';
-                            input.value = '';
-                        }
-                        break;
-                        
-                    case 'Escape':
-                        palette.style.display = 'none';
-                        input.value = '';
-                        break;
-                }
-            }, 'command-keydown');
-        }
-        
-        // Click handler
-        if (results) {
-            this.addEventListenerOnce(results, 'click', (e) => {
-                const item = e.target.closest('.command-item');
-                if (item && input) {
-                    const index = parseInt(item.dataset.index);
-                    const filtered = filterCommands(input.value);
-                    if (filtered[index]) {
-                        filtered[index].action();
-                        palette.style.display = 'none';
-                        input.value = '';
-                    }
-                }
-            }, 'command-results-click');
-        }
-        
-        // Initial render
-        renderResults(commands);
-    }
-
-    setupKeyboardShortcuts() {
-        this.addEventListenerOnce(document, 'keydown', (e) => {
-            // Command/Ctrl+K - Open command palette
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                this.openCommandPalette();
-            }
-            
-            // Command/Ctrl+S - Save pipeline
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                this.savePipeline();
-                this.showNotification('Pipeline saved', 'success');
-            }
-            
-            // Command/Ctrl+E - Export YAML
-            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-                e.preventDefault();
-                this.exportYAML();
-            }
-            
-            // Command/Ctrl+O - Load example
-            if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-                e.preventDefault();
-                if (this.pipelineBuilder && this.pipelineBuilder.loadExample) {
-                    this.pipelineBuilder.loadExample();
-                    this.updateYAML();
-                }
-            }
-            
-            // Command/Ctrl+Y - Toggle YAML view
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-                e.preventDefault();
-                this.toggleYAML();
-            }
-            
-            // Delete: Delete selected step
-            if (e.key === 'Delete' && this.pipelineBuilder?.selectedStep) {
-                e.preventDefault();
-                if (this.pipelineBuilder.deleteStep) {
-                    this.pipelineBuilder.deleteStep(this.pipelineBuilder.selectedStep);
-                }
-            }
-            
-            // Ctrl/Cmd + D: Duplicate selected step
-            if ((e.ctrlKey || e.metaKey) && e.key === 'd' && this.pipelineBuilder?.selectedStep) {
-                e.preventDefault();
-                if (this.pipelineBuilder.duplicateStep) {
-                    this.pipelineBuilder.duplicateStep(this.pipelineBuilder.selectedStep);
-                }
-            }
-            
-            // Escape - Close modals
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal').forEach(modal => {
-                    modal.style.display = 'none';
-                });
-                const commandPalette = document.getElementById('command-palette');
-                if (commandPalette) {
-                    commandPalette.style.display = 'none';
-                }
-            }
-        }, 'keyboard-shortcuts');
-    }
-
-    setupPluginCatalog() {
-        const modal = document.getElementById('plugin-catalog-modal');
-        const searchInput = document.getElementById('plugin-search');
-        const pluginList = document.getElementById('plugin-list');
-        
-        if (!modal || !pluginList) return;
-        
-        // Render plugins
-        const renderPlugins = (filter = '') => {
-            if (!this.pipelineBuilder?.pluginCatalog) {
-                pluginList.innerHTML = '<p>No plugins available</p>';
-                return;
-            }
-            
-            const plugins = Object.entries(this.pipelineBuilder.pluginCatalog)
-                .filter(([key, plugin]) => 
-                    key.toLowerCase().includes(filter.toLowerCase()) ||
-                    plugin.name.toLowerCase().includes(filter.toLowerCase()) ||
-                    plugin.description.toLowerCase().includes(filter.toLowerCase())
-                );
-            
-            pluginList.innerHTML = plugins.map(([key, plugin]) => `
-                <div class="plugin-card" data-plugin="${key}">
-                    <h4>${plugin.name}</h4>
-                    <p>${plugin.description}</p>
-                    <div class="plugin-config">
-                        ${Object.entries(plugin.config || {}).map(([configKey, config]) => `
-                            <small><strong>${configKey}:</strong> ${config.description || configKey}</small>
-                        `).join('<br>')}
-                    </div>
-                </div>
-            `).join('');
-            
-            // Add click handlers
-            pluginList.querySelectorAll('.plugin-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const pluginKey = card.dataset.plugin;
-                    if (this.pipelineBuilder && this.pipelineBuilder.addPluginStep) {
-                        this.pipelineBuilder.addPluginStep(pluginKey);
-                        modal.style.display = 'none';
-                        this.showNotification(`${pluginKey} plugin added`, 'success');
-                    }
-                });
-            });
-        };
-        
-        // Search functionality
-        if (searchInput) {
-            this.addEventListenerOnce(searchInput, 'input', (e) => {
-                renderPlugins(e.target.value);
-            }, 'plugin-search');
-        }
-        
-        // Initial render when modal opens
-        this.addEventListenerOnce(modal, 'show', () => renderPlugins(), 'plugin-catalog-show');
-        
-        console.log('✅ Plugin catalog setup complete');
-    }
-
-    setupMatrixBuilder() {
-        const modal = document.getElementById('matrix-builder-modal');
-        if (!modal) {
-            console.warn('Matrix builder modal not found');
-            return;
-        }
-        
-        console.log('✅ Matrix Builder modal setup complete');
-    }
-
-    setupStepTemplates() {
-        const modal = document.getElementById('step-templates-modal');
-        const templateList = document.getElementById('template-list');
-        const categoryButtons = modal?.querySelectorAll('.template-cat');
-        
-        if (!modal || !templateList) return;
-        
-        const templates = {
-            testing: [
-                {
-                    id: 'node-test',
-                    name: 'Node.js Test Suite',
-                    description: 'Run tests with coverage',
-                    icon: 'fa-node-js'
-                },
-                {
-                    id: 'python-test',
-                    name: 'Python Test Suite',
-                    description: 'Run pytest with coverage',
-                    icon: 'fa-python'
-                }
-            ],
-            deployment: [
-                {
-                    id: 'docker-deploy',
-                    name: 'Docker Deployment',
-                    description: 'Build and push Docker image',
-                    icon: 'fa-docker'
-                },
-                {
-                    id: 'k8s-deploy',
-                    name: 'Kubernetes Deployment',
-                    description: 'Deploy to Kubernetes cluster',
-                    icon: 'fa-dharmachakra'
-                }
-            ],
-            docker: [
-                {
-                    id: 'docker-build',
-                    name: 'Docker Build & Push',
-                    description: 'Build and push to registry',
-                    icon: 'fa-docker'
-                }
-            ],
-            notifications: [
-                {
-                    id: 'slack-notify',
-                    name: 'Slack Notification',
-                    description: 'Send build status to Slack',
-                    icon: 'fa-slack'
-                }
-            ]
-        };
-        
-        const renderTemplates = (category = 'all') => {
-            const templatesToShow = category === 'all' ? 
-                Object.values(templates).flat() : 
-                templates[category] || [];
-            
-            templateList.innerHTML = templatesToShow.map(template => `
-                <div class="template-card" data-template="${template.id}">
-                    <h4><i class="fas ${template.icon}"></i> ${template.name}</h4>
-                    <p>${template.description}</p>
-                </div>
-            `).join('');
-            
-            // Add click handlers
-            templateList.querySelectorAll('.template-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const templateId = card.dataset.template;
-                    this.applyTemplate(templateId);
-                    modal.style.display = 'none';
-                });
-            });
-        };
-        
-        // Category buttons
-        categoryButtons?.forEach(btn => {
-            btn.addEventListener('click', () => {
-                categoryButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                renderTemplates(btn.dataset.category);
-            });
-        });
-        
-        // Initial render
-        renderTemplates('all');
-    }
-
-    setupVariableManager() {
-        const modal = document.getElementById('variable-manager-modal');
-        const variableList = document.getElementById('pipeline-variables');
-        const addBtn = document.getElementById('add-pipeline-variable');
-        
-        if (!modal || !variableList) return;
-        
-        const renderVariables = () => {
-            if (!this.pipelineBuilder?.steps) {
-                variableList.innerHTML = '<p class="no-data">No pipeline loaded</p>';
-                return;
-            }
-            
-            // Get all environment variables from pipeline
-            const allVars = {};
-            this.pipelineBuilder.steps.forEach(step => {
-                if (step.properties?.env) {
-                    Object.assign(allVars, step.properties.env);
-                }
-            });
-            
-            variableList.innerHTML = Object.entries(allVars).length > 0 ?
-                Object.entries(allVars).map(([key, value]) => `
-                    <div class="env-var">
-                        <span class="var-key">${key}</span>
-                        <span class="var-value">${value}</span>
-                    </div>
-                `).join('') :
-                '<p class="no-data">No pipeline variables defined</p>';
-        };
-        
-        if (addBtn) {
-            this.addEventListenerOnce(addBtn, 'click', () => {
-                const key = prompt('Variable name:');
-                if (!key) return;
-                
-                const value = prompt('Variable value:');
-                if (value === null) return;
-                
-                // Add to all command steps
-                if (this.pipelineBuilder?.steps) {
-                    this.pipelineBuilder.steps.forEach(step => {
-                        if (step.type === 'command') {
-                            if (!step.properties.env) {
-                                step.properties.env = {};
-                            }
-                            step.properties.env[key] = value;
-                        }
-                    });
-                    
-                    if (this.pipelineBuilder.renderPipeline) {
-                        this.pipelineBuilder.renderPipeline();
-                    }
-                    renderVariables();
-                    this.showNotification('Variable added to all command steps', 'success');
-                }
-            }, 'add-pipeline-variable');
-        }
-        
-        // Initial render when modal opens
-        this.addEventListenerOnce(modal, 'show', renderVariables, 'variable-manager-show');
-    }
-
-    setupPatternLibrary() {
-        const modal = document.getElementById('pattern-library-modal');
-        const patternList = document.getElementById('pattern-list');
-        const categoryButtons = modal?.querySelectorAll('.pattern-cat');
-        
-        if (!modal || !patternList) return;
-        
-        const patterns = {
-            monorepo: [
-                {
-                    name: 'Monorepo Changed Paths',
-                    description: 'Only run steps when specific paths change',
-                    icon: 'fa-code-branch'
-                }
-            ],
-            microservices: [
-                {
-                    name: 'Service Dependencies',
-                    description: 'Deploy services in dependency order',
-                    icon: 'fa-project-diagram'
-                }
-            ],
-            mobile: [
-                {
-                    name: 'iOS/Android Build',
-                    description: 'Parallel mobile app builds',
-                    icon: 'fa-mobile-alt'
-                }
-            ],
-            ml: [
-                {
-                    name: 'ML Training Pipeline',
-                    description: 'Train, evaluate, and deploy models',
-                    icon: 'fa-brain'
-                }
-            ]
-        };
-        
-        const renderPatterns = (category = 'all') => {
-            const patternsToShow = category === 'all' ?
-                Object.values(patterns).flat() : 
-                patterns[category] || [];
-            
-            patternList.innerHTML = patternsToShow.map(pattern => `
-                <div class="pattern-card">
-                    <h4><i class="fas ${pattern.icon}"></i> ${pattern.name}</h4>
-                    <p>${pattern.description}</p>
-                    <div class="pattern-preview">
-                        <code>Pipeline pattern preview...</code>
-                    </div>
-                </div>
-            `).join('');
-        };
-        
-        // Category buttons
-        categoryButtons?.forEach(btn => {
-            btn.addEventListener('click', () => {
-                categoryButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                renderPatterns(btn.dataset.category);
-            });
-        });
-        
-        // Initial render
-        renderPatterns('all');
-    }
-
-    openCommandPalette() {
-        const palette = document.getElementById('command-palette');
-        const input = document.getElementById('command-input');
-        
-        if (palette && input) {
+        if (isHidden) {
             palette.classList.remove('hidden');
             palette.style.display = 'block';
-            input.value = '';
-            input.focus();
-            
-            // Show all commands initially
-            const event = new Event('input');
-            input.dispatchEvent(event);
+            const input = document.getElementById('command-search');
+            if (input) {
+                input.value = '';
+                input.focus();
+                this.filterCommands(''); // Show all commands
+            }
+        } else {
+            this.closeCommandPalette();
         }
     }
 
@@ -1026,461 +1488,317 @@ class BuildkiteApp {
         }
     }
 
-    handleAction(action) {
-        switch (action) {
-            case 'plugin-catalog':
-                const pluginModal = document.getElementById('plugin-catalog-modal');
-                if (pluginModal) pluginModal.style.display = 'block';
-                break;
-            case 'matrix-builder':
-                this.showNotification('Select a command step and click "Configure Matrix" in properties', 'info');
-                break;
-            case 'conditional-logic':
-                this.showNotification('Select a step and click "Configure Conditions" in properties', 'info');
-                break;
-            case 'step-templates':
-                const templateModal = document.getElementById('step-templates-modal');
-                if (templateModal) templateModal.style.display = 'block';
-                break;
-            case 'variable-manager':
-                const varModal = document.getElementById('variable-manager-modal');
-                if (varModal) varModal.style.display = 'block';
-                break;
-            case 'pattern-library':
-                const patternModal = document.getElementById('pattern-library-modal');
-                if (patternModal) patternModal.style.display = 'block';
-                break;
-            case 'dependency-manager':
-                this.showNotification('Click on a step and configure dependencies in the properties panel', 'info');
-                break;
-            case 'pipeline-validator':
-                this.validatePipeline();
-                break;
-            case 'pipeline-preview':
-                this.showNotification('Pipeline preview coming soon!', 'info');
-                break;
-            case 'open-plugin-catalog':
-                const modal = document.getElementById('plugin-catalog-modal');
-                if (modal) modal.style.display = 'block';
-                break;
-            case 'open-matrix-builder':
-                if (this.matrixBuilder) {
-                    this.matrixBuilder.open();
-                }
-                break;
-            case 'open-conditional-logic':
-                if (this.conditionalLogicBuilder) {
-                    this.conditionalLogicBuilder.open();
-                }
-                break;
-            default:
-                console.warn(`Unknown action: ${action}`);
-        }
-    }
-
+    // Pipeline Operations
     updateYAML() {
-        if (!this.yamlGenerator || !this.pipelineBuilder) return;
-        
-        const yaml = this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
-        const output = document.getElementById('yaml-output');
-        if (output) {
-            output.innerHTML = this.yamlGenerator.prettify ? this.yamlGenerator.prettify(yaml) : yaml;
+        if (!this.yamlGenerator || !this.pipelineBuilder) {
+            console.warn('YAML generator or pipeline builder not available');
+            return;
         }
         
-        // Update validation
-        const validation = this.yamlGenerator.validate ? this.yamlGenerator.validate(yaml) : { valid: true };
-        const validationEl = document.getElementById('yaml-validation');
-        if (validationEl) {
-            if (validation.valid) {
-                validationEl.innerHTML = '<i class="fas fa-check-circle"></i> Valid';
-                validationEl.className = 'validation-status valid';
-            } else {
-                validationEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Invalid';
-                validationEl.className = 'validation-status invalid';
-            }
+        const config = this.pipelineBuilder.exportConfig();
+        const yaml = this.yamlGenerator.generate(config);
+        
+        // Update all YAML display areas
+        const yamlContent = document.getElementById('yaml-content');
+        if (yamlContent) {
+            yamlContent.textContent = yaml;
         }
+        
+        const yamlOutput = document.getElementById('yaml-output');
+        if (yamlOutput) {
+            yamlOutput.textContent = yaml;
+        }
+        
+        const modalYamlContent = document.getElementById('modal-yaml-content');
+        if (modalYamlContent) {
+            modalYamlContent.textContent = yaml;
+        }
+        
+        // Save to localStorage
+        this.saveToLocalStorage();
     }
 
-    toggleYAML() {
-        const panel = document.getElementById('yaml-panel');
-        if (!panel) return;
-        
-        this.yamlVisible = !this.yamlVisible;
-        panel.classList.toggle('hidden', !this.yamlVisible);
-        
-        const toggleBtn = document.getElementById('toggle-yaml');
-        if (toggleBtn) {
-            toggleBtn.innerHTML = this.yamlVisible ? 
-                '<i class="fas fa-eye-slash"></i> Hide YAML' : 
-                '<i class="fas fa-eye"></i> Show YAML';
-        }
-        
-        if (this.yamlVisible) {
-            this.updateYAML();
-        }
-    }
-    
-    setupYAMLExportButtons() {
-        // Download YAML button
-        const downloadBtn = document.getElementById('download-yaml-file');
-        if (downloadBtn) {
-            this.addEventListenerOnce(downloadBtn, 'click', () => {
-                if (this.pipelineBuilder && this.yamlGenerator) {
-                    const config = this.pipelineBuilder.getPipelineConfig ? 
-                        this.pipelineBuilder.getPipelineConfig() : 
-                        { steps: this.pipelineBuilder.steps };
-                    const yaml = this.yamlGenerator.generate ? 
-                        this.yamlGenerator.generate(config) : 
-                        this.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
-                    
-                    if (this.yamlGenerator.downloadYAML) {
-                        this.yamlGenerator.downloadYAML(yaml, 'pipeline.yml');
-                    }
-                    this.showNotification('Pipeline downloaded as pipeline.yml', 'success');
-                }
-            }, 'download-yaml-file');
-        }
-        
-        // Copy YAML button
-        const copyBtn = document.getElementById('copy-yaml-clipboard');
-        if (copyBtn) {
-            this.addEventListenerOnce(copyBtn, 'click', () => {
-                const yamlOutput = document.getElementById('export-yaml-output');
-                if (yamlOutput) {
-                    const yaml = yamlOutput.textContent;
-                    navigator.clipboard.writeText(yaml).then(() => {
-                        this.showNotification('YAML copied to clipboard!', 'success');
-                    }).catch(err => {
-                        console.error('Failed to copy:', err);
-                        this.showNotification('Failed to copy YAML', 'error');
-                    });
-                }
-            }, 'copy-yaml-clipboard');
-        }
-        
-        // Validate YAML button
-        const validateBtn = document.getElementById('validate-yaml-export');
-        if (validateBtn) {
-            this.addEventListenerOnce(validateBtn, 'click', () => {
-                const yamlOutput = document.getElementById('export-yaml-output');
-                if (yamlOutput && this.yamlGenerator) {
-                    const yaml = yamlOutput.textContent;
-                    const validation = this.yamlGenerator.validate ? 
-                        this.yamlGenerator.validate(yaml) : 
-                        { valid: true, issues: [] };
-                    
-                    const statusDiv = document.getElementById('export-validation-status');
-                    if (statusDiv) {
-                        if (validation.valid) {
-                            statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> YAML validation passed!';
-                            statusDiv.className = 'validation-success';
-                            this.showNotification('YAML validation passed!', 'success');
-                        } else {
-                            statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Validation issues: ' + validation.issues.join(', ');
-                            statusDiv.className = 'validation-error';
-                            this.showNotification('YAML validation failed', 'error');
-                        }
-                    }
-                }
-            }, 'validate-yaml-export');
-        }
-    }
-
-    copyYAML() {
-        if (!this.yamlGenerator || !this.pipelineBuilder) return;
-        
-        const yaml = this.yamlGenerator.generateYAML ? 
-            this.yamlGenerator.generateYAML(this.pipelineBuilder.steps) : '';
-        
-        navigator.clipboard.writeText(yaml).then(() => {
-            this.showNotification('YAML copied to clipboard!', 'success');
-            
-            const copyBtn = document.getElementById('copy-yaml');
-            if (copyBtn) {
-                const originalText = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                copyBtn.classList.add('success');
-                
-                setTimeout(() => {
-                    copyBtn.innerHTML = originalText;
-                    copyBtn.classList.remove('success');
-                }, 2000);
-            }
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            this.showNotification('Failed to copy YAML', 'error');
-        });
-    }
-
-    validatePipeline() {
-        if (!this.yamlGenerator || !this.pipelineBuilder) return;
-        
-        const yaml = this.yamlGenerator.generateYAML ? 
-            this.yamlGenerator.generateYAML(this.pipelineBuilder.steps) : '';
-        const validation = this.yamlGenerator.validate ? 
-            this.yamlGenerator.validate(yaml) : 
-            { valid: true, issues: [] };
-        
-        // Show validation results
-        const validationDiv = document.getElementById('validation-results');
-        if (validationDiv) {
-            validationDiv.classList.remove('hidden');
-            
-            const validationContent = validationDiv.querySelector('.validation-content');
-            if (validationContent) {
-                if (validation.valid) {
-                    validationDiv.classList.remove('error');
-                    validationDiv.classList.add('success');
-                    validationContent.innerHTML = '<p><i class="fas fa-check-circle"></i> Pipeline is valid!</p>';
-                    this.showNotification('Pipeline validation passed!', 'success');
-                } else {
-                    validationDiv.classList.add('error');
-                    validationContent.innerHTML = `
-                        <p style="color: #f56565;"><i class="fas fa-exclamation-circle"></i> Validation issues found:</p>
-                        <ul>${validation.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
-                    `;
-                    this.showNotification('Pipeline validation failed', 'error');
-                }
-            }
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                validationDiv.classList.add('hidden');
-            }, 5000);
+    updateStepCount() {
+        const stepCount = document.getElementById('step-count');
+        if (stepCount && this.pipelineBuilder) {
+            const count = this.pipelineBuilder.steps.length;
+            stepCount.textContent = `${count} step${count !== 1 ? 's' : ''}`;
         }
     }
 
     exportYAML() {
-        if (this.pipelineBuilder && this.pipelineBuilder.exportYAML) {
-            this.pipelineBuilder.exportYAML();
+        const yamlContent = document.getElementById('yaml-content')?.textContent || 
+                           document.getElementById('yaml-output')?.textContent ||
+                           (this.yamlGenerator && this.pipelineBuilder ? 
+                            this.yamlGenerator.generate(this.pipelineBuilder.exportConfig()) : '');
+        
+        if (!yamlContent) {
+            this.showNotification('No YAML content to export', 'warning');
+            return;
+        }
+        
+        // Show export modal
+        window.showModal('yaml-output-modal');
+        
+        // Update modal content
+        const modalYamlContent = document.getElementById('yaml-content');
+        if (modalYamlContent) {
+            modalYamlContent.textContent = yamlContent;
+        }
+    }
+
+    importYAMLFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const yamlContent = e.target.result;
+                // Here you would parse YAML to pipeline config
+                // For now, just show a message
+                this.showNotification('YAML import functionality coming soon', 'info');
+            } catch (error) {
+                this.showNotification('Failed to import YAML file', 'error');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    toggleYAMLView() {
+        const yamlSection = document.querySelector('.yaml-output-section');
+        if (!yamlSection) return;
+        
+        this.yamlVisible = !this.yamlVisible;
+        yamlSection.style.display = this.yamlVisible ? 'block' : 'none';
+        
+        if (this.yamlVisible) {
+            this.updateYAML();
+        }
+        
+        this.showNotification(`YAML view ${this.yamlVisible ? 'shown' : 'hidden'}`, 'info');
+    }
+
+    validatePipeline() {
+        if (!this.pipelineBuilder?.steps || this.pipelineBuilder.steps.length === 0) {
+            this.showNotification('Pipeline is empty', 'warning');
+            return;
+        }
+        
+        const errors = [];
+        const warnings = [];
+        
+        // Check for duplicate step labels
+        const labels = this.pipelineBuilder.steps
+            .filter(s => s.properties?.label)
+            .map(s => s.properties.label);
+        const duplicates = labels.filter((label, index) => labels.indexOf(label) !== index);
+        if (duplicates.length > 0) {
+            errors.push(`Duplicate step labels: ${[...new Set(duplicates)].join(', ')}`);
+        }
+        
+        // Check for duplicate keys
+        const keys = this.pipelineBuilder.steps
+            .filter(s => s.properties?.key)
+            .map(s => s.properties.key);
+        const duplicateKeys = keys.filter((key, index) => keys.indexOf(key) !== index);
+        if (duplicateKeys.length > 0) {
+            errors.push(`Duplicate step keys: ${[...new Set(duplicateKeys)].join(', ')}`);
+        }
+        
+        // Check dependencies
+        this.pipelineBuilder.steps.forEach(step => {
+            if (step.properties?.depends_on) {
+                const deps = Array.isArray(step.properties.depends_on) ? 
+                    step.properties.depends_on : [step.properties.depends_on];
+                
+                deps.forEach(dep => {
+                    if (dep !== 'wait' && !keys.includes(dep)) {
+                        warnings.push(`Step "${step.properties.label || step.id}" depends on unknown step "${dep}"`);
+                    }
+                });
+            }
+        });
+        
+        // Check matrix limits
+        this.pipelineBuilder.steps.forEach(step => {
+            if (step.properties?.matrix) {
+                const combinations = this.calculateMatrixCombinations(
+                    step.properties.matrix.reduce((acc, m) => ({...acc, ...m}), {})
+                );
+                if (combinations.length > this.pipelineBuilder.limits.maxMatrixJobs) {
+                    errors.push(`Step "${step.properties.label}" matrix exceeds limit (${combinations.length} > ${this.pipelineBuilder.limits.maxMatrixJobs})`);
+                }
+            }
+        });
+        
+        // Show results
+        if (errors.length === 0 && warnings.length === 0) {
+            this.showNotification('Pipeline validation passed!', 'success');
+        } else {
+            const modal = document.getElementById('validation-modal');
+            const content = document.getElementById('validation-content');
+            
+            if (modal && content) {
+                content.innerHTML = `
+                    ${errors.length > 0 ? `
+                        <h4 class="error">Errors (${errors.length})</h4>
+                        <ul class="error-list">
+                            ${errors.map(e => `<li>${e}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    ${warnings.length > 0 ? `
+                        <h4 class="warning">Warnings (${warnings.length})</h4>
+                        <ul class="warning-list">
+                            ${warnings.map(w => `<li>${w}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                `;
+                window.showModal('validation-modal');
+            } else {
+                this.showNotification(
+                    `Validation found ${errors.length} error(s) and ${warnings.length} warning(s)`, 
+                    errors.length > 0 ? 'error' : 'warning',
+                    5000
+                );
+            }
+        }
+    }
+
+    validateYAML() {
+        const yamlContent = document.getElementById('yaml-content')?.textContent ||
+                           document.getElementById('yaml-output')?.textContent;
+        
+        if (!yamlContent || !this.yamlGenerator) return;
+        
+        const result = this.yamlGenerator.validateYAML(yamlContent);
+        const validationContent = document.getElementById('validation-content') ||
+                                 document.getElementById('validation-result');
+        
+        if (validationContent) {
+            if (result.valid) {
+                validationContent.innerHTML = '<p style="color: green;"><i class="fas fa-check"></i> YAML is valid!</p>';
+                this.showNotification('YAML validation passed', 'success');
+            } else {
+                validationContent.innerHTML = `
+                    <p style="color: red;"><i class="fas fa-times"></i> YAML validation failed:</p>
+                    <ul>${result.errors.map(e => `<li>${e}</li>`).join('')}</ul>
+                `;
+                this.showNotification('YAML validation failed', 'error');
+            }
         }
     }
 
     savePipeline() {
-        if (!this.autoSaveEnabled || !this.pipelineBuilder) return;
-        
-        try {
-            const config = this.pipelineBuilder.getPipelineConfig ? 
-                this.pipelineBuilder.getPipelineConfig() : 
-                { steps: this.pipelineBuilder.steps };
-            localStorage.setItem('buildkite-pipeline', JSON.stringify(config));
-            
-            // Show auto-save indicator
-            const indicator = document.querySelector('.auto-save-indicator');
-            if (indicator) {
-                indicator.style.display = 'flex';
-                setTimeout(() => {
-                    indicator.style.display = 'none';
-                }, 2000);
-            }
-        } catch (err) {
-            console.error('Failed to save pipeline:', err);
-        }
+        this.saveToLocalStorage();
+        this.showNotification('Pipeline saved locally', 'success');
     }
 
-    loadSavedPipeline() {
+    saveToLocalStorage() {
+        if (!this.pipelineBuilder) return;
+        
+        const config = this.pipelineBuilder.exportConfig();
+        localStorage.setItem('buildkite-pipeline', JSON.stringify(config));
+        localStorage.setItem('buildkite-pipeline-updated', new Date().toISOString());
+    }
+
+    loadFromLocalStorage() {
         const saved = localStorage.getItem('buildkite-pipeline');
-        if (!saved) return;
-        
-        try {
-            const config = JSON.parse(saved);
-            if (this.pipelineSharing && this.pipelineSharing.loadPipelineConfig) {
-                this.pipelineSharing.loadPipelineConfig(config);
-            }
-            console.log('Loaded saved pipeline from localStorage');
-        } catch (err) {
-            console.error('Failed to load saved pipeline:', err);
-        }
-    }
-
-    startAutoSave() {
-        // Auto-save every 30 seconds
-        this.autoSaveInterval = setInterval(() => {
-            this.savePipeline();
-        }, 30000);
-    }
-
-    importPipelineFile(file) {
-        if (this.pipelineSharing && this.pipelineSharing.importFromFile) {
-            this.pipelineSharing.importFromFile(file);
-        }
-    }
-
-    applyTemplate(templateId) {
-        // Template implementations
-        const templates = {
-            'node-test': () => {
-                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
-                    const step = this.pipelineBuilder.addStep('command');
-                    if (step) {
-                        step.properties = {
-                            label: 'Node.js Tests',
-                            command: 'npm ci\nnpm test',
-                            plugins: {
-                                'test-collector': {
-                                    files: 'test-results/**/*.xml',
-                                    format: 'junit'
-                                }
-                            }
-                        };
-                    }
-                }
-            },
-            'docker-build': () => {
-                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
-                    const step = this.pipelineBuilder.addStep('command');
-                    if (step) {
-                        step.properties = {
-                            label: 'Build Docker Image',
-                            command: 'docker build -t myapp:$BUILDKITE_BUILD_NUMBER .',
-                            plugins: {
-                                'docker': {
-                                    image: 'myapp:$BUILDKITE_BUILD_NUMBER',
-                                    dockerfile: 'Dockerfile'
-                                }
-                            }
-                        };
-                    }
-                }
-            },
-            'slack-notify': () => {
-                if (this.pipelineBuilder && this.pipelineBuilder.addStep) {
-                    const step = this.pipelineBuilder.addStep('notify');
-                    if (step) {
-                        step.properties = {
-                            label: 'Notify Slack',
-                            slack: '#builds',
-                            if: 'build.state == "failed"'
-                        };
-                    }
-                }
-            }
-        };
-        
-        if (templates[templateId]) {
-            templates[templateId]();
-            if (this.pipelineBuilder && this.pipelineBuilder.renderPipeline) {
+        if (saved && this.pipelineBuilder) {
+            try {
+                const config = JSON.parse(saved);
+                this.pipelineBuilder.steps = config.steps || [];
                 this.pipelineBuilder.renderPipeline();
+                this.updateYAML();
+                this.updateStepCount();
+                console.log('✅ Pipeline loaded from localStorage');
+            } catch (e) {
+                console.error('Failed to load from localStorage:', e);
             }
-            this.showNotification('Template applied', 'success');
         }
     }
 
-    showNotification(message, type = 'info') {
-        const container = document.getElementById('notification-container') || this.createNotificationContainer();
+    showKeyboardShortcuts() {
+        const shortcuts = [
+            { keys: 'Ctrl/Cmd + K', description: 'Open command palette' },
+            { keys: 'Ctrl/Cmd + S', description: 'Save pipeline' },
+            { keys: 'Ctrl/Cmd + E', description: 'Export YAML' },
+            { keys: 'Ctrl/Cmd + O', description: 'Load example' },
+            { keys: 'Ctrl/Cmd + Y', description: 'Toggle YAML view' },
+            { keys: 'Delete', description: 'Delete selected step' },
+            { keys: 'Ctrl/Cmd + D', description: 'Duplicate selected step' },
+            { keys: 'Escape', description: 'Close modals' }
+        ];
         
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
-        
-        notification.innerHTML = `
-            <i class="fas ${icons[type] || icons.info}"></i>
-            <span>${message}</span>
-        `;
-        
-        container.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            notification.style.animation = 'notificationSlideOut 0.3s ease';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }, 5000);
+        const content = shortcuts.map(s => `${s.keys}: ${s.description}`).join('\n');
+        alert('Keyboard Shortcuts:\n\n' + content);
     }
 
-    createNotificationContainer() {
-        const container = document.createElement('div');
-        container.id = 'notification-container';
-        container.className = 'notification-container';
-        document.body.appendChild(container);
-        return container;
-    }
-
-    // Additional utility methods that were missing
-
-    showToast(message, type = 'info') {
-        this.showNotification(message, type);
-    }
-
-    manualLoadPipeline() {
-        console.log('📂 Manual pipeline load triggered');
-        this.loadSavedPipeline();
-    }
-
+    // Debug Methods
     debugState() {
-        console.log('🔍 BuildkiteApp Debug State:');
-        console.log('- Initialized:', this.isInitialized);
-        console.log('- Pipeline Builder:', this.pipelineBuilder ? '✅' : '❌');
-        console.log('- YAML Generator:', this.yamlGenerator ? '✅' : '❌');
-        console.log('- Matrix Builder:', this.matrixBuilder ? '✅' : '❌');
-        console.log('- Conditional Logic:', this.conditionalLogicBuilder ? '✅' : '❌');
-        console.log('- Pipeline Sharing:', this.pipelineSharing ? '✅' : '❌');
-        console.log('- YAML Visible:', this.yamlVisible);
-        console.log('- Auto-save Enabled:', this.autoSaveEnabled);
-        console.log('- Properties Panel:', document.getElementById('properties-content') ? '✅' : '❌');
+        console.group('🔍 Application State Debug');
+        console.log('Pipeline Steps:', this.pipelineBuilder?.steps || []);
+        console.log('Selected Step:', this.pipelineBuilder?.selectedStep);
+        console.log('Auto-save enabled:', this.autoSaveEnabled);
+        console.log('YAML visible:', this.yamlVisible);
+        console.log('Attached listeners:', this.attachedListeners.size);
+        console.log('Components:', {
+            pipelineBuilder: !!this.pipelineBuilder,
+            yamlGenerator: !!this.yamlGenerator,
+            matrixBuilder: !!this.matrixBuilder,
+            conditionalLogicBuilder: !!this.conditionalLogicBuilder,
+            pipelineSharing: !!this.pipelineSharing,
+            commandPalette: !!this.commandPalette
+        });
+        console.groupEnd();
+    }
+
+    exportConfig() {
+        return this.pipelineBuilder?.exportConfig() || { steps: [] };
+    }
+
+    importConfig(config) {
+        if (!this.pipelineBuilder || !config) return;
+        
+        this.pipelineBuilder.steps = config.steps || [];
+        this.pipelineBuilder.renderPipeline();
+        this.updateYAML();
+        this.updateStepCount();
+        this.showNotification('Configuration imported', 'success');
+    }
+
+    toggleAutoSave() {
+        this.autoSaveEnabled = !this.autoSaveEnabled;
+        
+        if (this.autoSaveEnabled) {
+            this.startAutoSave();
+            this.showNotification('Auto-save enabled', 'success');
+        } else {
+            if (this.autoSaveInterval) {
+                clearInterval(this.autoSaveInterval);
+                this.autoSaveInterval = null;
+            }
+            this.showNotification('Auto-save disabled', 'info');
+        }
     }
 
     refreshPipeline() {
         if (this.pipelineBuilder) {
             this.pipelineBuilder.renderPipeline();
-            this.pipelineBuilder.renderProperties();
             this.updateYAML();
-            console.log('🔄 Pipeline view refreshed');
+            this.updateStepCount();
+            this.showNotification('Pipeline refreshed', 'info');
         }
-    }
-
-    exportConfig() {
-        if (this.pipelineBuilder) {
-            const config = this.pipelineBuilder.getPipelineConfig();
-            console.log('📤 Pipeline Config:', config);
-            return config;
-        }
-        return null;
-    }
-
-    importConfig(config) {
-        if (this.pipelineBuilder && this.pipelineSharing && config) {
-            this.pipelineSharing.loadPipelineConfig(config);
-            console.log('📥 Pipeline Config imported');
-        }
-    }
-
-    getStepCount() {
-        if (this.pipelineBuilder) {
-            return this.pipelineBuilder.steps.length;
-        }
-        return 0;
-    }
-
-    hasPipelineSteps() {
-        return this.getStepCount() > 0;
-    }
-
-    toggleAutoSave() {
-        this.autoSaveEnabled = !this.autoSaveEnabled;
-        console.log(`💾 Auto-save ${this.autoSaveEnabled ? 'enabled' : 'disabled'}`);
-        this.showNotification(`Auto-save ${this.autoSaveEnabled ? 'enabled' : 'disabled'}`, 'info');
     }
 
     forceSave() {
-        this.savePipeline();
-        console.log('💾 Pipeline force saved');
+        this.saveToLocalStorage();
+        this.showNotification('Pipeline force saved', 'success');
     }
 
     clearLocalStorage() {
         if (confirm('Are you sure you want to clear all saved data? This cannot be undone.')) {
             localStorage.removeItem('buildkite-pipeline');
+            localStorage.removeItem('buildkite-pipeline-updated');
+            localStorage.removeItem('buildkite-welcome-shown');
             this.showNotification('Local storage cleared', 'info');
-            console.log('🗑️ Local storage cleared');
         }
     }
 
@@ -1493,80 +1811,145 @@ class BuildkiteApp {
     }
 
     getVersion() {
-        return 'Enhanced Buildkite Pipeline Builder v3.0';
+        return 'Enhanced Buildkite Pipeline Builder v3.0 - Complete Consolidated Version';
     }
 
     showHelp() {
         const helpText = `
-        🎯 Keyboard Shortcuts:
-        - Ctrl/Cmd + K: Open command palette
-        - Ctrl/Cmd + S: Save pipeline
-        - Ctrl/Cmd + E: Export YAML
-        - Ctrl/Cmd + O: Load example
-        - Ctrl/Cmd + Y: Toggle YAML view
-        - Delete: Delete selected step
-        - Ctrl/Cmd + D: Duplicate selected step
-        - Escape: Close modals
-        
-        📚 Available in console:
-        - window.buildkiteApp: Main application
-        - window.pipelineBuilder: Pipeline builder
-        - buildkiteApp.debugState(): Show debug info
-        - buildkiteApp.exportConfig(): Export pipeline config
-        - buildkiteApp.importConfig(config): Import pipeline config
-        - buildkiteApp.toggleAutoSave(): Toggle auto-save
-        - buildkiteApp.refreshPipeline(): Refresh pipeline view
-        - buildkiteApp.forceSave(): Force save pipeline
-        - buildkiteApp.clearLocalStorage(): Clear saved data
-        - buildkiteApp.resetApplication(): Reset application
+🎯 Keyboard Shortcuts:
+- Ctrl/Cmd + K: Open command palette
+- Ctrl/Cmd + S: Save pipeline
+- Ctrl/Cmd + E: Export YAML
+- Ctrl/Cmd + O: Load example
+- Ctrl/Cmd + Y: Toggle YAML view
+- Delete: Delete selected step
+- Ctrl/Cmd + D: Duplicate selected step
+- Escape: Close modals
+
+📚 Available in console:
+- window.buildkiteApp: Main application
+- window.pipelineBuilder: Pipeline builder
+- buildkiteApp.debugState(): Show debug info
+- buildkiteApp.exportConfig(): Export pipeline config
+- buildkiteApp.importConfig(config): Import pipeline config
+- buildkiteApp.toggleAutoSave(): Toggle auto-save
+- buildkiteApp.refreshPipeline(): Refresh pipeline view
+- buildkiteApp.forceSave(): Force save pipeline
+- buildkiteApp.clearLocalStorage(): Clear saved data
+- buildkiteApp.resetApplication(): Reset application
         `;
         console.log(helpText);
         this.showNotification('Help information logged to console', 'info');
     }
-}
 
-// CSS for enhanced YAML syntax highlighting
-function initializeYAMLSyntaxStyles() {
-    if (!document.getElementById('yaml-syntax-styles')) {
-        const yamlStyles = `
-            .yaml-key { color: #e06c75; font-weight: 600; }
-            .yaml-string { color: #98c379; }
-            .yaml-number { color: #d19a66; }
-            .yaml-boolean { color: #56b6c2; }
-            .yaml-array { color: #c678dd; }
-            .yaml-variable { color: #61afef; font-style: italic; }
-        `;
+    // Additional utility methods that might have been in the original
+    verifyFunctionality() {
+        console.log('🔍 Verifying COMPLETE functionality...');
         
-        // Add styles to document
-        const styleSheet = document.createElement('style');
-        styleSheet.id = 'yaml-syntax-styles';
-        styleSheet.textContent = yamlStyles;
-        document.head.appendChild(styleSheet);
+        const tests = [
+            {
+                name: 'Pipeline Builder exists',
+                test: () => !!this.pipelineBuilder,
+                critical: true
+            },
+            {
+                name: 'YAML Generator available',
+                test: () => !!this.yamlGenerator,
+                critical: true
+            },
+            {
+                name: 'Pipeline steps container exists',
+                test: () => !!document.getElementById('pipeline-steps'),
+                critical: true
+            },
+            {
+                name: 'Properties panel exists',
+                test: () => !!document.getElementById('properties-content'),
+                critical: true
+            },
+            {
+                name: 'Header buttons exist',
+                test: () => !!document.getElementById('export-yaml') && 
+                           !!document.getElementById('clear-pipeline') && 
+                           !!document.getElementById('load-example'),
+                critical: true
+            },
+            {
+                name: 'Modal management working',
+                test: () => typeof window.closeModal === 'function' && 
+                           typeof window.showModal === 'function',
+                critical: false
+            },
+            {
+                name: 'Enhanced styles injected',
+                test: () => !!document.getElementById('enhanced-styles'),
+                critical: false
+            },
+            {
+                name: 'Command palette available',
+                test: () => !!document.getElementById('command-palette'),
+                critical: false
+            },
+            {
+                name: 'Plugin catalog populated',
+                test: () => Object.keys(this.pipelineBuilder?.pluginCatalog || {}).length > 0,
+                critical: false
+            },
+            {
+                name: 'Templates available',
+                test: () => !!window.pipelineTemplates,
+                critical: false
+            }
+        ];
+        
+        let passedTests = 0;
+        let criticalFailures = 0;
+        
+        tests.forEach(test => {
+            const passed = test.test();
+            if (passed) {
+                console.log(`✅ ${test.name}`);
+                passedTests++;
+            } else {
+                console.log(`❌ ${test.name}`);
+                if (test.critical) {
+                    criticalFailures++;
+                }
+            }
+        });
+        
+        console.log(`📊 Functionality verification: ${passedTests}/${tests.length} tests passed`);
+        
+        if (criticalFailures > 0) {
+            console.error(`❌ ${criticalFailures} critical functionality failures detected`);
+        } else {
+            console.log('✅ All critical functionality verified');
+        }
+        
+        return { passedTests, totalTests: tests.length, criticalFailures };
     }
 }
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔄 DOMContentLoaded - Starting initialization...');
+    console.log('🔄 DOMContentLoaded - Starting consolidated initialization...');
     
-    // Initialize YAML syntax styles
-    initializeYAMLSyntaxStyles();
-    
-    // Initialize pipeline builder first if not already present
-    if (!window.pipelineBuilder && window.PipelineBuilder) {
-        console.log('🔧 Creating PipelineBuilder instance...');
-        window.pipelineBuilder = new PipelineBuilder();
+    // Skip if flag is set
+    if (window.skipMainInit) {
+        console.log('⏭️ Skipping initialization (skipMainInit flag set)');
+        return;
     }
     
-    // Initialize app - singleton pattern prevents duplicates
+    // Create main app instance - singleton pattern prevents duplicates
     if (!window.buildkiteApp) {
         window.buildkiteApp = new BuildkiteApp();
         
-        // Export for debugging
-        console.log('🎉 Enhanced Buildkite Pipeline Builder loaded successfully!');
-        console.log('📚 Available in console: window.pipelineBuilder, window.buildkiteApp');
-        console.log('✨ New features: Matrix Builds, Conditional Logic, Enhanced YAML Validation, Pipeline Sharing');
-        console.log('❓ Type buildkiteApp.showHelp() for keyboard shortcuts and tips');
+        // Run verification after initialization
+        setTimeout(() => {
+            if (window.buildkiteApp.debugMode) {
+                window.buildkiteApp.verifyFunctionality();
+            }
+        }, 1000);
     }
 });
 
