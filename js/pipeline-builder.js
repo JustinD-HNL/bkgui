@@ -9,6 +9,7 @@
  * - Complete plugin catalog
  * - Enhanced templates
  * FIXED: Event listener issues for step selection
+ * FIXED: Properties window updates after drag-and-drop
  */
 
 class PipelineBuilder {
@@ -411,6 +412,7 @@ class PipelineBuilder {
         }
     }
 
+    // CRITICAL FIX: Updated handleDrop to ensure properties update after drop
     handleDrop(e) {
         console.log('🎯 Drop detected');
         
@@ -452,20 +454,47 @@ class PipelineBuilder {
             }
         }
         
+        // CRITICAL FIX: Capture the newly added step and ensure it's selected
+        let newStep = null;
+        
         // Add the step/template/pattern at the calculated position - ONLY ONCE
         if (stepType) {
             console.log(`📍 Adding single step '${stepType}' at index ${insertIndex}`);
-            this.addStep(stepType, insertIndex);
+            newStep = this.addStep(stepType, insertIndex);
         } else if (template) {
             console.log(`📍 Loading template '${template}' at index ${insertIndex}`);
             this.loadTemplate(template, insertIndex);
+            // For templates, select the first added step
+            if (this.steps.length > 0 && insertIndex < this.steps.length) {
+                newStep = this.steps[insertIndex];
+            }
         } else if (pattern) {
             console.log(`📍 Loading pattern '${pattern}' at index ${insertIndex}`);
             this.loadPattern(pattern, insertIndex);
+            // For patterns, select the first added step
+            if (this.steps.length > 0 && insertIndex < this.steps.length) {
+                newStep = this.steps[insertIndex];
+            }
         }
         
         this.removeDropIndicator();
         this.hideDropZones();
+        
+        // CRITICAL FIX: Ensure the new step is selected and properties are displayed
+        if (newStep && newStep.id) {
+            // Use setTimeout to ensure DOM is updated before selecting
+            setTimeout(() => {
+                this.selectStep(newStep.id);
+                console.log('✅ Force selected new step after drop:', newStep.id);
+                
+                // Double-check that properties are rendered
+                const propsContent = document.getElementById('properties-content');
+                if (propsContent && propsContent.innerHTML.includes('no-selection')) {
+                    console.log('⚠️ Properties still showing no selection, forcing render...');
+                    this.renderProperties();
+                }
+            }, 150);
+        }
         
         // FIXED: Reset flag after a delay to handle any lingering events
         setTimeout(() => {
@@ -670,7 +699,7 @@ class PipelineBuilder {
     addStep(stepType, index = -1) {
         if (!stepType) {
             console.warn('⚠️ No step type provided');
-            return;
+            return null;
         }
         
         console.log(`➕ Adding step: ${stepType} at index: ${index}`);
@@ -689,11 +718,11 @@ class PipelineBuilder {
         this.updateStepCount();
         
         console.log(`✅ Added ${stepType} step with ID: ${step.id}`);
-        return step;
+        return step; // CRITICAL: Return the step for handleDrop to use
     }
 
     addStepAtIndex(stepType, index) {
-        this.addStep(stepType, index);
+        return this.addStep(stepType, index);
     }
 
     // Plugin step methods - PRESERVED FROM ORIGINAL
@@ -1077,17 +1106,40 @@ class PipelineBuilder {
         return '';
     }
 
+    // CRITICAL FIX: Enhanced selectStep to ensure properties are always rendered
     selectStep(stepId) {
-        this.selectedStep = stepId;
-        this.renderPipeline();
-        this.renderProperties();
-        console.log(`📌 Selected step: ${stepId}`);
+        console.log(`📌 Selecting step: ${stepId}`);
         
-        // Scroll to selected step
-        const stepElement = document.querySelector(`[data-step-id="${stepId}"]`);
-        if (stepElement) {
-            stepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Verify the step exists
+        const step = this.steps.find(s => s.id === stepId);
+        if (!step) {
+            console.error(`❌ Step ${stepId} not found in steps array!`);
+            return;
         }
+        
+        // Update the selected step
+        this.selectedStep = stepId;
+        
+        // Re-render the pipeline to update visual selection
+        this.renderPipeline();
+        
+        // CRITICAL: Force render properties with verification
+        this.renderProperties();
+        
+        // Emit event for other components
+        document.dispatchEvent(new CustomEvent('stepSelected', { 
+            detail: { stepId: stepId, step: step } 
+        }));
+        
+        // Scroll to selected step after a short delay
+        setTimeout(() => {
+            const stepElement = document.querySelector(`[data-step-id="${stepId}"]`);
+            if (stepElement) {
+                stepElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 100);
+        
+        console.log(`✅ Step ${stepId} selected and properties rendered`);
     }
 
     deleteStep(stepId) {
@@ -1133,9 +1185,30 @@ class PipelineBuilder {
     renderProperties() {
         const container = document.getElementById('properties-content');
         if (!container) {
-            console.warn('⚠️ Properties container not found');
+            console.error('❌ Properties container #properties-content not found!');
+            
+            // Try to find alternative containers
+            const alternatives = [
+                '.properties-content',
+                '.properties-panel .content',
+                '.properties-panel-content',
+                '#properties-panel .properties-content'
+            ];
+            
+            for (const selector of alternatives) {
+                const altContainer = document.querySelector(selector);
+                if (altContainer) {
+                    console.log(`✅ Found alternative container: ${selector}`);
+                    this.renderPropertiesToContainer(altContainer);
+                    return;
+                }
+            }
+            
+            console.error('❌ No properties container found anywhere in DOM!');
             return;
         }
+
+        console.log(`🎨 Rendering properties for step: ${this.selectedStep || 'none'}`);
 
         if (!this.selectedStep) {
             container.innerHTML = `
@@ -1162,10 +1235,37 @@ class PipelineBuilder {
         }
 
         const step = this.steps.find(s => s.id === this.selectedStep);
-        if (!step) return;
+        if (!step) {
+            console.warn(`⚠️ Selected step ${this.selectedStep} not found in steps array`);
+            this.selectedStep = null;
+            this.renderProperties();
+            return;
+        }
 
+        console.log(`✅ Rendering properties for ${step.type} step: ${step.id}`);
         container.innerHTML = this.generatePropertyForm(step);
         this.setupPropertyFormListeners(step);
+    }
+    
+    // Helper method for alternative containers
+    renderPropertiesToContainer(container, step = null) {
+        if (!step && this.selectedStep) {
+            step = this.steps.find(s => s.id === this.selectedStep);
+        }
+        
+        if (!step) {
+            container.innerHTML = `
+                <div class="no-selection">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Select a step to view its properties</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = this.generatePropertyForm(step);
+        this.setupPropertyFormListeners(step);
+        console.log(`✅ Properties rendered to alternative container for step ${step.id}`);
     }
 
     // Property form generation - ALL STEP TYPES PRESERVED
