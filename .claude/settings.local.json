@@ -11,7 +11,10 @@
       "WebFetch(domain:buildkite.com)",
       "Bash(npm install:*)",
       "Bash(sudo npm install axios dotenv)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir:*)",
+      "Bash(npm start)"
     ],
     "deny": []
   }

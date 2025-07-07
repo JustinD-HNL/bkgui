@@ -810,6 +810,10 @@ class BuildkiteApp {
                             window.pipelineVisualizer.showPreview();
                         }
                         break;
+                    case 'sdk-tools':
+                        window.showModal('sdk-tools-modal');
+                        this.setupSDKTools();
+                        break;
                     default:
                         console.warn(`Unknown action: ${action}`);
                 }
@@ -1792,6 +1796,150 @@ class BuildkiteApp {
         this.showNotification(`YAML view ${this.yamlVisible ? 'shown' : 'hidden'}`, 'info');
     }
 
+    setupSDKTools() {
+        console.log('🔧 Setting up SDK tools...');
+        
+        if (!window.buildkiteSDK) {
+            console.error('Buildkite SDK integration not loaded');
+            this.showNotification('SDK tools not available', 'error');
+            return;
+        }
+        
+        // Export SDK Code button
+        const exportBtn = document.getElementById('export-sdk-code');
+        if (exportBtn) {
+            exportBtn.onclick = () => {
+                const language = document.querySelector('input[name="sdk-language"]:checked')?.value || 'javascript';
+                const sdkCode = window.buildkiteSDK.generateSDKCode(this.pipelineBuilder.steps, language);
+                
+                // Display the code
+                const codeDisplay = document.getElementById('sdk-code-display');
+                const codeContent = document.getElementById('sdk-code-content');
+                if (codeDisplay && codeContent) {
+                    codeContent.textContent = sdkCode;
+                    codeDisplay.style.display = 'block';
+                    
+                    // Highlight syntax if possible
+                    if (window.Prism) {
+                        Prism.highlightElement(codeContent);
+                    }
+                }
+                
+                this.showNotification(`Generated ${language} SDK code`, 'success');
+            };
+        }
+        
+        // Import SDK Code button
+        const importBtn = document.getElementById('import-sdk-code');
+        if (importBtn) {
+            importBtn.onclick = () => {
+                const codeInput = document.getElementById('sdk-import-code');
+                if (!codeInput?.value) {
+                    this.showNotification('Please paste SDK code to import', 'warning');
+                    return;
+                }
+                
+                try {
+                    const steps = window.buildkiteSDK.parseSDKCode(codeInput.value);
+                    if (steps.length > 0) {
+                        this.pipelineBuilder.steps = steps;
+                        this.pipelineBuilder.renderPipeline();
+                        this.updateYAML();
+                        this.updateStepCount();
+                        window.closeModal('sdk-tools-modal');
+                        this.showNotification('SDK code imported successfully', 'success');
+                    } else {
+                        this.showNotification('No valid steps found in SDK code', 'warning');
+                    }
+                } catch (error) {
+                    console.error('Failed to parse SDK code:', error);
+                    this.showNotification('Failed to parse SDK code', 'error');
+                }
+            };
+        }
+        
+        // Validate SDK button
+        const validateBtn = document.getElementById('validate-sdk');
+        if (validateBtn) {
+            validateBtn.onclick = () => {
+                const validation = window.buildkiteSDK.validatePipeline(this.pipelineBuilder.steps);
+                const resultsDiv = document.getElementById('sdk-validation-results');
+                
+                if (resultsDiv) {
+                    let html = '';
+                    if (validation.valid) {
+                        resultsDiv.className = 'validation-results success';
+                        html = '<h5><i class="fas fa-check-circle"></i> Pipeline is valid!</h5>';
+                        if (validation.warnings.length > 0) {
+                            html += '<h5><i class="fas fa-exclamation-triangle"></i> Warnings:</h5><ul>';
+                            validation.warnings.forEach(warning => {
+                                html += `<li>${warning}</li>`;
+                            });
+                            html += '</ul>';
+                        }
+                    } else {
+                        resultsDiv.className = 'validation-results error';
+                        html = '<h5><i class="fas fa-times-circle"></i> Validation Errors:</h5><ul>';
+                        validation.errors.forEach(error => {
+                            html += `<li>${error}</li>`;
+                        });
+                        html += '</ul>';
+                        
+                        if (validation.warnings.length > 0) {
+                            html += '<h5><i class="fas fa-exclamation-triangle"></i> Warnings:</h5><ul>';
+                            validation.warnings.forEach(warning => {
+                                html += `<li>${warning}</li>`;
+                            });
+                            html += '</ul>';
+                        }
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                    resultsDiv.style.display = 'block';
+                }
+            };
+        }
+        
+        // Copy SDK Code button
+        const copyBtn = document.getElementById('copy-sdk-code');
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                const codeContent = document.getElementById('sdk-code-content');
+                if (codeContent) {
+                    navigator.clipboard.writeText(codeContent.textContent)
+                        .then(() => this.showNotification('Code copied to clipboard', 'success'))
+                        .catch(() => this.showNotification('Failed to copy code', 'error'));
+                }
+            };
+        }
+        
+        // Download SDK Code button
+        const downloadBtn = document.getElementById('download-sdk-code');
+        if (downloadBtn) {
+            downloadBtn.onclick = () => {
+                const codeContent = document.getElementById('sdk-code-content');
+                const language = document.querySelector('input[name="sdk-language"]:checked')?.value || 'javascript';
+                const extension = language === 'typescript' ? 'ts' : 'js';
+                
+                if (codeContent) {
+                    const blob = new Blob([codeContent.textContent], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pipeline.${extension}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.showNotification('SDK code downloaded', 'success');
+                }
+            };
+        }
+        
+        console.log('✅ SDK tools configured');
+    }
+    
     validatePipeline() {
         if (!this.pipelineBuilder?.steps || this.pipelineBuilder.steps.length === 0) {
             this.showNotification('Pipeline is empty', 'warning');
@@ -1844,6 +1992,13 @@ class BuildkiteApp {
                 }
             }
         });
+        
+        // Run SDK validation if available
+        if (window.buildkiteSDK) {
+            const sdkValidation = window.buildkiteSDK.validatePipeline(this.pipelineBuilder.steps);
+            errors.push(...sdkValidation.errors);
+            warnings.push(...sdkValidation.warnings);
+        }
         
         // Show results
         if (errors.length === 0 && warnings.length === 0) {
