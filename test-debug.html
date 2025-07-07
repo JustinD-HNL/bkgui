@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test - Buildkite Pipeline Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .console-output {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffd93d; }
+        .info { color: #4ecdc4; }
+        .success { color: #95e1d3; }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Console</h1>
+    
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <button onclick="clearConsole()">Clear Console</button>
+        <button onclick="reloadApp()">Reload App</button>
+        <button onclick="testDragDrop()">Test Drag & Drop</button>
+        <button onclick="testButtons()">Test Quick Action Buttons</button>
+        <div id="console-output" class="console-output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Application Frame</h2>
+        <iframe id="app-frame" src="index.html" style="width: 100%; height: 600px; border: 1px solid #ddd;"></iframe>
+    </div>
+
+    <script>
+        const consoleOutput = document.getElementById('console-output');
+        let logBuffer = [];
+        
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function addLog(type, args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = Array.from(args).map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            const logEntry = `<span class="${type}">[${timestamp}] ${type.toUpperCase()}: ${message}</span>\n`;
+            logBuffer.push(logEntry);
+            
+            if (logBuffer.length > 500) {
+                logBuffer = logBuffer.slice(-400);
+            }
+            
+            consoleOutput.innerHTML = logBuffer.join('');
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog('info', args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog('error', args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog('warning', args);
+        };
+        
+        // Listen for messages from iframe
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'console') {
+                addLog(event.data.level || 'info', [event.data.message]);
+            }
+        });
+        
+        // Monitor iframe for errors
+        const iframe = document.getElementById('app-frame');
+        iframe.onload = function() {
+            const iframeWindow = iframe.contentWindow;
+            
+            // Capture iframe console logs
+            if (iframeWindow) {
+                const iframeConsole = iframeWindow.console;
+                const originalIframeLog = iframeConsole.log;
+                const originalIframeError = iframeConsole.error;
+                const originalIframeWarn = iframeConsole.warn;
+                
+                iframeConsole.log = function(...args) {
+                    originalIframeLog.apply(iframeConsole, args);
+                    addLog('info', args);
+                };
+                
+                iframeConsole.error = function(...args) {
+                    originalIframeError.apply(iframeConsole, args);
+                    addLog('error', args);
+                };
+                
+                iframeConsole.warn = function(...args) {
+                    originalIframeWarn.apply(iframeConsole, args);
+                    addLog('warning', args);
+                };
+                
+                // Capture iframe errors
+                iframeWindow.addEventListener('error', (event) => {
+                    addLog('error', [`${event.message} at ${event.filename}:${event.lineno}:${event.colno}`]);
+                });
+            }
+            
+            console.log('Debug console initialized and monitoring app');
+        };
+        
+        function clearConsole() {
+            logBuffer = [];
+            consoleOutput.innerHTML = '';
+            console.log('Console cleared');
+        }
+        
+        function reloadApp() {
+            iframe.src = iframe.src;
+            console.log('Reloading application...');
+        }
+        
+        function testDragDrop() {
+            const iframeDoc = iframe.contentDocument;
+            const iframeWin = iframe.contentWindow;
+            
+            console.log('Testing drag & drop functionality...');
+            
+            // Check if pipeline builder exists
+            if (iframeWin.pipelineBuilder) {
+                console.log('Pipeline builder found:', {
+                    steps: iframeWin.pipelineBuilder.steps.length,
+                    isDragging: iframeWin.pipelineBuilder.isDragging,
+                    draggedElement: iframeWin.pipelineBuilder.draggedElement
+                });
+                
+                // Check for draggable elements
+                const draggables = iframeDoc.querySelectorAll('[draggable="true"]');
+                console.log(`Found ${draggables.length} draggable elements`);
+                
+                // Check for drop zones
+                const dropZones = iframeDoc.querySelectorAll('.drop-zone');
+                console.log(`Found ${dropZones.length} drop zones`);
+                
+                // Check event listeners
+                const pipelineSteps = iframeDoc.getElementById('pipeline-steps');
+                if (pipelineSteps) {
+                    console.log('Pipeline steps container found');
+                    // Try to trigger drag start
+                    const stepType = iframeDoc.querySelector('.step-type');
+                    if (stepType) {
+                        console.log('Simulating drag start on:', stepType.dataset.stepType);
+                        const dragStartEvent = new DragEvent('dragstart', {
+                            bubbles: true,
+                            cancelable: true,
+                            dataTransfer: new DataTransfer()
+                        });
+                        stepType.dispatchEvent(dragStartEvent);
+                    }
+                }
+            } else {
+                console.error('Pipeline builder not found!');
+            }
+        }
+        
+        function testButtons() {
+            const iframeDoc = iframe.contentDocument;
+            
+            console.log('Testing quick action buttons...');
+            
+            // Find all action buttons
+            const actionButtons = iframeDoc.querySelectorAll('[data-action]');
+            console.log(`Found ${actionButtons.length} action buttons`);
+            
+            actionButtons.forEach(button => {
+                console.log(`Button: ${button.dataset.action} - ${button.textContent.trim()}`);
+            });
+            
+            // Test clicking a button
+            const pluginBtn = iframeDoc.querySelector('[data-action="plugin-catalog"]');
+            if (pluginBtn) {
+                console.log('Clicking plugin catalog button...');
+                pluginBtn.click();
+            }
+        }
+    </script>
+</body>
+</html>

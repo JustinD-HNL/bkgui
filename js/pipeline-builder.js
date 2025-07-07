@@ -383,8 +383,8 @@ class PipelineBuilder {
         // Setup event listeners first
         this.setupEventListeners();
         
-        // Setup drag and drop
-        this.setupDragAndDrop();
+        // Setup drag and drop - only use enhanced version
+        // this.setupDragAndDrop();  // Commented out to avoid conflicts
         this.setupEnhancedDragAndDrop();
         
         // Load from localStorage
@@ -502,33 +502,7 @@ class PipelineBuilder {
         console.log('✅ Event listeners configured');
     }
 
-    setupDragAndDrop() {
-        // Step type drag start
-        document.querySelectorAll('.step-type').forEach(stepType => {
-            stepType.addEventListener('dragstart', (e) => {
-                this.draggedElement = {
-                    type: 'new',
-                    stepType: e.target.dataset.stepType
-                };
-                e.target.classList.add('dragging');
-                this.isDragging = true;
-            });
-
-            stepType.addEventListener('dragend', (e) => {
-                e.target.classList.remove('dragging');
-                this.isDragging = false;
-                this.clearDropZones();
-            });
-        });
-
-        // Pipeline container drop handling
-        const pipelineContainer = document.getElementById('pipeline-steps');
-        if (pipelineContainer) {
-            pipelineContainer.addEventListener('dragover', this.boundHandlers.dragOver);
-            pipelineContainer.addEventListener('drop', this.boundHandlers.drop);
-            pipelineContainer.addEventListener('dragleave', this.boundHandlers.dragLeave);
-        }
-    }
+    // setupDragAndDrop() - REMOVED: Using setupEnhancedDragAndDrop() instead
 
     setupEnhancedDragAndDrop() {
         console.log('🎯 Setting up enhanced drag and drop...');
@@ -1339,8 +1313,13 @@ class PipelineBuilder {
         this.setupStepDragging();
         
         // Notify YAML generator if available
-        if (window.yamlGenerator) {
-            window.yamlGenerator.updateYAML(this.steps);
+        if (window.yamlGenerator && window.yamlGenerator.generate) {
+            const yaml = window.yamlGenerator.generate({ steps: this.steps });
+            // Update the YAML display if it exists
+            const yamlContent = document.getElementById('yaml-content');
+            if (yamlContent) {
+                yamlContent.textContent = yaml;
+            }
         }
         
         // Update YAML if app is available
@@ -4008,7 +3987,7 @@ class PipelineBuilder {
             console.log('📋 Generated YAML:', yaml);
             window.yamlGenerator.downloadYAML(yaml);
         } else {
-            const modal = document.getElementById('yaml-export-modal');
+            const modal = document.getElementById('yaml-output-modal');
             if (modal && window.yamlGenerator) {
                 const config = this.getPipelineConfig();
                 const yaml = window.yamlGenerator.generate(config);

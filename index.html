@@ -948,36 +948,7 @@ steps:
         </div>
     </div>
 
-    <!-- YAML Export Modal -->
-    <div id="yaml-export-modal" class="modal" style="display: none;">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2><i class="fas fa-file-code"></i> Export Pipeline YAML</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="yaml-export-container">
-                    <div class="yaml-validation-status">
-                        <div id="export-validation-status"></div>
-                    </div>
-                    <div class="yaml-export-content">
-                        <pre id="export-yaml-output" class="yaml-output syntax-highlighted"></pre>
-                    </div>
-                    <div class="yaml-export-actions">
-                        <button id="download-yaml-file" class="btn btn-primary">
-                            <i class="fas fa-download"></i> Download pipeline.yml
-                        </button>
-                        <button id="copy-yaml-clipboard" class="btn btn-secondary">
-                            <i class="fas fa-copy"></i> Copy to Clipboard
-                        </button>
-                        <button id="validate-yaml-export" class="btn btn-secondary">
-                            <i class="fas fa-check-circle"></i> Validate YAML
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- YAML Export Modal - REMOVED: Using yaml-output-modal instead -->
 
     <!-- Pipeline Sharing Modal -->
     <div id="share-pipeline-modal" class="modal" style="display: none;">

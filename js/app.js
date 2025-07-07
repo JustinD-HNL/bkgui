@@ -72,7 +72,7 @@ class BuildkiteApp {
         try {
             // Initialize in correct order
             await this.initializeComponents();
-            this.injectEnhancedStyles();
+            // this.injectEnhancedStyles(); // Removed - styles are in styles.css
             this.setupModalManagement();
             this.setupAllEventListeners();
             this.setupKeyboardShortcuts();
@@ -561,7 +561,7 @@ class BuildkiteApp {
                     console.log(`Closing modal: ${modal.id}`);
                     window.closeModal(modal.id);
                 }
-            }, `close-modal-${modal?.id || `btn-${index}`}`);
+            }, `close-modal-btn-${index}`);
         });
         
         // ESC key to close modals
@@ -692,8 +692,9 @@ class BuildkiteApp {
         actionButtons.forEach(button => {
             const action = button.dataset.action;
             
-            // Skip if this button already has a handler from main-init.js
+            // Skip if this button already has a handler
             if (this.attachedListeners.has(`data-action-${action}`)) {
+                console.log(`Skipping ${action} - already has handler`);
                 return;
             }
             
@@ -734,7 +735,7 @@ class BuildkiteApp {
                         this.showNotification('Pattern library coming soon', 'info');
                         break;
                     case 'dependency-manager':
-                        window.showModal('dependencies-modal');
+                        window.showModal('dependency-manager-modal');
                         break;
                     case 'pipeline-preview':
                         this.showNotification('Pipeline preview coming soon', 'info');
