@@ -1976,11 +1976,15 @@ class PipelineBuilder {
                 <h4><i class="fas fa-sitemap"></i> Dependencies & Conditions</h4>
                 <div class="property-group">
                     <label>Dependencies</label>
-                    <div class="dependency-dropdown">
-                        <select id="dependency-select" multiple style="width: 100%; height: 100px;">
-                            ${this.renderDependencyOptions(step)}
+                    <div class="dependency-manager">
+                        <select id="dependency-select" style="width: 100%;">
+                            <option value="">-- Select a dependency --</option>
+                            ${this.renderAvailableDependencyOptions(step)}
                         </select>
-                        <small>Select steps that must complete before this step (Ctrl/Cmd+Click for multiple)</small>
+                        <div class="dependency-list" id="dependency-list">
+                            ${this.renderDependencyList(step)}
+                        </div>
+                        <small>Select steps that must complete before this step</small>
                     </div>
                 </div>
                 <div class="property-group">
@@ -2026,22 +2030,52 @@ class PipelineBuilder {
         `;
     }
 
-    renderDependencyOptions(currentStep) {
-        const availableSteps = this.steps.filter(s => 
-            s.id !== currentStep.id && 
-            (s.properties?.key || s.type === 'wait')
-        );
-        
+    renderAvailableDependencyOptions(currentStep) {
         const currentDeps = Array.isArray(currentStep.properties.depends_on) ? 
             currentStep.properties.depends_on : 
             (currentStep.properties.depends_on ? [currentStep.properties.depends_on] : []);
         
+        const availableSteps = this.steps.filter(s => 
+            s.id !== currentStep.id && 
+            (s.properties?.key || s.type === 'wait') &&
+            !currentDeps.includes(s.properties?.key || (s.type === 'wait' ? 'wait' : s.id))
+        );
+        
         return availableSteps.map(step => {
             const key = step.properties?.key || (step.type === 'wait' ? 'wait' : step.id);
             const label = step.properties?.label || step.properties?.block || step.type;
-            const selected = currentDeps.includes(key) ? 'selected' : '';
             
-            return `<option value="${key}" ${selected}>${label} (${key})</option>`;
+            return `<option value="${key}">${label} (${key})</option>`;
+        }).join('');
+    }
+
+    renderDependencyList(step) {
+        const currentDeps = Array.isArray(step.properties.depends_on) ? 
+            step.properties.depends_on : 
+            (step.properties.depends_on ? [step.properties.depends_on] : []);
+        
+        if (currentDeps.length === 0) {
+            return '<div class="no-dependencies">No dependencies</div>';
+        }
+        
+        return currentDeps.map(depKey => {
+            const depStep = this.steps.find(s => 
+                (s.properties?.key === depKey) || 
+                (s.type === 'wait' && depKey === 'wait')
+            );
+            
+            const label = depStep ? 
+                (depStep.properties?.label || depStep.properties?.block || depStep.type) : 
+                depKey;
+            
+            return `
+                <div class="dependency-item" data-dependency="${depKey}">
+                    <span class="dependency-label">${label} (${depKey})</span>
+                    <button type="button" class="btn-remove-dependency" data-dependency="${depKey}" title="Remove dependency">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
         }).join('');
     }
 
@@ -2216,7 +2250,8 @@ class PipelineBuilder {
                 this.selectedStep.properties.retry = {};
             }
             this.selectedStep.properties.retry.manual = value;
-        } else if (input.id === 'dependency-select') {
+        } else if (input.id === 'dependency-select-old') {
+            // Old multi-select handler - disabled
             const selected = Array.from(input.selectedOptions).map(opt => opt.value);
             if (selected.length > 0) {
                 this.selectedStep.properties.depends_on = selected;
@@ -2928,6 +2963,55 @@ class PipelineBuilder {
                 this.saveToLocalStorage();
             });
         }
+
+        // Dependency dropdown
+        const dependencySelect = container.querySelector('#dependency-select');
+        if (dependencySelect) {
+            dependencySelect.addEventListener('change', (e) => {
+                const selectedValue = e.target.value;
+                if (selectedValue) {
+                    // Add to dependencies
+                    if (!step.properties.depends_on) {
+                        step.properties.depends_on = [];
+                    } else if (!Array.isArray(step.properties.depends_on)) {
+                        step.properties.depends_on = [step.properties.depends_on];
+                    }
+                    
+                    if (!step.properties.depends_on.includes(selectedValue)) {
+                        step.properties.depends_on.push(selectedValue);
+                        this.renderProperties();
+                        this.renderPipeline();
+                        this.saveToLocalStorage();
+                    }
+                    
+                    // Reset dropdown
+                    e.target.value = '';
+                }
+            });
+        }
+
+        // Remove dependency buttons
+        container.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-remove-dependency')) {
+                const depKey = e.target.closest('.btn-remove-dependency').dataset.dependency;
+                if (depKey && step.properties.depends_on) {
+                    if (Array.isArray(step.properties.depends_on)) {
+                        step.properties.depends_on = step.properties.depends_on.filter(d => d !== depKey);
+                        if (step.properties.depends_on.length === 0) {
+                            delete step.properties.depends_on;
+                        } else if (step.properties.depends_on.length === 1) {
+                            step.properties.depends_on = step.properties.depends_on[0];
+                        }
+                    } else if (step.properties.depends_on === depKey) {
+                        delete step.properties.depends_on;
+                    }
+                    
+                    this.renderProperties();
+                    this.renderPipeline();
+                    this.saveToLocalStorage();
+                }
+            }
+        });
     }
 
     setupActionButtonListeners(step, container) {
