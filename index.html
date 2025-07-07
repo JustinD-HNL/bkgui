@@ -146,6 +146,9 @@
                     <button class="btn btn-secondary btn-block action-btn" data-action="dependency-manager">
                         <i class="fas fa-sitemap"></i> Dependencies
                     </button>
+                    <button class="btn btn-secondary btn-block action-btn" data-action="artifact-manager">
+                        <i class="fas fa-archive"></i> Artifacts
+                    </button>
                     <button class="btn btn-secondary btn-block action-btn" data-action="pipeline-preview">
                         <i class="fas fa-eye"></i> Preview
                     </button>
@@ -1116,6 +1119,178 @@ steps:
         </div>
     </div>
 
+    <!-- Environment Variables Manager Modal -->
+    <div id="env-vars-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-key"></i> Environment Variables Manager</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="env-vars-manager">
+                    <div class="env-vars-info">
+                        <p>Manage environment variables for your pipeline. Variables can be defined globally or per-step.</p>
+                    </div>
+                    
+                    <div class="env-vars-tabs">
+                        <button class="tab-btn active" data-tab="global">Global Variables</button>
+                        <button class="tab-btn" data-tab="step">Step Variables</button>
+                        <button class="tab-btn" data-tab="secrets">Secrets</button>
+                    </div>
+                    
+                    <div class="env-vars-content">
+                        <!-- Global Variables Tab -->
+                        <div id="global-vars-tab" class="tab-content active">
+                            <div class="env-vars-list" id="global-env-vars-list">
+                                <!-- Variables will be rendered here -->
+                            </div>
+                            <button class="btn btn-secondary" id="add-global-env-var">
+                                <i class="fas fa-plus"></i> Add Global Variable
+                            </button>
+                        </div>
+                        
+                        <!-- Step Variables Tab -->
+                        <div id="step-vars-tab" class="tab-content" style="display: none;">
+                            <div class="step-selector">
+                                <label>Select Step:</label>
+                                <select id="env-step-selector">
+                                    <option value="">-- Select a step --</option>
+                                </select>
+                            </div>
+                            <div class="env-vars-list" id="step-env-vars-list">
+                                <!-- Step variables will be rendered here -->
+                            </div>
+                            <button class="btn btn-secondary" id="add-step-env-var" disabled>
+                                <i class="fas fa-plus"></i> Add Step Variable
+                            </button>
+                        </div>
+                        
+                        <!-- Secrets Tab -->
+                        <div id="secrets-tab" class="tab-content" style="display: none;">
+                            <div class="secrets-info">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Secrets are stored securely in Buildkite and not visible in logs. Reference them with: <code>$$SECRET_NAME</code></p>
+                            </div>
+                            <div class="env-vars-list" id="secrets-list">
+                                <!-- Secrets will be rendered here -->
+                            </div>
+                            <button class="btn btn-secondary" id="add-secret">
+                                <i class="fas fa-lock"></i> Add Secret
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="env-vars-actions">
+                        <button class="btn btn-primary" id="apply-env-vars">Apply Changes</button>
+                        <button class="btn btn-secondary close-modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Artifact Management Modal -->
+    <div id="artifact-manager-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-archive"></i> Artifact Management</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="artifact-manager">
+                    <div class="artifact-info">
+                        <p>Configure artifact paths and dependencies for your pipeline steps.</p>
+                    </div>
+                    
+                    <div class="artifact-tabs">
+                        <button class="tab-btn active" data-tab="paths">Artifact Paths</button>
+                        <button class="tab-btn" data-tab="dependencies">Dependencies</button>
+                        <button class="tab-btn" data-tab="retention">Retention Policy</button>
+                    </div>
+                    
+                    <div class="artifact-content">
+                        <!-- Artifact Paths Tab -->
+                        <div id="paths-tab" class="tab-content active">
+                            <div class="step-selector">
+                                <label>Select Step:</label>
+                                <select id="artifact-step-selector">
+                                    <option value="">-- Select a step --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="artifact-paths-section">
+                                <h4>Upload Artifacts</h4>
+                                <div class="artifact-paths-list" id="upload-paths-list">
+                                    <!-- Upload paths will be rendered here -->
+                                </div>
+                                <button class="btn btn-secondary" id="add-upload-path">
+                                    <i class="fas fa-upload"></i> Add Upload Path
+                                </button>
+                            </div>
+                            
+                            <div class="artifact-paths-section">
+                                <h4>Download Artifacts</h4>
+                                <div class="artifact-paths-list" id="download-paths-list">
+                                    <!-- Download paths will be rendered here -->
+                                </div>
+                                <button class="btn btn-secondary" id="add-download-path">
+                                    <i class="fas fa-download"></i> Add Download Path
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Dependencies Tab -->
+                        <div id="dependencies-tab" class="tab-content" style="display: none;">
+                            <div class="artifact-dependencies">
+                                <h4>Artifact Dependencies</h4>
+                                <p class="help-text">Configure which artifacts from previous steps this step requires.</p>
+                                <div id="artifact-dependencies-list">
+                                    <!-- Dependencies will be rendered here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Retention Policy Tab -->
+                        <div id="retention-tab" class="tab-content" style="display: none;">
+                            <div class="retention-policy">
+                                <h4>Retention Policy</h4>
+                                <div class="form-group">
+                                    <label>Default Retention Period:</label>
+                                    <select id="retention-period">
+                                        <option value="7">7 days</option>
+                                        <option value="30" selected>30 days</option>
+                                        <option value="90">90 days</option>
+                                        <option value="365">1 year</option>
+                                        <option value="0">Forever</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="compress-artifacts">
+                                        Compress artifacts before upload
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="encrypt-artifacts">
+                                        Encrypt sensitive artifacts
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="artifact-actions">
+                        <button class="btn btn-primary" id="apply-artifacts">Apply Changes</button>
+                        <button class="btn btn-secondary close-modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
@@ -1145,6 +1320,9 @@ steps:
     <script src="js/matrix-builder.js"></script>
     <script src="js/conditional-logic-builder.js"></script>
     <script src="js/pipeline-sharing.js"></script>
+    <script src="js/env-var-manager.js"></script>
+    <script src="js/pipeline-visualizer.js"></script>
+    <script src="js/artifact-manager.js"></script>
     <script src="js/enhanced-pipeline-builder.js"></script>
     
     <!-- Main App Controller - Single point of initialization -->

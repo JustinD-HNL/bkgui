@@ -41,7 +41,21 @@ class YAMLGenerator {
             return 'steps: []';
         }
 
-        let yaml = 'steps:\n';
+        let yaml = '';
+        
+        // Add global environment variables if available
+        if (window.envVarManager) {
+            const globalVars = window.envVarManager.getGlobalVariables();
+            if (Object.keys(globalVars).length > 0) {
+                yaml += 'env:\n';
+                Object.entries(globalVars).forEach(([key, value]) => {
+                    yaml += `  ${key}: ${this.quote(value)}\n`;
+                });
+                yaml += '\n';
+            }
+        }
+        
+        yaml += 'steps:\n';
         this.currentIndent = 1;
 
         pipelineConfig.steps.forEach((step, index) => {

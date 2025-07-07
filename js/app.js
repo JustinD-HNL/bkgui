@@ -737,20 +737,13 @@ class BuildkiteApp {
                         break;
                     case 'variable-manager':
                         window.showModal('env-vars-modal');
-                        if (this.pipelineBuilder?.selectedStep) {
-                            // Load current step's environment variables
-                            const envVarsContent = document.getElementById('env-vars-content');
-                            if (envVarsContent && this.pipelineBuilder.selectedStep.properties?.env) {
-                                const envVars = this.pipelineBuilder.selectedStep.properties.env;
-                                envVarsContent.innerHTML = Object.entries(envVars).map(([key, value]) => `
-                                    <div class="env-var-item">
-                                        <input type="text" class="env-key" value="${key}" placeholder="KEY">
-                                        <input type="text" class="env-value" value="${value}" placeholder="Value">
-                                        <button class="btn btn-danger btn-small remove-env-var">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                `).join('');
+                        if (window.envVarManager) {
+                            // If a step is selected, switch to step tab
+                            if (this.pipelineBuilder?.selectedStep) {
+                                window.envVarManager.openForStep(this.pipelineBuilder.selectedStep.id);
+                            } else {
+                                // Otherwise show global variables
+                                window.envVarManager.switchTab('global');
                             }
                         }
                         break;
@@ -760,15 +753,24 @@ class BuildkiteApp {
                     case 'dependency-manager':
                         window.showModal('dependency-manager-modal');
                         break;
+                    case 'artifact-manager':
+                        window.showModal('artifact-manager-modal');
+                        if (window.artifactManager) {
+                            // If a step is selected, open for that step
+                            if (this.pipelineBuilder?.selectedStep && this.pipelineBuilder.selectedStep.type === 'command') {
+                                window.artifactManager.openForStep(this.pipelineBuilder.selectedStep.id);
+                            } else {
+                                // Otherwise show the paths tab
+                                window.artifactManager.switchTab('paths');
+                            }
+                        }
+                        break;
                     case 'pipeline-preview':
-                        // Show YAML preview modal
-                        window.showModal('yaml-preview-modal');
-                        // Update YAML content in the modal
-                        this.updateYAML();
-                        const yamlOutput = document.getElementById('yaml-output');
-                        const yamlPreviewContent = document.getElementById('yaml-preview-content');
-                        if (yamlOutput && yamlPreviewContent) {
-                            yamlPreviewContent.textContent = yamlOutput.textContent;
+                        // Show pipeline preview modal
+                        window.showModal('pipeline-preview-modal');
+                        // Let the visualizer handle the rendering
+                        if (window.pipelineVisualizer) {
+                            window.pipelineVisualizer.showPreview();
                         }
                         break;
                     default:
