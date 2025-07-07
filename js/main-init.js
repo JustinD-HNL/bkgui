@@ -979,16 +979,46 @@ class MainInitializer {
                     this.validatePipeline();
                     break;
                 case 'conditional-logic':
-                    this.showToast('Conditional logic builder coming soon', 'info');
+                    if (window.pipelineBuilder?.selectedStep) {
+                        window.showModal('conditional-logic-modal');
+                        if (window.conditionalLogicBuilder) {
+                            window.conditionalLogicBuilder.openForStep(window.pipelineBuilder.selectedStep);
+                        }
+                    } else {
+                        this.showToast('Please select a step first', 'info');
+                    }
                     break;
                 case 'variable-manager':
-                    this.showToast('Variable manager coming soon', 'info');
+                    window.showModal('env-vars-modal');
+                    if (window.pipelineBuilder?.selectedStep) {
+                        const envVarsContent = document.getElementById('env-vars-content');
+                        if (envVarsContent && window.pipelineBuilder.selectedStep.properties?.env) {
+                            const envVars = window.pipelineBuilder.selectedStep.properties.env;
+                            envVarsContent.innerHTML = Object.entries(envVars).map(([key, value]) => `
+                                <div class="env-var-item">
+                                    <input type="text" class="env-key" value="${key}" placeholder="KEY">
+                                    <input type="text" class="env-value" value="${value}" placeholder="Value">
+                                    <button class="btn btn-danger btn-small remove-env-var">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            `).join('');
+                        }
+                    }
                     break;
                 case 'pattern-library':
-                    this.showToast('Pattern library coming soon', 'info');
+                    window.showModal('patterns-modal');
                     break;
                 case 'pipeline-preview':
-                    this.showToast('Pipeline preview coming soon', 'info');
+                    window.showModal('yaml-preview-modal');
+                    if (window.buildkiteApp) {
+                        window.buildkiteApp.updateYAML();
+                    }
+                    const yamlOutput = document.getElementById('yaml-output');
+                    const yamlPreviewContent = document.getElementById('yaml-preview-content');
+                    if (yamlOutput && yamlPreviewContent) {
+                        yamlPreviewContent.textContent = yamlOutput.textContent;
+                    }
                     break;
                 case 'add-step':
                     const stepType = button.dataset.stepType || 'command';

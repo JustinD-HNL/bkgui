@@ -726,19 +726,50 @@ class BuildkiteApp {
                         this.validatePipeline();
                         break;
                     case 'conditional-logic':
-                        this.showNotification('Conditional logic builder coming soon', 'info');
+                        if (this.pipelineBuilder?.selectedStep) {
+                            window.showModal('conditional-logic-modal');
+                            if (window.conditionalLogicBuilder) {
+                                window.conditionalLogicBuilder.openForStep(this.pipelineBuilder.selectedStep);
+                            }
+                        } else {
+                            this.showNotification('Please select a step first', 'info');
+                        }
                         break;
                     case 'variable-manager':
-                        this.showNotification('Variable manager coming soon', 'info');
+                        window.showModal('env-vars-modal');
+                        if (this.pipelineBuilder?.selectedStep) {
+                            // Load current step's environment variables
+                            const envVarsContent = document.getElementById('env-vars-content');
+                            if (envVarsContent && this.pipelineBuilder.selectedStep.properties?.env) {
+                                const envVars = this.pipelineBuilder.selectedStep.properties.env;
+                                envVarsContent.innerHTML = Object.entries(envVars).map(([key, value]) => `
+                                    <div class="env-var-item">
+                                        <input type="text" class="env-key" value="${key}" placeholder="KEY">
+                                        <input type="text" class="env-value" value="${value}" placeholder="Value">
+                                        <button class="btn btn-danger btn-small remove-env-var">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                `).join('');
+                            }
+                        }
                         break;
                     case 'pattern-library':
-                        this.showNotification('Pattern library coming soon', 'info');
+                        window.showModal('patterns-modal');
                         break;
                     case 'dependency-manager':
                         window.showModal('dependency-manager-modal');
                         break;
                     case 'pipeline-preview':
-                        this.showNotification('Pipeline preview coming soon', 'info');
+                        // Show YAML preview modal
+                        window.showModal('yaml-preview-modal');
+                        // Update YAML content in the modal
+                        this.updateYAML();
+                        const yamlOutput = document.getElementById('yaml-output');
+                        const yamlPreviewContent = document.getElementById('yaml-preview-content');
+                        if (yamlOutput && yamlPreviewContent) {
+                            yamlPreviewContent.textContent = yamlOutput.textContent;
+                        }
                         break;
                     default:
                         console.warn(`Unknown action: ${action}`);
@@ -1015,31 +1046,105 @@ class BuildkiteApp {
         const templateList = document.getElementById('template-list');
         if (!templateList || !window.pipelineTemplates) return;
         
-        const templates = window.pipelineTemplates.templates;
+        // Don't overwrite the existing HTML templates
+        // Instead, add click handlers to existing template items
+        const templateItems = templateList.querySelectorAll('.template-item');
         
-        templateList.innerHTML = Object.entries(templates).map(([key, template]) => `
-            <div class="template-card" data-template="${key}">
-                <h4><i class="fas ${template.icon}"></i> ${template.name}</h4>
-                <p>${template.description}</p>
-                <div class="template-meta">
-                    <span class="template-steps">${template.pipeline.steps.length} steps</span>
-                </div>
-                <button class="btn btn-primary btn-small use-template-btn" data-template-key="${key}">
-                    Use Template
-                </button>
-            </div>
-        `).join('');
-        
-        // Add click handlers
-        templateList.querySelectorAll('.use-template-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const templateKey = btn.dataset.templateKey;
-                if (window.pipelineTemplates) {
-                    window.pipelineTemplates.loadTemplate(templateKey);
+        templateItems.forEach(item => {
+            // Remove any existing click handlers
+            const oldItem = item.cloneNode(true);
+            item.parentNode.replaceChild(oldItem, item);
+            
+            // Add new click handler
+            oldItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const templateName = oldItem.dataset.template;
+                console.log(`🎯 Template clicked: ${templateName}`);
+                
+                // Map template names from HTML to pipeline-templates.js keys
+                const templateMapping = {
+                    // Testing templates
+                    'unit-tests': 'node-app',
+                    'integration-tests': 'node-app',
+                    'parallel-tests': 'parallel-testing',
+                    'security-scan': 'security-scan',
+                    
+                    // Build templates
+                    'node-build': 'node-app',
+                    'python-build': 'python-ml',
+                    'go-build': 'monorepo',
+                    'multi-arch-build': 'docker-microservice',
+                    
+                    // Docker templates
+                    'docker-basic': 'docker-microservice',
+                    'docker-compose': 'docker-microservice',
+                    'docker-registry': 'docker-microservice',
+                    'docker-multi-stage': 'docker-microservice',
+                    
+                    // Deployment templates
+                    'kubernetes-deploy': 'approval-workflow',
+                    'aws-deploy': 'terraform-infra',
+                    'manual-approval': 'approval-workflow',
+                    'blue-green': 'approval-workflow',
+                    
+                    // Security templates
+                    'sast-scan': 'security-scan',
+                    'dependency-check': 'security-scan',
+                    'container-scan': 'security-scan',
+                    'compliance-check': 'security-scan',
+                    
+                    // Notification templates
+                    'slack-notify': 'node-app',
+                    'email-notify': 'node-app',
+                    'webhook-notify': 'node-app',
+                    'status-update': 'node-app'
+                };
+                
+                const mappedTemplate = templateMapping[templateName] || templateName;
+                
+                if (window.pipelineTemplates && window.pipelineTemplates.templates[mappedTemplate]) {
+                    window.pipelineTemplates.loadTemplate(mappedTemplate);
                     window.closeModal('step-templates-modal');
                     this.updateYAML();
                     this.updateStepCount();
+                    this.showNotification(`Applied ${templateName} template`, 'success');
+                } else {
+                    // Try the main-init.js handler
+                    if (window.buildkiteApp && window.buildkiteApp.handleTemplateClick) {
+                        window.buildkiteApp.handleTemplateClick(templateName);
+                        window.closeModal('step-templates-modal');
+                    } else {
+                        this.showNotification(`Template "${templateName}" not found`, 'warning');
+                    }
                 }
+            });
+            
+            // Add hover effect
+            oldItem.style.cursor = 'pointer';
+        });
+        
+        // Setup category filters
+        const categoryButtons = document.querySelectorAll('.template-cat');
+        categoryButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const category = btn.dataset.category;
+                
+                // Update active state
+                categoryButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Show/hide categories
+                const categories = templateList.querySelectorAll('.template-category');
+                categories.forEach(cat => {
+                    if (category === 'all' || cat.dataset.category === category) {
+                        cat.style.display = 'block';
+                    } else {
+                        cat.style.display = 'none';
+                    }
+                });
             });
         });
     }
