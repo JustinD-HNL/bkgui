@@ -711,6 +711,16 @@ class BuildkiteApp {
             this.validatePipeline();
         }, 'validate-pipeline-btn');
         
+        // Toggle YAML View
+        this.addEventListenerOnce(document.getElementById('toggle-yaml'), 'click', () => {
+            this.toggleYAMLView();
+        }, 'toggle-yaml');
+        
+        // Validate Pipeline (header button)
+        this.addEventListenerOnce(document.getElementById('validate-pipeline'), 'click', () => {
+            this.validatePipeline();
+        }, 'validate-pipeline');
+        
         console.log('✅ Quick action buttons configured');
     }
 
@@ -1140,6 +1150,21 @@ class BuildkiteApp {
             }, 'copy-yaml');
         }
         
+        // Copy YAML Preview button
+        const copyPreviewBtn = document.getElementById('copy-yaml-preview');
+        if (copyPreviewBtn) {
+            this.addEventListenerOnce(copyPreviewBtn, 'click', () => {
+                const yamlContent = document.getElementById('yaml-output')?.textContent;
+                if (yamlContent) {
+                    navigator.clipboard.writeText(yamlContent).then(() => {
+                        this.showNotification('YAML copied to clipboard', 'success');
+                    }).catch(() => {
+                        this.showNotification('Failed to copy YAML', 'error');
+                    });
+                }
+            }, 'copy-yaml-preview');
+        }
+        
         if (copyInlineBtn) {
             this.addEventListenerOnce(copyInlineBtn, 'click', () => {
                 const yamlContent = document.getElementById('yaml-output')?.textContent;
@@ -1563,11 +1588,23 @@ class BuildkiteApp {
     }
 
     toggleYAMLView() {
-        const yamlSection = document.querySelector('.yaml-output-section');
-        if (!yamlSection) return;
+        const yamlSection = document.getElementById('yaml-preview');
+        const toggleBtn = document.getElementById('toggle-yaml');
+        
+        if (!yamlSection) {
+            console.warn('YAML preview section not found');
+            return;
+        }
         
         this.yamlVisible = !this.yamlVisible;
         yamlSection.style.display = this.yamlVisible ? 'block' : 'none';
+        
+        // Update button text
+        if (toggleBtn) {
+            toggleBtn.innerHTML = this.yamlVisible ? 
+                '<i class="fas fa-code"></i> Hide YAML' : 
+                '<i class="fas fa-code"></i> Show YAML';
+        }
         
         if (this.yamlVisible) {
             this.updateYAML();

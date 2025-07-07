@@ -971,6 +971,30 @@ class MainInitializer {
                 case 'pipeline-validator':
                     this.validatePipeline();
                     break;
+                case 'conditional-logic':
+                    this.showToast('Conditional logic builder coming soon', 'info');
+                    break;
+                case 'variable-manager':
+                    this.showToast('Variable manager coming soon', 'info');
+                    break;
+                case 'pattern-library':
+                    this.showToast('Pattern library coming soon', 'info');
+                    break;
+                case 'pipeline-preview':
+                    this.showToast('Pipeline preview coming soon', 'info');
+                    break;
+                case 'add-step':
+                    const stepType = button.dataset.stepType || 'command';
+                    if (window.pipelineBuilder) {
+                        window.pipelineBuilder.addStep(stepType);
+                    }
+                    break;
+                case 'load-template':
+                    if (window.pipelineBuilder?.loadExample) {
+                        window.pipelineBuilder.loadExample();
+                        this.showToast('Template loaded', 'success');
+                    }
+                    break;
                 default:
                     console.warn(`Unknown action: ${action}`);
                     this.showToast(`Action "${action}" is not available`, 'warning');

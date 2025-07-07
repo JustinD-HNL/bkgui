@@ -1367,6 +1367,12 @@ class PipelineBuilder {
                         <span>Wait</span>
                     </div>
                     <div class="step-actions">
+                        <button class="btn-icon" data-action="move-up" data-step-id="${step.id || 'wait-' + index}" title="Move Up" ${index === 0 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                        <button class="btn-icon" data-action="move-down" data-step-id="${step.id || 'wait-' + index}" title="Move Down" ${index === this.steps.length - 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                         <button class="btn-icon" data-action="delete-step" data-step-id="${step.id || 'wait-' + index}" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
