@@ -1437,6 +1437,12 @@ class PipelineBuilder {
     }
 
     renderStep(step, index) {
+        // Ensure step is an object with properties
+        if (!step || typeof step !== 'object') {
+            console.warn('Invalid step:', step);
+            return '';
+        }
+        
         // Check if this is the version 2 format
         if (this.isVersion2Format()) {
             return this.createStepElement(step).outerHTML;
@@ -1575,8 +1581,13 @@ class PipelineBuilder {
     }
 
     getStepLabel(step) {
+        if (!step || !step.properties) {
+            return 'Step';
+        }
+        
         switch (step.type) {
             case 'command': return step.properties.label || 'Command Step';
+            case 'wait': return 'Wait';
             case 'block': return step.properties.block || 'Block Step';
             case 'input': return step.properties.input || 'Input Step';
             case 'trigger': return `Trigger: ${step.properties.trigger || 'pipeline'}`;
@@ -1860,6 +1871,12 @@ class PipelineBuilder {
 
     generatePropertiesForm(step) {
         console.log('Generating properties form for step:', step);
+        
+        // Ensure step has properties
+        if (!step.properties) {
+            step.properties = this.getDefaultProperties(step.type || 'command');
+        }
+        
         let formHtml = `<h3>${this.getStepTypeLabel(step.type)} Configuration</h3>`;
         
         switch (step.type) {
@@ -2259,6 +2276,11 @@ class PipelineBuilder {
     }
 
     generateCommonPropertiesForm(step) {
+        // Ensure step has properties
+        if (!step.properties) {
+            step.properties = {};
+        }
+        
         return `
             <div class="property-section">
                 <h4><i class="fas fa-sitemap"></i> Dependencies & Parallel Execution</h4>
@@ -2365,7 +2387,7 @@ class PipelineBuilder {
         // Get all unique parallel groups from other steps
         const parallelGroups = new Set();
         this.steps.forEach(s => {
-            if (s.properties.parallelGroup && s.id !== currentStep.id) {
+            if (s.properties && s.properties.parallelGroup && s.id !== currentStep.id) {
                 parallelGroups.add(s.properties.parallelGroup);
             }
         });
@@ -2375,7 +2397,7 @@ class PipelineBuilder {
         
         // Add existing groups
         Array.from(parallelGroups).forEach(group => {
-            const selected = currentStep.properties.parallelGroup === group ? 'selected' : '';
+            const selected = currentStep.properties && currentStep.properties.parallelGroup === group ? 'selected' : '';
             options += `<option value="${group}" ${selected}>Group: ${group}</option>`;
         });
         
@@ -4335,7 +4357,7 @@ class PipelineBuilder {
                 const stepConfig = { ...step.properties };
                 
                 // Merge custom attributes at the root level
-                if (step.properties.customAttributes) {
+                if (step.properties && step.properties.customAttributes) {
                     Object.entries(step.properties.customAttributes).forEach(([key, value]) => {
                         if (key && !key.startsWith('custom_attr_')) {
                             stepConfig[key] = value;
@@ -4528,7 +4550,7 @@ class PipelineBuilder {
         }
         
         // Add custom attributes
-        if (step.properties.customAttributes) {
+        if (step.properties && step.properties.customAttributes) {
             Object.entries(step.properties.customAttributes).forEach(([key, value]) => {
                 if (key && !key.startsWith('custom_attr_')) {
                     yamlStep[key] = value;
@@ -4628,16 +4650,27 @@ class PipelineBuilder {
                             else if (stepConfig.trigger) type = 'trigger';
                             else if (stepConfig.group) type = 'group';
                             
+                            // Ensure properties exist
+                            const properties = stepConfig || {};
+                            
                             return {
                                 id: `step-${++this.stepCounter}-${Date.now()}`,
                                 type: type,
-                                properties: stepConfig
+                                properties: properties
                             };
                         });
                         
                         console.log('✅ Pipeline loaded from localStorage (legacy format)');
                     }
                 }
+                
+                // Ensure all steps have properties
+                this.steps = this.steps.map(step => {
+                    if (!step.properties) {
+                        step.properties = this.getDefaultProperties(step.type || 'command');
+                    }
+                    return step;
+                });
             }
         } catch (e) {
             console.warn('⚠️ Failed to load from localStorage:', e);
@@ -4739,6 +4772,9 @@ class PipelineBuilder {
 
     // Custom Attributes Management
     renderCustomAttributes(step) {
+        if (!step.properties) {
+            step.properties = {};
+        }
         if (!step.properties.customAttributes) {
             step.properties.customAttributes = {};
         }
