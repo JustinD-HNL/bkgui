@@ -440,6 +440,17 @@ class PipelineBuilder {
             }
         });
 
+        // Move up/down buttons
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="move-up"]')) {
+                const stepId = e.target.closest('[data-action="move-up"]').dataset.stepId;
+                this.moveStepUp(stepId);
+            } else if (e.target.closest('[data-action="move-down"]')) {
+                const stepId = e.target.closest('[data-action="move-down"]').dataset.stepId;
+                this.moveStepDown(stepId);
+            }
+        });
+
         // Step action buttons with proper event stopping
         document.addEventListener('click', (e) => {
             const actionButton = e.target.closest('.step-action');
@@ -1082,6 +1093,7 @@ class PipelineBuilder {
             this.steps.push(step);
         }
         
+        this.updateStepKeys();
         this.renderPipeline();
         this.selectStep(step);
         this.updateStepCount();
@@ -1188,6 +1200,7 @@ class PipelineBuilder {
         const index = this.steps.findIndex(s => s.id === stepId);
         if (index > 0) {
             [this.steps[index - 1], this.steps[index]] = [this.steps[index], this.steps[index - 1]];
+            this.updateStepKeys();
             this.renderPipeline();
             this.renderProperties();
             this.saveToLocalStorage();
@@ -1199,6 +1212,7 @@ class PipelineBuilder {
         const index = this.steps.findIndex(s => s.id === stepId);
         if (index >= 0 && index < this.steps.length - 1) {
             [this.steps[index], this.steps[index + 1]] = [this.steps[index + 1], this.steps[index]];
+            this.updateStepKeys();
             this.renderPipeline();
             this.renderProperties();
             this.saveToLocalStorage();
@@ -1216,9 +1230,79 @@ class PipelineBuilder {
         const adjustedIndex = newIndex > currentIndex ? newIndex - 1 : newIndex;
         this.steps.splice(adjustedIndex, 0, step);
         
+        this.updateStepKeys();
         this.renderPipeline();
         this.selectStep(stepId);
         this.saveToLocalStorage();
+    }
+
+    updateStepKeys() {
+        // Update keys based on position for steps that don't have custom keys
+        const stepTypeCounts = {};
+        
+        this.steps.forEach((step, index) => {
+            // Skip wait steps and steps with custom keys that don't follow the pattern
+            if (step.type === 'wait') return;
+            
+            // Count steps by type
+            if (!stepTypeCounts[step.type]) {
+                stepTypeCounts[step.type] = 0;
+            }
+            stepTypeCounts[step.type]++;
+            
+            // Only update keys that follow the default pattern or are missing
+            const typePrefix = {
+                'command': 'build',
+                'block': 'block',
+                'input': 'input',
+                'trigger': 'trigger',
+                'group': 'group',
+                'plugin': 'plugin',
+                'notify': 'notify',
+                'annotation': 'annotation',
+                'pipeline-upload': 'upload'
+            };
+            
+            const prefix = typePrefix[step.type] || step.type;
+            const expectedKey = `${prefix}-${stepTypeCounts[step.type]}`;
+            
+            // Only update if the key is missing or follows the default pattern
+            if (!step.properties.key || step.properties.key.match(new RegExp(`^${prefix}-\\d+$`))) {
+                step.properties.key = expectedKey;
+            }
+        });
+        
+        // Update any dependencies that reference old keys
+        this.updateDependencyReferences();
+    }
+
+    updateDependencyReferences() {
+        // Create a map of all current valid keys
+        const validKeys = new Set();
+        this.steps.forEach(step => {
+            if (step.properties.key) {
+                validKeys.add(step.properties.key);
+            }
+            if (step.type === 'wait') {
+                validKeys.add('wait');
+            }
+        });
+        
+        // Update dependencies to only include valid keys
+        this.steps.forEach(step => {
+            if (step.properties.depends_on) {
+                if (Array.isArray(step.properties.depends_on)) {
+                    step.properties.depends_on = step.properties.depends_on.filter(dep => validKeys.has(dep));
+                    if (step.properties.depends_on.length === 0) {
+                        delete step.properties.depends_on;
+                    } else if (step.properties.depends_on.length === 1) {
+                        step.properties.depends_on = step.properties.depends_on[0];
+                    }
+                } else if (!validKeys.has(step.properties.depends_on)) {
+                    delete step.properties.depends_on;
+                }
+            }
+        });
     }
 
     renderPipeline() {
@@ -1297,6 +1381,12 @@ class PipelineBuilder {
                 </div>
                 ${this.renderStepDetails(step)}
                 <div class="step-actions">
+                    <button class="btn-icon" data-action="move-up" data-step-id="${step.id}" title="Move Up" ${index === 0 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button class="btn-icon" data-action="move-down" data-step-id="${step.id}" title="Move Down" ${index === this.steps.length - 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
                     <button class="btn-icon" data-action="duplicate-step" data-step-id="${step.id}" title="Duplicate">
                         <i class="fas fa-copy"></i>
                     </button>
@@ -1481,6 +1571,17 @@ class PipelineBuilder {
             details.push(`<i class="fas fa-th"></i> Matrix: ${dimensions.join(', ')}`);
         }
         
+        if (step.properties.concurrency || step.properties.concurrency_group) {
+            let concurrencyText = [];
+            if (step.properties.concurrency) {
+                concurrencyText.push(`limit: ${step.properties.concurrency}`);
+            }
+            if (step.properties.concurrency_group) {
+                concurrencyText.push(`group: ${step.properties.concurrency_group}`);
+            }
+            details.push(`<i class="fas fa-layer-group"></i> Concurrency: ${concurrencyText.join(', ')}`);
+        }
+        
         return details.length > 0 ? 
             `<div class="step-details">${details.map(d => `<small>${d}</small>`).join('')}</div>` : '';
     }
@@ -1528,6 +1629,17 @@ class PipelineBuilder {
         
         if (step.properties.plugins && Object.keys(step.properties.plugins).length > 0) {
             details.push(`<span class="step-detail"><i class="fas fa-puzzle-piece"></i> Plugins: ${Object.keys(step.properties.plugins).join(', ')}</span>`);
+        }
+        
+        if (step.properties.concurrency || step.properties.concurrency_group) {
+            let concurrencyText = [];
+            if (step.properties.concurrency) {
+                concurrencyText.push(`limit: ${step.properties.concurrency}`);
+            }
+            if (step.properties.concurrency_group) {
+                concurrencyText.push(`group: ${step.properties.concurrency_group}`);
+            }
+            details.push(`<span class="step-detail"><i class="fas fa-layer-group"></i> Concurrency: ${concurrencyText.join(', ')}</span>`);
         }
         
         return details.length > 0 ? `<div class="step-details">${details.join('')}</div>` : '';
@@ -2029,6 +2141,19 @@ class PipelineBuilder {
                 <div class="property-group">
                     <label for="step-parallelism">Parallelism</label>
                     <input type="number" id="step-parallelism" value="${step.properties.parallelism || ''}" min="1" placeholder="1">
+                </div>
+            </div>
+            <div class="property-section">
+                <h4><i class="fas fa-layer-group"></i> Concurrency Control</h4>
+                <div class="property-group">
+                    <label for="step-concurrency">Concurrency Limit</label>
+                    <input type="number" id="step-concurrency" value="${step.properties.concurrency || ''}" min="1" placeholder="No limit">
+                    <small>Maximum number of jobs that can run at the same time</small>
+                </div>
+                <div class="property-group">
+                    <label for="step-concurrency-group">Concurrency Group</label>
+                    <input type="text" id="step-concurrency-group" value="${step.properties.concurrency_group || ''}" placeholder="e.g., deploy/prod">
+                    <small>Group name for concurrency limits (shared across steps)</small>
                 </div>
             </div>
         `;
@@ -2964,6 +3089,31 @@ class PipelineBuilder {
         if (retryExitStatus && step.properties.retry && step.properties.retry.automatic) {
             retryExitStatus.addEventListener('input', (e) => {
                 step.properties.retry.automatic.exit_status = e.target.value || '*';
+                this.saveToLocalStorage();
+            });
+        }
+
+        // Concurrency fields
+        const concurrencyInput = container.querySelector('#step-concurrency');
+        if (concurrencyInput) {
+            concurrencyInput.addEventListener('input', (e) => {
+                if (e.target.value) {
+                    step.properties.concurrency = parseInt(e.target.value);
+                } else {
+                    delete step.properties.concurrency;
+                }
+                this.saveToLocalStorage();
+            });
+        }
+
+        const concurrencyGroupInput = container.querySelector('#step-concurrency-group');
+        if (concurrencyGroupInput) {
+            concurrencyGroupInput.addEventListener('input', (e) => {
+                if (e.target.value) {
+                    step.properties.concurrency_group = e.target.value;
+                } else {
+                    delete step.properties.concurrency_group;
+                }
                 this.saveToLocalStorage();
             });
         }
