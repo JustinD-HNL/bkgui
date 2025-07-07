@@ -373,7 +373,10 @@ class ConditionalLogicBuilder {
     }
 }
 
-// Initialize and export
+// Export the class
+window.ConditionalLogicBuilder = ConditionalLogicBuilder;
+
+// Initialize and export instance
 window.conditionalLogicBuilder = new ConditionalLogicBuilder();
 
 // Export for use in other modules

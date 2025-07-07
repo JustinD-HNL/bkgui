@@ -305,7 +305,10 @@ class MatrixBuilder {
     }
 }
 
-// Initialize and export
+// Export the class
+window.MatrixBuilder = MatrixBuilder;
+
+// Initialize and export instance
 window.matrixBuilder = new MatrixBuilder();
 
 // Export for use in other modules

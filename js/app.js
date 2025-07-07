@@ -72,7 +72,7 @@ class BuildkiteApp {
         try {
             // Initialize in correct order
             await this.initializeComponents();
-            // this.injectEnhancedStyles(); // Removed - styles are in styles.css
+            this.injectEnhancedStyles();
             this.setupModalManagement();
             this.setupAllEventListeners();
             this.setupKeyboardShortcuts();
@@ -1714,9 +1714,9 @@ class BuildkiteApp {
 
     importYAMLFile(file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = () => {
             try {
-                const yamlContent = e.target.result;
+                // const yamlContent = e.target.result;
                 // Here you would parse YAML to pipeline config
                 // For now, just show a message
                 this.showNotification('YAML import functionality coming soon', 'info');

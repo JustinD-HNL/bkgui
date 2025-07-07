@@ -349,7 +349,10 @@ class PipelineSharing {
     }
 }
 
-// Initialize and export
+// Export the class
+window.PipelineSharing = PipelineSharing;
+
+// Initialize and export instance
 window.pipelineSharing = new PipelineSharing();
 
 // Export for use in other modules

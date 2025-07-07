@@ -1835,7 +1835,7 @@ class PipelineBuilder {
                     <select id="step-soft-fail">
                         <option value="">No soft fail</option>
                         <option value="true" ${step.properties.soft_fail === true ? 'selected' : ''}>Always soft fail</option>
-                        <option value="exit_status:*" ${step.properties.soft_fail?.includes('exit_status:*') ? 'selected' : ''}>Any non-zero exit</option>
+                        <option value="exit_status:*" ${(Array.isArray(step.properties.soft_fail) && step.properties.soft_fail.includes('exit_status:*')) || step.properties.soft_fail === 'exit_status:*' ? 'selected' : ''}>Any non-zero exit</option>
                         <option value="exit_status:1" ${step.properties.soft_fail === 'exit_status:1' ? 'selected' : ''}>Exit code 1</option>
                         <option value="custom">Custom...</option>
                     </select>
