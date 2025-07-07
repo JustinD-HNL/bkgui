@@ -1383,9 +1383,12 @@ class PipelineBuilder {
             group: 'fa-object-group'
         };
         
+        const parallelGroupClass = step.properties.parallelGroup ? 
+            `parallel-group parallel-group-${step.properties.parallelGroup.replace(/\s+/g, '-').toLowerCase()}` : '';
+        
         return `
-            <div class="step-card ${step.type}-step ${this.selectedStep?.id === step.id ? 'selected' : ''}" 
-                 data-step-id="${step.id}" draggable="true">
+            <div class="step-card ${step.type}-step ${this.selectedStep?.id === step.id ? 'selected' : ''} ${parallelGroupClass}" 
+                 data-step-id="${step.id}" draggable="true" ${step.properties.parallelGroup ? `data-parallel-group="${step.properties.parallelGroup}"` : ''}>
                 <div class="step-header">
                     <i class="fas ${icons[step.type] || 'fa-cube'}"></i>
                     <span class="step-label">${this.getStepLabel(step)}</span>
@@ -1652,6 +1655,11 @@ class PipelineBuilder {
                 concurrencyText.push(`group: ${step.properties.concurrency_group}`);
             }
             details.push(`<span class="step-detail"><i class="fas fa-layer-group"></i> Concurrency: ${concurrencyText.join(', ')}</span>`);
+        }
+        
+        // Add parallel group indicator
+        if (step.properties.parallelGroup) {
+            details.push(`<span class="step-detail parallel-group-indicator"><i class="fas fa-columns"></i> Parallel: ${step.properties.parallelGroup}</span>`);
         }
         
         return details.length > 0 ? `<div class="step-details">${details.join('')}</div>` : '';
@@ -2149,7 +2157,18 @@ class PipelineBuilder {
     generateCommonPropertiesForm(step) {
         return `
             <div class="property-section">
-                <h4><i class="fas fa-sitemap"></i> Dependencies & Conditions</h4>
+                <h4><i class="fas fa-sitemap"></i> Dependencies & Parallel Execution</h4>
+                <div class="property-group">
+                    <label for="parallel-group">Parallel Group</label>
+                    <select id="parallel-group" value="${step.properties.parallelGroup || ''}">
+                        <option value="">No parallel group (runs after dependencies)</option>
+                        ${this.renderParallelGroupOptions(step)}
+                    </select>
+                    <small>Steps in the same parallel group run simultaneously</small>
+                    <div id="parallel-group-members" style="margin-top: 0.5rem;">
+                        ${this.renderParallelGroupMembers(step)}
+                    </div>
+                </div>
                 <div class="property-group">
                     <label>Dependencies</label>
                     <div class="dependency-manager">
@@ -2236,6 +2255,51 @@ class PipelineBuilder {
             
             return `<option value="${key}">${label} (${key})</option>`;
         }).join('');
+    }
+
+    renderParallelGroupOptions(currentStep) {
+        // Get all unique parallel groups from other steps
+        const parallelGroups = new Set();
+        this.steps.forEach(s => {
+            if (s.properties.parallelGroup && s.id !== currentStep.id) {
+                parallelGroups.add(s.properties.parallelGroup);
+            }
+        });
+        
+        // Add option to create a new group
+        let options = '<option value="new-group">+ Create new parallel group</option>';
+        
+        // Add existing groups
+        Array.from(parallelGroups).forEach(group => {
+            const selected = currentStep.properties.parallelGroup === group ? 'selected' : '';
+            options += `<option value="${group}" ${selected}>Group: ${group}</option>`;
+        });
+        
+        return options;
+    }
+    
+    renderParallelGroupMembers(currentStep) {
+        if (!currentStep.properties.parallelGroup) {
+            return '';
+        }
+        
+        const members = this.steps.filter(s => 
+            s.properties.parallelGroup === currentStep.properties.parallelGroup && 
+            s.id !== currentStep.id
+        );
+        
+        if (members.length === 0) {
+            return '<small style="color: #718096;">No other steps in this parallel group yet</small>';
+        }
+        
+        return `
+            <div style="background: #f7fafc; padding: 0.5rem; border-radius: 4px; margin-top: 0.25rem;">
+                <small style="font-weight: 600; color: #4a5568;">Other steps in this group:</small>
+                <ul style="margin: 0.25rem 0 0 1.25rem; padding: 0;">
+                    ${members.map(s => `<li style="font-size: 0.85rem; color: #718096;">${s.properties.label || s.type}</li>`).join('')}
+                </ul>
+            </div>
+        `;
     }
 
     renderDependencyList(step) {
@@ -2487,6 +2551,19 @@ class PipelineBuilder {
             } else {
                 delete this.selectedStep.properties.parallelism;
             }
+        } else if (input.id === 'parallel-group') {
+            if (value === 'new-group') {
+                const groupName = prompt('Enter a name for the new parallel group:');
+                if (groupName) {
+                    this.selectedStep.properties.parallelGroup = groupName;
+                    this.renderProperties(); // Re-render to show the new group
+                }
+            } else if (value) {
+                this.selectedStep.properties.parallelGroup = value;
+            } else {
+                delete this.selectedStep.properties.parallelGroup;
+            }
+            this.renderProperties(); // Re-render to update group members
         } else if (input.dataset.plugin && input.dataset.field) {
             const plugin = input.dataset.plugin;
             const field = input.dataset.field;
@@ -3243,6 +3320,19 @@ class PipelineBuilder {
                     }
                     
                     if (!step.properties.depends_on.includes(selectedValue)) {
+                        // Check if the dependency is in the same parallel group
+                        const depStep = this.steps.find(s => 
+                            (s.properties?.key === selectedValue) || 
+                            (s.type === 'wait' && selectedValue === 'wait')
+                        );
+                        
+                        if (depStep && depStep.properties.parallelGroup && 
+                            depStep.properties.parallelGroup === step.properties.parallelGroup) {
+                            alert('Cannot add dependency on a step in the same parallel group. Steps in the same parallel group run simultaneously.');
+                            e.target.value = '';
+                            return;
+                        }
+                        
                         step.properties.depends_on.push(selectedValue);
                         this.renderProperties();
                         this.renderPipeline();
