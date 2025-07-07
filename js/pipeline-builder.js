@@ -407,6 +407,36 @@ class PipelineBuilder {
         // Global window reference for inline handlers
         window.pipelineBuilder = this;
         
+        // PRIORITY: Move button handlers - must be registered first with capture phase
+        document.addEventListener('click', (e) => {
+            // Check if clicked element is within a move button
+            const moveUp = e.target.closest('[data-action="move-up"]');
+            const moveDown = e.target.closest('[data-action="move-down"]');
+            
+            if (moveUp || moveDown) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                const button = moveUp || moveDown;
+                const stepId = button.dataset.stepId;
+                
+                console.log(`🎯 ${moveUp ? 'Move UP' : 'Move DOWN'} button clicked! Step ID: ${stepId}`);
+                
+                if (stepId) {
+                    if (moveUp) {
+                        this.moveStepUp(stepId);
+                    } else {
+                        this.moveStepDown(stepId);
+                    }
+                } else {
+                    console.error('❌ No step ID found on button:', button);
+                }
+                
+                return false;
+            }
+        }, true); // Capture phase - handles event before bubbling
+        
         // Pipeline container click handler
         const pipelineContainer = document.getElementById('pipeline-steps');
         if (pipelineContainer) {
@@ -446,30 +476,7 @@ class PipelineBuilder {
             }
         });
 
-        // Move up/down buttons - handle both data-action and class-based selectors
-        document.addEventListener('click', (e) => {
-            // Handle move-up with both selectors
-            const moveUpBtn = e.target.closest('[data-action="move-up"]') || e.target.closest('.step-action.move-up');
-            if (moveUpBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                const stepEl = moveUpBtn.closest('.step-card, .pipeline-step');
-                const stepId = moveUpBtn.dataset.stepId || stepEl?.dataset.stepId;
-                console.log('Move up clicked for step:', stepId);
-                if (stepId) this.moveStepUp(stepId);
-            }
-            
-            // Handle move-down with both selectors
-            const moveDownBtn = e.target.closest('[data-action="move-down"]') || e.target.closest('.step-action.move-down');
-            if (moveDownBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                const stepEl = moveDownBtn.closest('.step-card, .pipeline-step');
-                const stepId = moveDownBtn.dataset.stepId || stepEl?.dataset.stepId;
-                console.log('Move down clicked for step:', stepId);
-                if (stepId) this.moveStepDown(stepId);
-            }
-        });
+        // Move button handlers are now in the PRIORITY section above
 
         // Step action buttons with proper event stopping
         document.addEventListener('click', (e) => {
