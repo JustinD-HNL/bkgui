@@ -953,6 +953,13 @@ class MainInitializer {
             if (!button) return;
             
             const action = button.dataset.action;
+            
+            // Skip actions that are handled by pipeline-builder.js
+            const pipelineBuilderActions = ['move-up', 'move-down', 'delete-step', 'duplicate-step'];
+            if (pipelineBuilderActions.includes(action)) {
+                return; // Let pipeline-builder.js handle these
+            }
+            
             console.log(`🎯 Action clicked: ${action}`);
             
             switch (action) {

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Move Buttons Test - Buildkite Pipeline Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .test-results {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Move Buttons Debugging Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Check Event Listeners</h2>
+        <button onclick="checkEventListeners()">Run Test</button>
+        <div id="test1-results" class="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Simulate Move Button Click</h2>
+        <button onclick="simulateMoveClick()">Simulate Move Click</button>
+        <div id="test2-results" class="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Check Pipeline Builder State</h2>
+        <button onclick="checkPipelineState()">Check State</button>
+        <div id="test3-results" class="test-results"></div>
+    </div>
+
+    <script>
+        function checkEventListeners() {
+            const results = document.getElementById('test1-results');
+            let output = 'Checking event listeners...\n\n';
+            
+            // Open the main app in an iframe to test
+            const iframe = document.createElement('iframe');
+            iframe.src = 'index.html';
+            iframe.style.width = '100%';
+            iframe.style.height = '600px';
+            document.body.appendChild(iframe);
+            
+            iframe.onload = function() {
+                const iframeDoc = iframe.contentDocument;
+                const iframeWin = iframe.contentWindow;
+                
+                // Check for move buttons
+                const moveButtons = iframeDoc.querySelectorAll('[data-action="move-up"], [data-action="move-down"]');
+                output += `Found ${moveButtons.length} move buttons\n`;
+                
+                // Check for event listeners
+                const hasClickListeners = iframeDoc._getEventListeners ? 
+                    iframeDoc._getEventListeners(document, 'click') : 'Cannot check event listeners';
+                output += `Click listeners: ${hasClickListeners}\n`;
+                
+                // Check pipeline builder
+                output += `Pipeline builder exists: ${!!iframeWin.pipelineBuilder}\n`;
+                output += `Steps count: ${iframeWin.pipelineBuilder?.steps?.length || 0}\n`;
+                
+                results.textContent = output;
+            };
+        }
+        
+        function simulateMoveClick() {
+            const results = document.getElementById('test2-results');
+            let output = 'Simulating move button click...\n\n';
+            
+            const iframe = document.querySelector('iframe');
+            if (!iframe) {
+                results.textContent = 'Please run Test 1 first to load the app';
+                return;
+            }
+            
+            const iframeDoc = iframe.contentDocument;
+            const iframeWin = iframe.contentWindow;
+            
+            // Add a test step first
+            if (iframeWin.pipelineBuilder) {
+                iframeWin.pipelineBuilder.addStep('command');
+                iframeWin.pipelineBuilder.addStep('command');
+                output += 'Added 2 test steps\n';
+                
+                // Wait for render
+                setTimeout(() => {
+                    const moveDownButton = iframeDoc.querySelector('[data-action="move-down"]');
+                    if (moveDownButton) {
+                        output += `Found move down button for step: ${moveDownButton.dataset.stepId}\n`;
+                        
+                        // Create and dispatch click event
+                        const clickEvent = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: iframeWin
+                        });
+                        
+                        moveDownButton.dispatchEvent(clickEvent);
+                        output += 'Click event dispatched\n';
+                        
+                        // Check console for log output
+                        output += 'Check browser console for "Move down clicked" message\n';
+                    } else {
+                        output += 'ERROR: No move down button found\n';
+                    }
+                    
+                    results.textContent = output;
+                }, 1000);
+            }
+        }
+        
+        function checkPipelineState() {
+            const results = document.getElementById('test3-results');
+            let output = 'Checking pipeline builder state...\n\n';
+            
+            const iframe = document.querySelector('iframe');
+            if (!iframe) {
+                results.textContent = 'Please run Test 1 first to load the app';
+                return;
+            }
+            
+            const iframeWin = iframe.contentWindow;
+            
+            if (iframeWin.pipelineBuilder) {
+                const pb = iframeWin.pipelineBuilder;
+                output += `Steps: ${JSON.stringify(pb.steps.map(s => s.id), null, 2)}\n`;
+                output += `Selected step: ${pb.selectedStep?.id || 'none'}\n`;
+                output += `moveStepUp exists: ${typeof pb.moveStepUp === 'function'}\n`;
+                output += `moveStepDown exists: ${typeof pb.moveStepDown === 'function'}\n`;
+                
+                // Try calling moveStepDown directly
+                if (pb.steps.length > 1 && pb.moveStepDown) {
+                    const firstStepId = pb.steps[0].id;
+                    output += `\nTrying to move step ${firstStepId} down...\n`;
+                    pb.moveStepDown(firstStepId);
+                    output += `Steps after move: ${JSON.stringify(pb.steps.map(s => s.id), null, 2)}\n`;
+                }
+            } else {
+                output += 'ERROR: Pipeline builder not found\n';
+            }
+            
+            results.textContent = output;
+        }
+    </script>
+</body>
+</html>

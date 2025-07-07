@@ -411,6 +411,139 @@ class PipelineTemplates {
                 }
             },
             
+            'approval-workflow': {
+                name: 'Approval Workflow',
+                icon: 'fa-check-circle',
+                description: 'Multi-stage deployment with approval gates',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '🏗️ Build Application',
+                            key: 'build',
+                            command: 'make build',
+                            artifact_paths: 'dist/**/*',
+                            agents: { queue: 'default' }
+                        },
+                        {
+                            label: '🧪 Run Tests',
+                            key: 'test',
+                            command: 'make test',
+                            depends_on: ['build'],
+                            agents: { queue: 'default' }
+                        },
+                        'wait',
+                        {
+                            input: '🔐 Deployment Configuration',
+                            key: 'deploy-config',
+                            prompt: 'Configure deployment settings',
+                            fields: [
+                                {
+                                    text: 'Environment',
+                                    key: 'environment',
+                                    select: [
+                                        { label: 'Staging', value: 'staging' },
+                                        { label: 'Production', value: 'production' }
+                                    ],
+                                    required: true
+                                },
+                                {
+                                    text: 'Version Tag',
+                                    key: 'version',
+                                    hint: 'e.g., v1.2.3',
+                                    required: true
+                                }
+                            ]
+                        },
+                        {
+                            label: '🚀 Deploy to ${BUILDKITE_BUILD_META_DATA_ENVIRONMENT}',
+                            key: 'deploy',
+                            command: 'make deploy ENV=${BUILDKITE_BUILD_META_DATA_ENVIRONMENT} VERSION=${BUILDKITE_BUILD_META_DATA_VERSION}',
+                            depends_on: ['deploy-config'],
+                            agents: { queue: 'deploy' }
+                        },
+                        {
+                            block: '✋ Approve for Production',
+                            key: 'prod-approval',
+                            prompt: 'Approve deployment to production?',
+                            if: 'build.meta_data.environment == "production"',
+                            blocked_state: 'running',
+                            fields: [
+                                {
+                                    text: 'Approval Notes',
+                                    key: 'approval-notes',
+                                    required: false
+                                }
+                            ]
+                        },
+                        {
+                            trigger: 'production-deploy',
+                            label: '🚀 Trigger Production Deploy',
+                            depends_on: ['prod-approval'],
+                            if: 'build.meta_data.environment == "production"',
+                            build: {
+                                message: 'Production deployment approved',
+                                commit: '${BUILDKITE_COMMIT}',
+                                branch: '${BUILDKITE_BRANCH}',
+                                meta_data: {
+                                    version: '${BUILDKITE_BUILD_META_DATA_VERSION}',
+                                    approved_by: '${BUILDKITE_BUILD_CREATOR_EMAIL}'
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+            
+            'parallel-testing': {
+                name: 'Parallel Testing',
+                icon: 'fa-tasks',
+                description: 'Run tests in parallel with grouping',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '📦 Setup',
+                            key: 'setup',
+                            command: 'npm ci',
+                            artifact_paths: 'node_modules/**/*',
+                            agents: { queue: 'default' }
+                        },
+                        {
+                            group: '🧪 Test Suite',
+                            key: 'test-suite',
+                            depends_on: ['setup'],
+                            steps: [
+                                {
+                                    label: 'Unit Tests',
+                                    command: 'npm run test:unit',
+                                    key: 'unit-tests',
+                                    agents: { queue: 'default' }
+                                },
+                                {
+                                    label: 'Integration Tests',
+                                    command: 'npm run test:integration',
+                                    key: 'integration-tests',
+                                    agents: { queue: 'default' }
+                                },
+                                {
+                                    label: 'E2E Tests',
+                                    command: 'npm run test:e2e',
+                                    key: 'e2e-tests',
+                                    parallelism: 3,
+                                    agents: { queue: 'e2e' }
+                                }
+                            ]
+                        },
+                        'wait',
+                        {
+                            label: '📈 Test Report',
+                            key: 'test-report',
+                            command: 'npm run test:report',
+                            agents: { queue: 'default' }
+                        }
+                    ]
+                }
+            },
+            
             'security-scan': {
                 name: 'Security Pipeline',
                 icon: 'fa-shield-alt',

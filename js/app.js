@@ -551,12 +551,17 @@ class BuildkiteApp {
             }
         });
         
-        // Close modal buttons
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            this.addEventListenerOnce(btn, 'click', () => {
+        // Close modal buttons (X buttons)
+        document.querySelectorAll('.close-modal').forEach((btn, index) => {
+            this.addEventListenerOnce(btn, 'click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const modal = btn.closest('.modal');
-                if (modal) window.closeModal(modal.id);
-            }, `close-modal-${btn.id || 'unknown'}`);
+                if (modal) {
+                    console.log(`Closing modal: ${modal.id}`);
+                    window.closeModal(modal.id);
+                }
+            }, `close-modal-${modal?.id || `btn-${index}`}`);
         });
         
         // ESC key to close modals
@@ -682,34 +687,63 @@ class BuildkiteApp {
     setupQuickActionButtons() {
         console.log('🔧 Setting up quick action buttons...');
         
-        // Plugin Catalog
-        this.addEventListenerOnce(document.getElementById('plugin-catalog-btn'), 'click', () => {
-            window.showModal('plugin-catalog-modal');
-            this.populatePluginCatalog();
-        }, 'plugin-catalog-btn');
-        
-        // Matrix Builder
-        this.addEventListenerOnce(document.getElementById('matrix-builder-btn'), 'click', () => {
-            if (this.pipelineBuilder?.selectedStep?.type === 'command') {
-                window.showModal('matrix-builder-modal');
-                if (this.matrixBuilder) {
-                    this.matrixBuilder.open(this.pipelineBuilder.selectedStep);
-                }
-            } else {
-                this.showNotification('Please select a command step first', 'info');
+        // Handle data-action buttons to avoid conflicts with main-init.js
+        const actionButtons = document.querySelectorAll('[data-action]');
+        actionButtons.forEach(button => {
+            const action = button.dataset.action;
+            
+            // Skip if this button already has a handler from main-init.js
+            if (this.attachedListeners.has(`data-action-${action}`)) {
+                return;
             }
-        }, 'matrix-builder-btn');
-        
-        // Templates
-        this.addEventListenerOnce(document.getElementById('templates-btn'), 'click', () => {
-            window.showModal('step-templates-modal');
-            this.populateTemplates();
-        }, 'templates-btn');
-        
-        // Validate Pipeline
-        this.addEventListenerOnce(document.getElementById('validate-pipeline-btn'), 'click', () => {
-            this.validatePipeline();
-        }, 'validate-pipeline-btn');
+            
+            this.addEventListenerOnce(button, 'click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`🎯 Quick action clicked: ${action}`);
+                
+                switch (action) {
+                    case 'plugin-catalog':
+                        window.showModal('plugin-catalog-modal');
+                        this.populatePluginCatalog();
+                        break;
+                    case 'matrix-builder':
+                        if (this.pipelineBuilder?.selectedStep?.type === 'command') {
+                            window.showModal('matrix-builder-modal');
+                            if (this.matrixBuilder) {
+                                this.matrixBuilder.open(this.pipelineBuilder.selectedStep);
+                            }
+                        } else {
+                            this.showNotification('Please select a command step first', 'info');
+                        }
+                        break;
+                    case 'step-templates':
+                        window.showModal('step-templates-modal');
+                        this.populateTemplates();
+                        break;
+                    case 'pipeline-validator':
+                        this.validatePipeline();
+                        break;
+                    case 'conditional-logic':
+                        this.showNotification('Conditional logic builder coming soon', 'info');
+                        break;
+                    case 'variable-manager':
+                        this.showNotification('Variable manager coming soon', 'info');
+                        break;
+                    case 'pattern-library':
+                        this.showNotification('Pattern library coming soon', 'info');
+                        break;
+                    case 'dependency-manager':
+                        window.showModal('dependencies-modal');
+                        break;
+                    case 'pipeline-preview':
+                        this.showNotification('Pipeline preview coming soon', 'info');
+                        break;
+                    default:
+                        console.warn(`Unknown action: ${action}`);
+                }
+            }, `data-action-${action}`);
+        });
         
         // Toggle YAML View
         this.addEventListenerOnce(document.getElementById('toggle-yaml'), 'click', () => {
@@ -721,7 +755,7 @@ class BuildkiteApp {
             this.validatePipeline();
         }, 'validate-pipeline');
         
-        console.log('✅ Quick action buttons configured');
+        console.log('✅ Quick action buttons configured with', actionButtons.length, 'buttons');
     }
 
     setupPluginCatalog() {
