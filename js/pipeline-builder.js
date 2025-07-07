@@ -1742,10 +1742,12 @@ class PipelineBuilder {
     }
 
     generatePropertiesForm(step) {
+        console.log('Generating properties form for step:', step);
         let formHtml = `<h3>${this.getStepTypeLabel(step.type)} Configuration</h3>`;
         
         switch (step.type) {
             case 'command':
+                console.log('Generating command step form');
                 formHtml += this.generateCommandStepForm(step);
                 break;
             case 'wait':
@@ -1802,6 +1804,12 @@ class PipelineBuilder {
     }
 
     generateCommandStepForm(step) {
+        // Ensure properties exist
+        if (!step.properties) {
+            console.error('Step properties missing:', step);
+            step.properties = this.getDefaultProperties('command');
+        }
+        
         return `
             <div class="property-section">
                 <div class="property-group">
@@ -1867,6 +1875,46 @@ class PipelineBuilder {
                     ${this.renderPluginsList(step)}
                     <button type="button" class="btn btn-secondary btn-small" data-action="add-plugin">
                         <i class="fas fa-plug"></i> Add Plugin
+                    </button>
+                </div>
+                <div class="property-group">
+                    <label for="step-agents">Agent Targeting</label>
+                    <input type="text" id="step-agents-queue" value="${step.properties.agents?.queue || 'default'}" placeholder="Agent queue">
+                    <small>Specify agent queue (default: 'default')</small>
+                </div>
+                <div class="property-group">
+                    <label for="step-timeout">Timeout (minutes)</label>
+                    <input type="number" id="step-timeout" value="${step.properties.timeout_in_minutes || ''}" placeholder="e.g., 30" min="1">
+                    <small>Maximum time for step execution</small>
+                </div>
+                <div class="property-group">
+                    <label for="step-parallelism">Parallelism</label>
+                    <input type="number" id="step-parallelism" value="${step.properties.parallelism || ''}" placeholder="e.g., 5" min="1">
+                    <small>Number of parallel jobs to run</small>
+                </div>
+                <div class="property-group">
+                    <label for="step-depends-on">Dependencies</label>
+                    <input type="text" id="step-depends-on" value="${Array.isArray(step.properties.depends_on) ? step.properties.depends_on.join(', ') : step.properties.depends_on || ''}" placeholder="step-key-1, step-key-2">
+                    <small>Comma-separated list of step keys this depends on</small>
+                </div>
+                <div class="property-group">
+                    <label>Environment Variables</label>
+                    <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.quickActions?.['variable-manager']?.()">
+                        <i class="fas fa-dollar-sign"></i> Manage Variables
+                    </button>
+                </div>
+                <div class="property-group">
+                    <label>
+                        <input type="checkbox" id="step-skip" ${step.properties.skip ? 'checked' : ''}>
+                        Skip this step
+                    </label>
+                    <small>Step will be skipped during pipeline execution</small>
+                </div>
+                <div class="property-group">
+                    <label>Conditional Execution</label>
+                    <input type="text" id="step-if" value="${step.properties.if || ''}" placeholder="e.g., build.branch == 'main'">
+                    <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.quickActions?.['conditional-logic']?.()">
+                        <i class="fas fa-code-branch"></i> Build Condition
                     </button>
                 </div>
             </div>
@@ -2735,18 +2783,69 @@ class PipelineBuilder {
             });
         }
 
+        // Agent queue
+        const agentQueueInput = container.querySelector('#step-agents-queue');
+        if (agentQueueInput) {
+            agentQueueInput.addEventListener('input', (e) => {
+                if (!step.properties.agents) step.properties.agents = {};
+                step.properties.agents.queue = e.target.value || 'default';
+                this.saveToLocalStorage();
+            });
+        }
+
+        // Dependencies
+        const dependsOnInput = container.querySelector('#step-depends-on');
+        if (dependsOnInput) {
+            dependsOnInput.addEventListener('input', (e) => {
+                const deps = e.target.value.split(',').map(d => d.trim()).filter(d => d);
+                step.properties.depends_on = deps.length > 0 ? deps : null;
+                this.saveToLocalStorage();
+            });
+        }
+
+        // Skip checkbox
+        const skipCheckbox = container.querySelector('#step-skip');
+        if (skipCheckbox) {
+            skipCheckbox.addEventListener('change', (e) => {
+                step.properties.skip = e.target.checked;
+                this.renderPipeline();
+                this.saveToLocalStorage();
+            });
+        }
+
+        // Conditional execution
+        const ifInput = container.querySelector('#step-if');
+        if (ifInput) {
+            ifInput.addEventListener('input', (e) => {
+                step.properties.if = e.target.value || null;
+                this.saveToLocalStorage();
+            });
+        }
+
         // Soft fail configuration
-        const softFailSelect = container.querySelector('#step-soft-fail-type');
+        const softFailSelect = container.querySelector('#step-soft-fail');
         if (softFailSelect) {
             softFailSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'false') {
+                const value = e.target.value;
+                if (!value) {
                     step.properties.soft_fail = false;
-                } else if (e.target.value === 'true') {
+                } else if (value === 'true') {
                     step.properties.soft_fail = true;
-                } else if (e.target.value === 'exit_codes') {
-                    step.properties.soft_fail = [];
+                } else if (value === 'custom') {
+                    // Handle custom input
+                    this.renderProperties();
+                } else {
+                    step.properties.soft_fail = value;
                 }
-                this.renderProperties();
+                this.saveToLocalStorage();
+            });
+        }
+
+        // Custom soft fail input
+        const softFailCustom = container.querySelector('#step-soft-fail-custom');
+        if (softFailCustom) {
+            softFailCustom.addEventListener('input', (e) => {
+                step.properties.soft_fail = e.target.value || false;
                 this.saveToLocalStorage();
             });
         }
