@@ -874,6 +874,10 @@ class PipelineBuilder {
                 // Handle existing step reordering
                 const stepId = this.draggedElement.stepId;
                 this.moveStep(stepId, zoneIndex);
+                // Ensure properties panel updates
+                setTimeout(() => {
+                    this.renderProperties();
+                }, 150);
             } else {
                 // Handle new step from palette
                 const stepType = e.dataTransfer.getData('stepType');
@@ -2990,8 +2994,8 @@ class PipelineBuilder {
             });
         }
 
-        // Remove dependency buttons
-        container.addEventListener('click', (e) => {
+        // Remove dependency buttons - use event delegation properly
+        const removeDependencyHandler = (e) => {
             if (e.target.closest('.btn-remove-dependency')) {
                 const depKey = e.target.closest('.btn-remove-dependency').dataset.dependency;
                 if (depKey && step.properties.depends_on) {
@@ -3011,11 +3015,20 @@ class PipelineBuilder {
                     this.saveToLocalStorage();
                 }
             }
-        });
+        };
+        
+        // Remove any existing handler first
+        if (this._removeDependencyHandler) {
+            container.removeEventListener('click', this._removeDependencyHandler);
+        }
+        
+        // Store reference and add new handler
+        this._removeDependencyHandler = removeDependencyHandler;
+        container.addEventListener('click', removeDependencyHandler);
     }
 
     setupActionButtonListeners(step, container) {
-        container.addEventListener('click', (e) => {
+        const actionHandler = (e) => {
             const action = e.target.closest('[data-action]')?.dataset.action;
             if (!action) return;
             
@@ -3079,7 +3092,16 @@ class PipelineBuilder {
                     this.showMatrixConfigDialog(step);
                     break;
             }
-        });
+        };
+        
+        // Remove any existing handler first
+        if (this._actionHandler) {
+            container.removeEventListener('click', this._actionHandler);
+        }
+        
+        // Store reference and add new handler
+        this._actionHandler = actionHandler;
+        container.addEventListener('click', actionHandler);
     }
 
     // Dialog methods
