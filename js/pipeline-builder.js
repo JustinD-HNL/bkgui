@@ -446,20 +446,28 @@ class PipelineBuilder {
             }
         });
 
-        // Move up/down buttons
+        // Move up/down buttons - handle both data-action and class-based selectors
         document.addEventListener('click', (e) => {
-            if (e.target.closest('[data-action="move-up"]')) {
+            // Handle move-up with both selectors
+            const moveUpBtn = e.target.closest('[data-action="move-up"]') || e.target.closest('.step-action.move-up');
+            if (moveUpBtn) {
                 e.preventDefault();
                 e.stopPropagation();
-                const stepId = e.target.closest('[data-action="move-up"]').dataset.stepId;
+                const stepEl = moveUpBtn.closest('.step-card, .pipeline-step');
+                const stepId = moveUpBtn.dataset.stepId || stepEl?.dataset.stepId;
                 console.log('Move up clicked for step:', stepId);
-                this.moveStepUp(stepId);
-            } else if (e.target.closest('[data-action="move-down"]')) {
+                if (stepId) this.moveStepUp(stepId);
+            }
+            
+            // Handle move-down with both selectors
+            const moveDownBtn = e.target.closest('[data-action="move-down"]') || e.target.closest('.step-action.move-down');
+            if (moveDownBtn) {
                 e.preventDefault();
                 e.stopPropagation();
-                const stepId = e.target.closest('[data-action="move-down"]').dataset.stepId;
+                const stepEl = moveDownBtn.closest('.step-card, .pipeline-step');
+                const stepId = moveDownBtn.dataset.stepId || stepEl?.dataset.stepId;
                 console.log('Move down clicked for step:', stepId);
-                this.moveStepDown(stepId);
+                if (stepId) this.moveStepDown(stepId);
             }
         });
 
