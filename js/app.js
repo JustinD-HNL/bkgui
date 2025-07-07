@@ -24,6 +24,7 @@ class BuildkiteApp {
         this.commandPalette = null;
         this.pipelinePatterns = null;
         this.dependencyGraph = null;
+        this.apiClient = null;
         
         // App state
         this.yamlVisible = false;
@@ -32,6 +33,7 @@ class BuildkiteApp {
         this.isInitialized = false;
         this.currentCommandIndex = 0;
         this.debugMode = true;
+        this.currentTheme = localStorage.getItem('theme') || 'light';
         
         // Track attached event listeners to prevent duplicates
         this.attachedListeners = new Set();
@@ -73,6 +75,7 @@ class BuildkiteApp {
             // Initialize in correct order
             await this.initializeComponents();
             this.injectEnhancedStyles();
+            this.initializeTheme();
             this.setupModalManagement();
             this.setupAllEventListeners();
             this.setupKeyboardShortcuts();
@@ -162,6 +165,20 @@ class BuildkiteApp {
             this.dependencyGraph = new DependencyGraphManager();
             window.dependencyGraph = this.dependencyGraph;
             console.log('✅ Dependency Graph initialized');
+        }
+        
+        // Initialize API Client
+        if (window.buildkiteAPI) {
+            this.apiClient = window.buildkiteAPI;
+            await this.apiClient.initialize();
+            console.log('✅ Buildkite API Client initialized');
+            
+            // Check if API is configured
+            if (this.apiClient.initialized) {
+                this.showAPIStatus(true);
+            } else {
+                this.showAPIStatus(false);
+            }
         }
         
         // Check for missing methods and add them
@@ -630,6 +647,12 @@ class BuildkiteApp {
         
         // Properties panel updates
         this.setupPropertiesUpdates();
+        
+        // API Integration handlers
+        this.setupAPIHandlers();
+        
+        // Theme toggle handler
+        this.setupThemeToggle();
         
         console.log('✅ All event listeners configured');
     }
@@ -2120,6 +2143,247 @@ class BuildkiteApp {
         }
         
         return { passedTests, totalTests: tests.length, criticalFailures };
+    }
+
+    // API Integration Methods
+    showAPIStatus(connected) {
+        const statusElement = document.getElementById('api-status');
+        if (statusElement) {
+            if (connected) {
+                statusElement.classList.add('connected');
+                statusElement.classList.remove('disconnected');
+                statusElement.innerHTML = '<i class="fas fa-circle"></i><span>API Connected</span>';
+            } else {
+                statusElement.classList.remove('connected');
+                statusElement.classList.add('disconnected');
+                statusElement.innerHTML = '<i class="fas fa-circle"></i><span>API Disconnected</span>';
+            }
+        }
+    }
+
+    setupAPIHandlers() {
+        // API Config button
+        this.addEventListenerOnce(document.getElementById('api-config'), 'click', () => {
+            this.showAPIConfigModal();
+        }, 'api-config-button');
+
+        // API Config Modal handlers
+        const modal = document.getElementById('api-config-modal');
+        if (modal) {
+            // Close button
+            const closeBtn = modal.querySelector('.modal-close');
+            if (closeBtn) {
+                this.addEventListenerOnce(closeBtn, 'click', () => {
+                    this.hideAPIConfigModal();
+                }, 'api-config-close');
+            }
+
+            // Test connection button
+            this.addEventListenerOnce(document.getElementById('test-api-connection'), 'click', async () => {
+                await this.testAPIConnection();
+            }, 'test-api-connection');
+
+            // Save configuration button
+            this.addEventListenerOnce(document.getElementById('save-api-config'), 'click', async () => {
+                await this.saveAPIConfiguration();
+            }, 'save-api-config');
+
+            // Clear configuration button
+            this.addEventListenerOnce(document.getElementById('clear-api-config'), 'click', () => {
+                this.clearAPIConfiguration();
+            }, 'clear-api-config');
+        }
+    }
+
+    showAPIConfigModal() {
+        const modal = document.getElementById('api-config-modal');
+        if (modal) {
+            modal.style.display = 'block';
+            
+            // Load existing configuration if available
+            if (this.apiClient) {
+                const savedConfig = localStorage.getItem('buildkite_api_config');
+                if (savedConfig) {
+                    try {
+                        const config = JSON.parse(savedConfig);
+                        document.getElementById('api-organization').value = config.organization || '';
+                        // Don't show the token for security reasons, just indicate it's configured
+                        const tokenInput = document.getElementById('api-token');
+                        if (config.apiToken) {
+                            tokenInput.placeholder = 'Token configured (enter new token to change)';
+                        }
+                    } catch (e) {
+                        console.error('Failed to load saved config:', e);
+                    }
+                }
+            }
+        }
+    }
+
+    hideAPIConfigModal() {
+        const modal = document.getElementById('api-config-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    async testAPIConnection() {
+        const statusDiv = document.getElementById('api-test-status');
+        const token = document.getElementById('api-token').value;
+        const organization = document.getElementById('api-organization').value;
+
+        if (!token || !organization) {
+            statusDiv.className = 'api-test-status error';
+            statusDiv.textContent = 'Please provide both API token and organization slug';
+            return;
+        }
+
+        statusDiv.className = 'api-test-status testing';
+        statusDiv.textContent = 'Testing connection...';
+
+        try {
+            // Temporarily set configuration
+            await this.apiClient.setConfiguration(token, organization);
+            
+            // Test the connection
+            const success = await this.apiClient.testConnection();
+            
+            if (success) {
+                statusDiv.className = 'api-test-status success';
+                statusDiv.textContent = 'Connection successful! You can now save the configuration.';
+            } else {
+                statusDiv.className = 'api-test-status error';
+                statusDiv.textContent = 'Connection failed. Please check your API token and organization slug.';
+            }
+        } catch (error) {
+            statusDiv.className = 'api-test-status error';
+            statusDiv.textContent = `Connection error: ${error.message}`;
+        }
+    }
+
+    async saveAPIConfiguration() {
+        let token = document.getElementById('api-token').value;
+        const organization = document.getElementById('api-organization').value;
+        const statusDiv = document.getElementById('api-test-status');
+
+        // If no new token entered, check if we have an existing one
+        if (!token && this.apiClient.apiToken) {
+            token = this.apiClient.apiToken;
+        }
+
+        if (!token || !organization) {
+            statusDiv.className = 'api-test-status error';
+            statusDiv.textContent = 'Please provide both API token and organization slug';
+            return;
+        }
+
+        try {
+            // Save configuration
+            await this.apiClient.setConfiguration(token, organization);
+            await this.apiClient.initialize();
+            
+            // Update UI
+            this.showAPIStatus(true);
+            this.hideAPIConfigModal();
+            
+            // Clear sensitive data from form
+            document.getElementById('api-token').value = '';
+            document.getElementById('api-token').placeholder = 'Token configured (enter new token to change)';
+            
+            // Show success notification
+            this.showNotification('API configuration saved successfully', 'success');
+            
+            // Enable API features in the UI
+            this.enableAPIFeatures();
+        } catch (error) {
+            statusDiv.className = 'api-test-status error';
+            statusDiv.textContent = `Failed to save configuration: ${error.message}`;
+        }
+    }
+
+    enableAPIFeatures() {
+        // This method can be extended to enable API-specific features in the UI
+        console.log('✅ API features enabled');
+        
+        // Add API-specific UI elements if needed
+        // For example: pipeline sync buttons, import from Buildkite, etc.
+    }
+
+    clearAPIConfiguration() {
+        if (confirm('Are you sure you want to clear the API configuration?')) {
+            // Clear configuration
+            this.apiClient.clearConfiguration();
+            
+            // Update UI
+            this.showAPIStatus(false);
+            
+            // Clear form fields
+            document.getElementById('api-token').value = '';
+            document.getElementById('api-token').placeholder = 'Enter your Buildkite API token';
+            document.getElementById('api-organization').value = '';
+            document.getElementById('api-test-status').className = 'api-test-status';
+            document.getElementById('api-test-status').textContent = '';
+            
+            // Show notification
+            this.showNotification('API configuration cleared', 'info');
+        }
+    }
+
+    showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+
+        container.appendChild(notification);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+
+    // Theme Management
+    initializeTheme() {
+        // Apply saved theme
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        this.updateThemeIcon();
+    }
+
+    setupThemeToggle() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            this.addEventListenerOnce(themeToggle, 'click', () => {
+                this.toggleTheme();
+            }, 'theme-toggle');
+        }
+    }
+
+    toggleTheme() {
+        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        localStorage.setItem('theme', this.currentTheme);
+        this.updateThemeIcon();
+        
+        // Show notification
+        this.showNotification(`Switched to ${this.currentTheme} mode`, 'success');
+    }
+
+    updateThemeIcon() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            const icon = themeToggle.querySelector('i');
+            if (icon) {
+                icon.className = this.currentTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+            themeToggle.title = this.currentTheme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+        }
     }
 }
 

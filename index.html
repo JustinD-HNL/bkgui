@@ -22,6 +22,17 @@
                     <span class="version">Enhanced v3.0</span>
                 </div>
                 <div class="header-actions">
+                    <button id="theme-toggle" class="btn btn-secondary" title="Toggle Dark Mode">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <div id="api-status" class="api-status" title="Buildkite API Status">
+                        <i class="fas fa-circle"></i>
+                        <span>API</span>
+                    </div>
+                    <button id="api-config" class="btn btn-secondary" title="Configure Buildkite API">
+                        <i class="fas fa-cog"></i>
+                        API Config
+                    </button>
                     <button id="load-example" class="btn btn-secondary">
                         <i class="fas fa-file-import"></i>
                         Load Example
@@ -1291,6 +1302,42 @@ steps:
         </div>
     </div>
 
+    <!-- API Configuration Modal -->
+    <div id="api-config-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Buildkite API Configuration</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="api-config-form">
+                    <div class="form-group">
+                        <label for="api-token">API Token</label>
+                        <input type="password" id="api-token" placeholder="Enter your Buildkite API token" class="form-control">
+                        <small>Get your API token from <a href="https://buildkite.com/user/api-access-tokens" target="_blank">Buildkite Settings</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label for="api-organization">Organization Slug</label>
+                        <input type="text" id="api-organization" placeholder="your-organization-slug" class="form-control">
+                        <small>Your organization's URL slug (e.g., 'my-company' from buildkite.com/my-company)</small>
+                    </div>
+                    <div class="api-test-status" id="api-test-status"></div>
+                    <div class="modal-actions">
+                        <button id="clear-api-config" class="btn btn-danger" title="Remove saved configuration">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                        <button id="test-api-connection" class="btn btn-secondary">
+                            <i class="fas fa-plug"></i> Test Connection
+                        </button>
+                        <button id="save-api-config" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
@@ -1307,6 +1354,10 @@ steps:
     <input type="file" id="import-file" accept=".yml,.yaml" style="display: none;">
 
     <!-- Scripts - Load in correct order -->
+    <!-- Performance Utilities -->
+    <script src="js/performance-utils.js"></script>
+    <script src="js/virtual-scroll.js"></script>
+    
     <!-- Core Scripts First -->
     <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
@@ -1324,6 +1375,9 @@ steps:
     <script src="js/pipeline-visualizer.js"></script>
     <script src="js/artifact-manager.js"></script>
     <script src="js/enhanced-pipeline-builder.js"></script>
+    
+    <!-- API Integration -->
+    <script type="module" src="js/api-client.js"></script>
     
     <!-- Main App Controller - Single point of initialization -->
     <script src="js/app.js"></script>

@@ -40,6 +40,12 @@ class PipelineBuilder {
         this.selectedStep = null;
         this.stepCounter = 0;
         
+        // Performance optimizations
+        this.virtualScroll = null;
+        this.debouncedRender = null;
+        this.debouncedSave = null;
+        this.initializePerformanceOptimizations();
+        
         // Buildkite limits
         this.limits = {
             maxSteps: 500,           // Pipeline upload limit
@@ -375,6 +381,31 @@ class PipelineBuilder {
         
         // Initialize
         this.init();
+    }
+
+    initializePerformanceOptimizations() {
+        if (window.performanceUtils) {
+            // Debounce rendering for better performance
+            this.debouncedRender = window.performanceUtils.debounce(
+                this.renderPipelineInternal.bind(this),
+                100
+            );
+            
+            // Debounce auto-save
+            this.debouncedSave = window.performanceUtils.debounce(
+                this.saveToLocalStorage.bind(this),
+                1000
+            );
+        }
+        
+        // Initialize virtual scrolling if available
+        if (window.VirtualScroll) {
+            const container = document.getElementById('pipeline-steps');
+            if (container) {
+                this.virtualScroll = new VirtualScroll(container, 120, 3);
+                this.virtualScroll.setRenderCallback(this.renderStepElement.bind(this));
+            }
+        }
     }
 
     init() {
@@ -746,7 +777,11 @@ class PipelineBuilder {
             
             this.renderPipeline();
             this.selectStep(newStep);
-            this.saveToLocalStorage();
+            if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
         } else if (template) {
             console.log(`📍 Loading template '${template}' at index ${insertIndex}`);
             this.loadTemplate(template, insertIndex);
@@ -1157,7 +1192,11 @@ class PipelineBuilder {
                 }
                 this.renderPipeline();
                 this.updateStepCount();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
                 console.log(`🗑️ Deleted step: ${stepId}`);
             }
         }
@@ -1204,7 +1243,11 @@ class PipelineBuilder {
             this.updateStepKeys();
             this.renderPipeline();
             this.renderProperties();
-            this.saveToLocalStorage();
+            if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
             console.log(`⬆️ Moved step ${stepId} up`);
         }
     }
@@ -1216,7 +1259,11 @@ class PipelineBuilder {
             this.updateStepKeys();
             this.renderPipeline();
             this.renderProperties();
-            this.saveToLocalStorage();
+            if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
             console.log(`⬇️ Moved step ${stepId} down`);
         }
     }
@@ -1307,6 +1354,15 @@ class PipelineBuilder {
     }
 
     renderPipeline() {
+        // Use debounced version if available
+        if (this.debouncedRender) {
+            this.debouncedRender();
+        } else {
+            this.renderPipelineInternal();
+        }
+    }
+
+    renderPipelineInternal() {
         const container = document.getElementById('pipeline-steps');
         if (!container) return;
         
@@ -1319,21 +1375,48 @@ class PipelineBuilder {
                     <p class="hint">Start with a command step or load an example</p>
                 </div>
             `;
+            
+            // Disable virtual scrolling for empty state
+            if (this.virtualScroll) {
+                this.virtualScroll.disable();
+            }
             return;
         }
         
-        container.innerHTML = this.steps.map((step, index) => this.renderStep(step, index)).join('');
+        // Use virtual scrolling for large pipelines
+        if (this.virtualScroll && this.steps.length > 50) {
+            this.virtualScroll.setItems(this.steps);
+        } else {
+            // Regular rendering for small pipelines
+            container.innerHTML = this.steps.map((step, index) => this.renderStep(step, index)).join('');
+            
+            // Disable virtual scrolling if enabled
+            if (this.virtualScroll) {
+                this.virtualScroll.disable();
+            }
+        }
         
         // Re-setup drag for existing steps
         this.setupStepDragging();
         
         // Notify YAML generator if available
         if (window.yamlGenerator && window.yamlGenerator.generate) {
-            const yaml = window.yamlGenerator.generate({ steps: this.steps });
-            // Update the YAML display if it exists
-            const yamlContent = document.getElementById('yaml-content');
-            if (yamlContent) {
-                yamlContent.textContent = yaml;
+            // Use requestIdleCallback for non-critical YAML generation
+            if (window.performanceUtils) {
+                window.performanceUtils.requestIdleCallback(() => {
+                    const yaml = window.yamlGenerator.generate({ steps: this.steps });
+                    // Update the YAML display if it exists
+                    const yamlContent = document.getElementById('yaml-content');
+                    if (yamlContent) {
+                        yamlContent.textContent = yaml;
+                    }
+                });
+            } else {
+                const yaml = window.yamlGenerator.generate({ steps: this.steps });
+                const yamlContent = document.getElementById('yaml-content');
+                if (yamlContent) {
+                    yamlContent.textContent = yaml;
+                }
             }
         }
         
@@ -1344,6 +1427,13 @@ class PipelineBuilder {
         
         // Emit pipeline changed event
         document.dispatchEvent(new CustomEvent('pipelineChanged'));
+    }
+
+    // Render step element for virtual scrolling
+    renderStepElement(step, index) {
+        const div = document.createElement('div');
+        div.innerHTML = this.renderStep(step, index);
+        return div.firstElementChild;
     }
 
     renderStep(step, index) {
@@ -1943,6 +2033,16 @@ class PipelineBuilder {
                     <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.quickActions?.['conditional-logic']?.()">
                         <i class="fas fa-code-branch"></i> Build Condition
                     </button>
+                </div>
+                <div class="property-group">
+                    <label>Custom Attributes</label>
+                    <div id="custom-attributes-container">
+                        ${this.renderCustomAttributes(step)}
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-small" onclick="window.pipelineBuilder?.addCustomAttribute()">
+                        <i class="fas fa-plus"></i> Add Custom Attribute
+                    </button>
+                    <small>Add any Buildkite step attributes not covered above</small>
                 </div>
             </div>
         `;
@@ -2690,7 +2790,11 @@ class PipelineBuilder {
                     delete this.selectedStep.properties.plugins[pluginKey];
                     this.renderProperties();
                     this.renderPipeline();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                 }
                 break;
                 
@@ -2729,7 +2833,11 @@ class PipelineBuilder {
                     this.selectedStep.properties.depends_on = deps.length > 0 ? (deps.length === 1 ? deps[0] : deps) : null;
                     this.renderProperties();
                     this.renderPipeline();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                 }
                 break;
                 
@@ -2745,7 +2853,11 @@ class PipelineBuilder {
                 this.selectedStep.properties.artifact_paths = paths.length > 0 ? paths : null;
                 this.renderProperties();
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
                 break;
                 
             case 'add-agent-tag':
@@ -2757,7 +2869,11 @@ class PipelineBuilder {
                 if (this.selectedStep.properties.agents) {
                     delete this.selectedStep.properties.agents[agentKey];
                     this.renderProperties();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                 }
                 break;
                 
@@ -2770,7 +2886,11 @@ class PipelineBuilder {
                 if (this.selectedStep.properties.env) {
                     delete this.selectedStep.properties.env[envKey];
                     this.renderProperties();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                 }
                 break;
         }
@@ -2788,7 +2908,11 @@ class PipelineBuilder {
             labelInput.addEventListener('input', (e) => {
                 step.properties.label = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2849,7 +2973,11 @@ class PipelineBuilder {
             commandInput.addEventListener('input', (e) => {
                 step.properties.command = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2858,7 +2986,11 @@ class PipelineBuilder {
             keyInput.addEventListener('input', (e) => {
                 step.properties.key = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2866,7 +2998,11 @@ class PipelineBuilder {
         if (timeoutInput) {
             timeoutInput.addEventListener('input', (e) => {
                 step.properties.timeout_in_minutes = e.target.value ? parseInt(e.target.value) : null;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2875,7 +3011,11 @@ class PipelineBuilder {
             parallelismInput.addEventListener('input', (e) => {
                 step.properties.parallelism = e.target.value ? parseInt(e.target.value) : null;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2885,7 +3025,11 @@ class PipelineBuilder {
             agentQueueInput.addEventListener('input', (e) => {
                 if (!step.properties.agents) step.properties.agents = {};
                 step.properties.agents.queue = e.target.value || 'default';
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2895,7 +3039,11 @@ class PipelineBuilder {
             dependsOnInput.addEventListener('input', (e) => {
                 const deps = e.target.value.split(',').map(d => d.trim()).filter(d => d);
                 step.properties.depends_on = deps.length > 0 ? deps : null;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2905,7 +3053,11 @@ class PipelineBuilder {
             skipCheckbox.addEventListener('change', (e) => {
                 step.properties.skip = e.target.checked;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2914,7 +3066,11 @@ class PipelineBuilder {
         if (ifInput) {
             ifInput.addEventListener('input', (e) => {
                 step.properties.if = e.target.value || null;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2933,7 +3089,11 @@ class PipelineBuilder {
                 } else {
                     step.properties.soft_fail = value;
                 }
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2942,7 +3102,11 @@ class PipelineBuilder {
         if (softFailCustom) {
             softFailCustom.addEventListener('input', (e) => {
                 step.properties.soft_fail = e.target.value || false;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2952,7 +3116,11 @@ class PipelineBuilder {
                 const codes = e.target.value.split(',').map(c => parseInt(c.trim())).filter(c => !isNaN(c));
                 step.properties.soft_fail = codes;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2961,7 +3129,11 @@ class PipelineBuilder {
             cancelOnFailCheckbox.addEventListener('change', (e) => {
                 step.properties.cancel_on_build_failing = e.target.checked;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -2974,7 +3146,11 @@ class PipelineBuilder {
                     step.properties.plugins[pluginKey] = {};
                 }
                 step.properties.plugins[pluginKey][configKey] = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         });
     }
@@ -2984,7 +3160,11 @@ class PipelineBuilder {
         if (continueCheckbox) {
             continueCheckbox.addEventListener('change', (e) => {
                 step.properties.continue_on_failure = e.target.checked;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -2995,7 +3175,11 @@ class PipelineBuilder {
             promptInput.addEventListener('input', (e) => {
                 step.properties.prompt = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3003,7 +3187,11 @@ class PipelineBuilder {
         if (blockedStateSelect) {
             blockedStateSelect.addEventListener('change', (e) => {
                 step.properties.blocked_state = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3014,7 +3202,11 @@ class PipelineBuilder {
             promptInput.addEventListener('input', (e) => {
                 step.properties.prompt = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3025,7 +3217,11 @@ class PipelineBuilder {
             triggerInput.addEventListener('input', (e) => {
                 step.properties.trigger = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3033,7 +3229,11 @@ class PipelineBuilder {
         if (asyncCheckbox) {
             asyncCheckbox.addEventListener('change', (e) => {
                 step.properties.async = e.target.checked;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3044,7 +3244,11 @@ class PipelineBuilder {
             groupInput.addEventListener('input', (e) => {
                 step.properties.group = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3052,7 +3256,11 @@ class PipelineBuilder {
         if (keyInput) {
             keyInput.addEventListener('input', (e) => {
                 step.properties.key = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3062,7 +3270,11 @@ class PipelineBuilder {
         if (bodyInput) {
             bodyInput.addEventListener('input', (e) => {
                 step.properties.body = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3071,7 +3283,11 @@ class PipelineBuilder {
             styleSelect.addEventListener('change', (e) => {
                 step.properties.style = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3079,7 +3295,11 @@ class PipelineBuilder {
         if (contextInput) {
             contextInput.addEventListener('input', (e) => {
                 step.properties.context = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3087,7 +3307,11 @@ class PipelineBuilder {
         if (appendCheckbox) {
             appendCheckbox.addEventListener('change', (e) => {
                 step.properties.append = e.target.checked;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3098,7 +3322,11 @@ class PipelineBuilder {
             emailInput.addEventListener('input', (e) => {
                 step.properties.email = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3107,7 +3335,11 @@ class PipelineBuilder {
             slackInput.addEventListener('input', (e) => {
                 step.properties.slack = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3116,7 +3348,11 @@ class PipelineBuilder {
             webhookInput.addEventListener('input', (e) => {
                 step.properties.webhook = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3125,7 +3361,11 @@ class PipelineBuilder {
             pagerdutyInput.addEventListener('input', (e) => {
                 step.properties.pagerduty = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3139,7 +3379,11 @@ class PipelineBuilder {
                 delete step.properties.plugins[pluginKey];
                 this.renderProperties();
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             }
         });
 
@@ -3151,7 +3395,11 @@ class PipelineBuilder {
                     step.properties.plugins[pluginKey] = {};
                 }
                 step.properties.plugins[pluginKey][configKey] = e.target.value;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         });
     }
@@ -3162,7 +3410,11 @@ class PipelineBuilder {
             pipelineInput.addEventListener('input', (e) => {
                 step.properties.pipeline = e.target.value;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3170,7 +3422,11 @@ class PipelineBuilder {
         if (replaceCheckbox) {
             replaceCheckbox.addEventListener('change', (e) => {
                 step.properties.replace = e.target.checked;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
     }
@@ -3182,7 +3438,11 @@ class PipelineBuilder {
             ifInput.addEventListener('input', (e) => {
                 step.properties.if = e.target.value || null;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3191,7 +3451,11 @@ class PipelineBuilder {
         if (unlessInput) {
             unlessInput.addEventListener('input', (e) => {
                 step.properties.unless = e.target.value || null;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3200,7 +3464,11 @@ class PipelineBuilder {
         if (branchesInput) {
             branchesInput.addEventListener('input', (e) => {
                 step.properties.branches = e.target.value || null;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3210,7 +3478,11 @@ class PipelineBuilder {
             skipCheckbox.addEventListener('change', (e) => {
                 step.properties.skip = e.target.checked;
                 this.renderPipeline();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3219,7 +3491,11 @@ class PipelineBuilder {
         if (allowFailureCheckbox) {
             allowFailureCheckbox.addEventListener('change', (e) => {
                 step.properties.allow_dependency_failure = e.target.checked;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3242,7 +3518,11 @@ class PipelineBuilder {
                     }
                 }
                 this.renderProperties();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3265,7 +3545,11 @@ class PipelineBuilder {
                     }
                 }
                 this.renderProperties();
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3273,7 +3557,11 @@ class PipelineBuilder {
         if (retryLimit && step.properties.retry && step.properties.retry.automatic) {
             retryLimit.addEventListener('input', (e) => {
                 step.properties.retry.automatic.limit = parseInt(e.target.value) || 3;
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3281,7 +3569,11 @@ class PipelineBuilder {
         if (retryExitStatus && step.properties.retry && step.properties.retry.automatic) {
             retryExitStatus.addEventListener('input', (e) => {
                 step.properties.retry.automatic.exit_status = e.target.value || '*';
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3294,7 +3586,11 @@ class PipelineBuilder {
                 } else {
                     delete step.properties.concurrency;
                 }
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3306,7 +3602,11 @@ class PipelineBuilder {
                 } else {
                     delete step.properties.concurrency_group;
                 }
+                if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
                 this.saveToLocalStorage();
+            }
             });
         }
 
@@ -3340,7 +3640,11 @@ class PipelineBuilder {
                         step.properties.depends_on.push(selectedValue);
                         this.renderProperties();
                         this.renderPipeline();
-                        this.saveToLocalStorage();
+                        if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     }
                     
                     // Reset dropdown
@@ -3367,7 +3671,11 @@ class PipelineBuilder {
                     
                     this.renderProperties();
                     this.renderPipeline();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                 }
             }
         };
@@ -3402,7 +3710,11 @@ class PipelineBuilder {
                     if (step.properties.agents) {
                         delete step.properties.agents[agentKey];
                         this.renderProperties();
-                        this.saveToLocalStorage();
+                        if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     }
                     break;
                 case 'remove-env-var':
@@ -3410,7 +3722,11 @@ class PipelineBuilder {
                     if (step.properties.env) {
                         delete step.properties.env[envKey];
                         this.renderProperties();
-                        this.saveToLocalStorage();
+                        if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     }
                     break;
                 case 'remove-plugin':
@@ -3419,7 +3735,11 @@ class PipelineBuilder {
                         delete step.properties.plugins[pluginKey];
                         this.renderProperties();
                         this.renderPipeline();
-                        this.saveToLocalStorage();
+                        if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     }
                     break;
                 case 'add-block-field':
@@ -3429,7 +3749,11 @@ class PipelineBuilder {
                     const blockFieldIndex = parseInt(e.target.closest('[data-action="remove-block-field"]').dataset.index);
                     step.properties.fields.splice(blockFieldIndex, 1);
                     this.renderProperties();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     break;
                 case 'add-input-field':
                     this.showAddInputFieldDialog(step);
@@ -3438,7 +3762,11 @@ class PipelineBuilder {
                     const inputFieldIndex = parseInt(e.target.closest('[data-action="remove-input-field"]').dataset.index);
                     step.properties.fields.splice(inputFieldIndex, 1);
                     this.renderProperties();
-                    this.saveToLocalStorage();
+                    if (this.debouncedSave) {
+                this.debouncedSave();
+            } else {
+                this.saveToLocalStorage();
+            }
                     break;
                 case 'configure-build':
                     this.showBuildConfigDialog(step);
@@ -4004,7 +4332,20 @@ class PipelineBuilder {
                     return step.properties?.continue_on_failure ? 
                         { wait: { continue_on_failure: true } } : 'wait';
                 }
-                return { ...step.properties };
+                const stepConfig = { ...step.properties };
+                
+                // Merge custom attributes at the root level
+                if (step.properties.customAttributes) {
+                    Object.entries(step.properties.customAttributes).forEach(([key, value]) => {
+                        if (key && !key.startsWith('custom_attr_')) {
+                            stepConfig[key] = value;
+                        }
+                    });
+                    // Don't include customAttributes in the export
+                    delete stepConfig.customAttributes;
+                }
+                
+                return stepConfig;
             })
         };
     }
@@ -4184,6 +4525,15 @@ class PipelineBuilder {
             if (notify.length > 0) {
                 yamlStep.notify = notify;
             }
+        }
+        
+        // Add custom attributes
+        if (step.properties.customAttributes) {
+            Object.entries(step.properties.customAttributes).forEach(([key, value]) => {
+                if (key && !key.startsWith('custom_attr_')) {
+                    yamlStep[key] = value;
+                }
+            });
         }
         
         return yamlStep;
@@ -4385,6 +4735,112 @@ class PipelineBuilder {
             "'": '&#039;'
         };
         return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Custom Attributes Management
+    renderCustomAttributes(step) {
+        if (!step.properties.customAttributes) {
+            step.properties.customAttributes = {};
+        }
+        
+        let html = '';
+        Object.entries(step.properties.customAttributes).forEach(([key, value], index) => {
+            html += `
+                <div class="custom-attribute-row" data-index="${index}">
+                    <input type="text" 
+                           class="custom-attr-key" 
+                           value="${this.escapeHtml(key)}" 
+                           placeholder="Attribute name"
+                           onchange="window.pipelineBuilder?.updateCustomAttribute(${index}, 'key', this.value)">
+                    <input type="text" 
+                           class="custom-attr-value" 
+                           value="${this.escapeHtml(String(value))}" 
+                           placeholder="Attribute value"
+                           onchange="window.pipelineBuilder?.updateCustomAttribute(${index}, 'value', this.value)">
+                    <button type="button" 
+                            class="btn btn-danger btn-small" 
+                            onclick="window.pipelineBuilder?.removeCustomAttribute(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
+        
+        return html;
+    }
+
+    addCustomAttribute() {
+        if (!this.selectedStep) return;
+        
+        if (!this.selectedStep.properties.customAttributes) {
+            this.selectedStep.properties.customAttributes = {};
+        }
+        
+        // Generate a temporary key
+        const tempKey = `custom_attr_${Date.now()}`;
+        this.selectedStep.properties.customAttributes[tempKey] = '';
+        
+        // Re-render properties
+        this.renderProperties();
+        
+        // Save to localStorage
+        if (this.debouncedSave) {
+            this.debouncedSave();
+        } else {
+            this.saveToLocalStorage();
+        }
+    }
+
+    updateCustomAttribute(index, type, value) {
+        if (!this.selectedStep || !this.selectedStep.properties.customAttributes) return;
+        
+        const attrs = Object.entries(this.selectedStep.properties.customAttributes);
+        if (index >= attrs.length) return;
+        
+        const [oldKey, oldValue] = attrs[index];
+        
+        if (type === 'key') {
+            // Key changed - need to recreate the object to maintain order
+            const newAttrs = {};
+            attrs.forEach(([k, v], i) => {
+                if (i === index) {
+                    newAttrs[value] = v;
+                } else {
+                    newAttrs[k] = v;
+                }
+            });
+            this.selectedStep.properties.customAttributes = newAttrs;
+        } else if (type === 'value') {
+            // Value changed
+            this.selectedStep.properties.customAttributes[oldKey] = value;
+        }
+        
+        // Save to localStorage
+        if (this.debouncedSave) {
+            this.debouncedSave();
+        } else {
+            this.saveToLocalStorage();
+        }
+    }
+
+    removeCustomAttribute(index) {
+        if (!this.selectedStep || !this.selectedStep.properties.customAttributes) return;
+        
+        const attrs = Object.entries(this.selectedStep.properties.customAttributes);
+        if (index >= attrs.length) return;
+        
+        const [keyToRemove] = attrs[index];
+        delete this.selectedStep.properties.customAttributes[keyToRemove];
+        
+        // Re-render properties
+        this.renderProperties();
+        
+        // Save to localStorage
+        if (this.debouncedSave) {
+            this.debouncedSave();
+        } else {
+            this.saveToLocalStorage();
+        }
     }
 }
 

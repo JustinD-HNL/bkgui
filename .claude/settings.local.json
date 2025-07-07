@@ -8,7 +8,10 @@
       "Bash(find:*)",
       "Bash(npm run lint)",
       "Bash(true)",
-      "WebFetch(domain:buildkite.com)"
+      "WebFetch(domain:buildkite.com)",
+      "Bash(npm install:*)",
+      "Bash(sudo npm install axios dotenv)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

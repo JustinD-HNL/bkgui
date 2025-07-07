@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const compression = require('compression');
 const helmet = require('helmet');
+const https = require('https');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -10,6 +12,7 @@ const PORT = process.env.PORT || 8080;
 console.log('🚀 Starting Buildkite Pipeline Builder Server...');
 console.log(`📦 Node.js version: ${process.version}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log('🔧 Buildkite API: Client-side configuration');
 
 // Security middleware with updated CSP (removed script-src-attr restriction)
 app.use(helmet({
@@ -29,7 +32,8 @@ app.use(helmet({
                 "https://fonts.googleapis.com"
             ],
             connectSrc: [
-                "'self'"
+                "'self'",
+                "https://api.buildkite.com"
             ],
             imgSrc: [
                 "'self'", 
@@ -79,6 +83,66 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname)));
+
+// Buildkite API Proxy Endpoints
+// Generic proxy handler for Buildkite API
+app.all('/api/buildkite/*', async (req, res) => {
+    // Get token and organization from request headers
+    const apiToken = req.headers['x-buildkite-token'];
+    const organization = req.headers['x-buildkite-organization'];
+    
+    if (!apiToken || !organization) {
+        return res.status(401).json({ error: 'Missing API token or organization in request headers' });
+    }
+    
+    // Extract the path after /api/buildkite/
+    const apiPath = req.path.replace('/api/buildkite/', '');
+    
+    try {
+        const options = {
+            hostname: 'api.buildkite.com',
+            path: `/v2/${apiPath}${req._parsedUrl.search || ''}`,
+            method: req.method,
+            headers: {
+                'Authorization': `Bearer ${apiToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+        
+        const apiReq = https.request(options, (apiRes) => {
+            let data = '';
+            
+            // Set response headers
+            res.status(apiRes.statusCode);
+            
+            apiRes.on('data', chunk => data += chunk);
+            apiRes.on('end', () => {
+                try {
+                    const jsonData = JSON.parse(data);
+                    res.json(jsonData);
+                } catch (e) {
+                    res.send(data);
+                }
+            });
+        });
+        
+        apiReq.on('error', (error) => {
+            console.error('API Proxy Error:', error);
+            res.status(500).json({ error: error.message });
+        });
+        
+        // Forward request body if present
+        if (req.body && req.method !== 'GET' && req.method !== 'DELETE') {
+            apiReq.write(JSON.stringify(req.body));
+        }
+        
+        apiReq.end();
+    } catch (error) {
+        console.error('Proxy Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {

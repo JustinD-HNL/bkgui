@@ -14,6 +14,12 @@ class YAMLGenerator {
     constructor() {
         this.indentSize = 2;
         this.currentIndent = 0;
+        
+        // Performance optimization: memoization
+        this.memoizedGenerateStep = null;
+        this.memoizedFormatValue = null;
+        this.initializeMemoization();
+        
         this.validationRules = {
             required: ['steps'],
             stepTypes: ['command', 'wait', 'block', 'input', 'trigger', 'group', 'annotation', 'notify'],
@@ -34,6 +40,21 @@ class YAMLGenerator {
                 'organization.slug'
             ]
         };
+    }
+
+    initializeMemoization() {
+        if (window.performanceUtils) {
+            // Memoize expensive operations
+            this.memoizedGenerateStep = window.performanceUtils.memoize(
+                this.generateStepInternal.bind(this),
+                (step) => JSON.stringify(step)
+            );
+            
+            this.memoizedFormatValue = window.performanceUtils.memoize(
+                this.formatValueInternal.bind(this),
+                (value) => JSON.stringify(value)
+            );
+        }
     }
 
     generate(pipelineConfig) {
@@ -75,6 +96,14 @@ class YAMLGenerator {
     }
 
     generateStep(step) {
+        // Use memoized version if available
+        if (this.memoizedGenerateStep) {
+            return this.memoizedGenerateStep(step);
+        }
+        return this.generateStepInternal(step);
+    }
+
+    generateStepInternal(step) {
         let yaml = '';
 
         // Handle different step types
@@ -689,6 +718,16 @@ class YAMLGenerator {
             this.currentIndent--;
         }
         
+        // Custom attributes
+        if (step.customAttributes && Object.keys(step.customAttributes).length > 0) {
+            Object.entries(step.customAttributes).forEach(([key, value]) => {
+                // Skip empty keys
+                if (key && !key.startsWith('custom_attr_')) {
+                    yaml += this.indent() + `${key}: ${this.formatValue(value)}\n`;
+                }
+            });
+        }
+        
         return yaml;
     }
 
@@ -744,6 +783,14 @@ class YAMLGenerator {
     }
 
     formatValue(value) {
+        // Use memoized version if available
+        if (this.memoizedFormatValue) {
+            return this.memoizedFormatValue(value);
+        }
+        return this.formatValueInternal(value);
+    }
+
+    formatValueInternal(value) {
         if (typeof value === 'boolean') {
             return value;
         } else if (typeof value === 'number') {
