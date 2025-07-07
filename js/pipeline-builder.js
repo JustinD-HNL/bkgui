@@ -864,6 +864,41 @@ class PipelineBuilder {
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
             zone.classList.remove('drag-over');
+            
+            // Get the index of this drop zone
+            const allZones = Array.from(document.querySelectorAll('.drop-zone'));
+            const zoneIndex = allZones.indexOf(zone);
+            
+            // Handle the drop based on the dragged element type
+            if (this.draggedElement?.type === 'existing') {
+                // Handle existing step reordering
+                const stepId = this.draggedElement.stepId;
+                this.moveStep(stepId, zoneIndex);
+            } else {
+                // Handle new step from palette
+                const stepType = e.dataTransfer.getData('stepType');
+                const template = e.dataTransfer.getData('template');
+                const pattern = e.dataTransfer.getData('pattern');
+                
+                if (stepType) {
+                    const newStep = this.addStep(stepType, zoneIndex);
+                    if (newStep) {
+                        setTimeout(() => {
+                            this.selectStep(newStep);
+                            this.renderProperties();
+                        }, 100);
+                    }
+                } else if (template) {
+                    this.loadTemplate(template, zoneIndex);
+                } else if (pattern) {
+                    this.loadPattern(pattern, zoneIndex);
+                }
+            }
+            
+            // Clear drag state
+            this.hideDropZones();
+            this.draggedElement = null;
+            this.dropHandled = false;
         });
         return zone;
     }
@@ -1496,17 +1531,29 @@ class PipelineBuilder {
 
     setupStepDragging() {
         document.querySelectorAll('.step-card').forEach(card => {
+            card.draggable = true;
+            
             card.addEventListener('dragstart', (e) => {
                 this.draggedElement = {
                     type: 'existing',
                     stepId: card.dataset.stepId
                 };
+                e.dataTransfer.effectAllowed = 'move';
                 card.classList.add('dragging');
+                this.isDragging = true;
+                
+                // Show drop zones after a short delay
+                setTimeout(() => {
+                    this.showDropZones();
+                }, 0);
             });
             
-            card.addEventListener('dragend', (e) => {
+            card.addEventListener('dragend', () => {
                 card.classList.remove('dragging');
-                this.clearDropZones();
+                this.hideDropZones();
+                this.draggedElement = null;
+                this.isDragging = false;
+                this.dropHandled = false;
             });
         });
         
@@ -1521,13 +1568,19 @@ class PipelineBuilder {
                 };
                 e.dataTransfer.effectAllowed = 'move';
                 stepEl.classList.add('dragging');
-                this.createDropZones();
+                this.isDragging = true;
+                
+                // Show drop zones after a short delay
+                setTimeout(() => {
+                    this.showDropZones();
+                }, 0);
             });
             
             stepEl.addEventListener('dragend', () => {
                 stepEl.classList.remove('dragging');
-                this.removeDropZones();
+                this.hideDropZones();
                 this.draggedElement = null;
+                this.isDragging = false;
                 this.dropHandled = false;
             });
         });
@@ -1560,6 +1613,15 @@ class PipelineBuilder {
                 </div>
             `;
             return;
+        }
+        
+        // Ensure selectedStep is a full object, not just an ID
+        if (typeof this.selectedStep === 'string') {
+            this.selectedStep = this.steps.find(s => s.id === this.selectedStep);
+            if (!this.selectedStep) {
+                console.warn('⚠️ Selected step not found in steps array');
+                return;
+            }
         }
         
         container.innerHTML = this.generatePropertiesForm(this.selectedStep);

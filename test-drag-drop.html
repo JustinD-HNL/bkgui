@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop Test - Buildkite Pipeline Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .test-instructions {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .test-instructions h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .test-instructions ol {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Buildkite Pipeline Builder - Drag and Drop Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Manual Test Instructions</h2>
+        <div class="test-instructions">
+            <h3>Test 1: Drag Step to Empty Pipeline</h3>
+            <ol>
+                <li>Open the main application (index.html)</li>
+                <li>Drag a "Command Step" from the left sidebar</li>
+                <li>Drop it into the empty pipeline area (middle column)</li>
+                <li>✅ Expected: Step should appear in the pipeline</li>
+                <li>✅ Expected: Properties panel should show the step configuration</li>
+            </ol>
+        </div>
+        
+        <div class="test-instructions">
+            <h3>Test 2: Drag Multiple Steps Between Existing Steps</h3>
+            <ol>
+                <li>Add 2-3 command steps to the pipeline</li>
+                <li>Drag a new step from the sidebar</li>
+                <li>Drop it between two existing steps (look for the drop indicator)</li>
+                <li>✅ Expected: Step should be inserted at the correct position</li>
+                <li>✅ Expected: Drop zones should appear between steps during drag</li>
+            </ol>
+        </div>
+        
+        <div class="test-instructions">
+            <h3>Test 3: Reorder Existing Steps</h3>
+            <ol>
+                <li>Create 3-4 steps in the pipeline</li>
+                <li>Drag an existing step to a new position</li>
+                <li>✅ Expected: Step should move to the new position</li>
+                <li>✅ Expected: Other steps should reorder correctly</li>
+                <li>✅ Expected: Selected step properties should remain visible</li>
+            </ol>
+        </div>
+        
+        <div class="test-instructions">
+            <h3>Test 4: Properties Panel Update</h3>
+            <ol>
+                <li>Click on any step in the pipeline</li>
+                <li>✅ Expected: Properties panel should show that step's configuration</li>
+                <li>Drag and drop a new step</li>
+                <li>✅ Expected: New step should be automatically selected</li>
+                <li>✅ Expected: Properties panel should update to show new step's configuration</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Automated Checks</h2>
+        <button onclick="runAutomatedTests()">Run Automated Tests</button>
+    </div>
+    
+    <script>
+        function addTestResult(message, status = 'info') {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${status}`;
+            resultDiv.textContent = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        function runAutomatedTests() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '';
+            
+            // Test 1: Check if main files exist
+            fetch('js/pipeline-builder.js')
+                .then(response => {
+                    if (response.ok) {
+                        addTestResult('✓ pipeline-builder.js loaded successfully', 'pass');
+                    } else {
+                        addTestResult('✗ Failed to load pipeline-builder.js', 'fail');
+                    }
+                })
+                .catch(() => {
+                    addTestResult('✗ Error loading pipeline-builder.js', 'fail');
+                });
+            
+            // Test 2: Check styles
+            fetch('styles.css')
+                .then(response => {
+                    if (response.ok) {
+                        addTestResult('✓ styles.css loaded successfully', 'pass');
+                    } else {
+                        addTestResult('✗ Failed to load styles.css', 'fail');
+                    }
+                })
+                .catch(() => {
+                    addTestResult('✗ Error loading styles.css', 'fail');
+                });
+            
+            // Test 3: Check if main page loads
+            fetch('index.html')
+                .then(response => response.text())
+                .then(html => {
+                    if (html.includes('pipeline-steps') && html.includes('properties-content')) {
+                        addTestResult('✓ Main page structure verified', 'pass');
+                    } else {
+                        addTestResult('✗ Main page structure incomplete', 'fail');
+                    }
+                })
+                .catch(() => {
+                    addTestResult('✗ Error checking main page', 'fail');
+                });
+            
+            addTestResult('Automated tests completed. Please perform manual tests above.', 'info');
+        }
+        
+        // Run tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            addTestResult('Test page loaded. Click "Run Automated Tests" to begin.', 'info');
+        });
+    </script>
+</body>
+</html>
