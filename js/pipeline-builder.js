@@ -1383,16 +1383,16 @@ class PipelineBuilder {
             group: 'fa-object-group'
         };
         
-        const parallelGroupClass = step.properties.parallelGroup ? 
+        const parallelGroupClass = step.properties?.parallelGroup ? 
             `parallel-group parallel-group-${step.properties.parallelGroup.replace(/\s+/g, '-').toLowerCase()}` : '';
         
         return `
             <div class="step-card ${step.type}-step ${this.selectedStep?.id === step.id ? 'selected' : ''} ${parallelGroupClass}" 
-                 data-step-id="${step.id}" draggable="true" ${step.properties.parallelGroup ? `data-parallel-group="${step.properties.parallelGroup}"` : ''}>
+                 data-step-id="${step.id}" draggable="true" ${step.properties?.parallelGroup ? `data-parallel-group="${step.properties.parallelGroup}"` : ''}>
                 <div class="step-header">
                     <i class="fas ${icons[step.type] || 'fa-cube'}"></i>
                     <span class="step-label">${this.getStepLabel(step)}</span>
-                    ${step.properties.key ? `<code class="step-key">${step.properties.key}</code>` : ''}
+                    ${step.properties?.key ? `<code class="step-key">${step.properties.key}</code>` : ''}
                 </div>
                 ${this.renderStepDetails(step)}
                 <div class="step-actions">
@@ -1566,27 +1566,31 @@ class PipelineBuilder {
     renderStepDetails(step) {
         const details = [];
         
-        if (step.properties.depends_on?.length > 0) {
-            details.push(`<i class="fas fa-link"></i> Depends on: ${step.properties.depends_on.join(', ')}`);
+        if (step.properties?.depends_on) {
+            const deps = Array.isArray(step.properties.depends_on) ? 
+                step.properties.depends_on : [step.properties.depends_on];
+            if (deps.length > 0) {
+                details.push(`<i class="fas fa-link"></i> Depends on: ${deps.join(', ')}`);
+            }
         }
         
-        if (step.properties.if) {
+        if (step.properties?.if) {
             details.push(`<i class="fas fa-code-branch"></i> if: ${step.properties.if}`);
         }
         
-        if (step.properties.plugins && Object.keys(step.properties.plugins).length > 0) {
+        if (step.properties?.plugins && Object.keys(step.properties.plugins).length > 0) {
             const pluginNames = Object.keys(step.properties.plugins).map(p => 
                 this.pluginCatalog[p]?.name || p
             );
             details.push(`<i class="fas fa-plug"></i> ${pluginNames.join(', ')}`);
         }
         
-        if (step.properties.matrix?.length > 0) {
+        if (step.properties?.matrix?.length > 0) {
             const dimensions = step.properties.matrix.flatMap(m => Object.keys(m));
             details.push(`<i class="fas fa-th"></i> Matrix: ${dimensions.join(', ')}`);
         }
         
-        if (step.properties.concurrency || step.properties.concurrency_group) {
+        if (step.properties?.concurrency || step.properties?.concurrency_group) {
             let concurrencyText = [];
             if (step.properties.concurrency) {
                 concurrencyText.push(`limit: ${step.properties.concurrency}`);
@@ -1604,7 +1608,7 @@ class PipelineBuilder {
     renderStepDetailsV2(step) {
         const details = [];
         
-        if (step.properties.depends_on) {
+        if (step.properties?.depends_on) {
             const deps = Array.isArray(step.properties.depends_on) ? 
                 step.properties.depends_on : [step.properties.depends_on];
             details.push(`<span class="step-detail"><i class="fas fa-link"></i> Depends on: ${deps.join(', ')}</span>`);

@@ -3,10 +3,19 @@
 
 class PipelineVisualizer {
     constructor() {
+        // Singleton pattern to prevent duplicate instances
+        if (window.pipelineVisualizer) {
+            console.warn('⚠️ PipelineVisualizer already exists, returning existing instance');
+            return window.pipelineVisualizer;
+        }
         this.pipelineBuilder = null;
         this.currentView = 'visual';
         this.canvas = null;
         this.ctx = null;
+        
+        // Store as singleton
+        window.pipelineVisualizer = this;
+        
         this.init();
     }
 
@@ -397,4 +406,6 @@ class PipelineVisualizer {
 }
 
 // Initialize when DOM is ready
-window.pipelineVisualizer = new PipelineVisualizer();
+if (!window.pipelineVisualizer) {
+    window.pipelineVisualizer = new PipelineVisualizer();
+}

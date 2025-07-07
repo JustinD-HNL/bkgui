@@ -523,6 +523,20 @@ class BuildkiteApp {
         }
     }
 
+    // Helper to prevent duplicate event listeners
+    addEventListenerOnce(element, event, handler, identifier) {
+        const key = `${element.tagName || 'document'}-${event}-${identifier}`;
+        
+        if (this.attachedListeners.has(key)) {
+            console.log(`⚠️ Event listener already attached: ${key}`);
+            return;
+        }
+        
+        element.addEventListener(event, handler);
+        this.attachedListeners.add(key);
+        console.log(`✅ Event listener attached: ${key}`);
+    }
+
     setupModalManagement() {
         console.log('🔧 Setting up modal management...');
         

@@ -3,6 +3,11 @@
 
 class ArtifactManager {
     constructor() {
+        // Singleton pattern to prevent duplicate instances
+        if (window.artifactManager) {
+            console.warn('⚠️ ArtifactManager already exists, returning existing instance');
+            return window.artifactManager;
+        }
         this.currentStepId = null;
         this.pipelineBuilder = null;
         this.retentionPolicy = {
@@ -10,6 +15,10 @@ class ArtifactManager {
             compress: false,
             encrypt: false
         };
+        
+        // Store as singleton
+        window.artifactManager = this;
+        
         this.init();
     }
 
@@ -395,4 +404,6 @@ class ArtifactManager {
 }
 
 // Initialize when DOM is ready
-window.artifactManager = new ArtifactManager();
+if (!window.artifactManager) {
+    window.artifactManager = new ArtifactManager();
+}

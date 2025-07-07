@@ -3,10 +3,19 @@
 
 class EnvVarManager {
     constructor() {
+        // Singleton pattern to prevent duplicate instances
+        if (window.envVarManager) {
+            console.warn('⚠️ EnvVarManager already exists, returning existing instance');
+            return window.envVarManager;
+        }
         this.globalVars = {};
         this.secrets = {};
         this.currentStepId = null;
         this.pipelineBuilder = null;
+        
+        // Store as singleton
+        window.envVarManager = this;
+        
         this.init();
     }
 
@@ -391,4 +400,6 @@ class EnvVarManager {
 }
 
 // Initialize when DOM is ready
-window.envVarManager = new EnvVarManager();
+if (!window.envVarManager) {
+    window.envVarManager = new EnvVarManager();
+}
