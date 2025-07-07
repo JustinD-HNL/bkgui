@@ -414,7 +414,7 @@ class PipelineBuilder {
                 const stepCard = e.target.closest('.step-card');
                 const stepElement = e.target.closest('.pipeline-step');
                 
-                if ((stepCard || stepElement) && !e.target.closest('.step-actions button') && !e.target.closest('.step-action')) {
+                if ((stepCard || stepElement) && !e.target.closest('.step-actions') && !e.target.closest('.step-action') && !e.target.closest('.btn-icon')) {
                     const stepId = stepCard?.dataset.stepId || stepElement?.dataset.stepId;
                     const step = this.steps.find(s => s.id === stepId);
                     if (step) {
@@ -427,7 +427,10 @@ class PipelineBuilder {
         // Delete buttons
         document.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="delete-step"]')) {
+                e.preventDefault();
+                e.stopPropagation();
                 const stepId = e.target.closest('[data-action="delete-step"]').dataset.stepId;
+                console.log('Delete clicked for step:', stepId);
                 this.deleteStep(stepId);
             }
         });
@@ -435,7 +438,10 @@ class PipelineBuilder {
         // Duplicate buttons
         document.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="duplicate-step"]')) {
+                e.preventDefault();
+                e.stopPropagation();
                 const stepId = e.target.closest('[data-action="duplicate-step"]').dataset.stepId;
+                console.log('Duplicate clicked for step:', stepId);
                 this.duplicateStep(stepId);
             }
         });
@@ -443,10 +449,16 @@ class PipelineBuilder {
         // Move up/down buttons
         document.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="move-up"]')) {
+                e.preventDefault();
+                e.stopPropagation();
                 const stepId = e.target.closest('[data-action="move-up"]').dataset.stepId;
+                console.log('Move up clicked for step:', stepId);
                 this.moveStepUp(stepId);
             } else if (e.target.closest('[data-action="move-down"]')) {
+                e.preventDefault();
+                e.stopPropagation();
                 const stepId = e.target.closest('[data-action="move-down"]').dataset.stepId;
+                console.log('Move down clicked for step:', stepId);
                 this.moveStepDown(stepId);
             }
         });

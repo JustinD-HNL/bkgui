@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Test - Buildkite Pipeline Builder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .test-instructions {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .test-instructions h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .troubleshooting {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .fix-list {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Buildkite Pipeline Builder - Button Test</h1>
+    
+    <div class="test-section">
+        <h2>Button Display Issues Fixed</h2>
+        <div class="fix-list">
+            <h3>✅ Fixes Applied:</h3>
+            <ul>
+                <li><strong>Button Styling:</strong> Made buttons larger (32x32px) with visible borders and backgrounds</li>
+                <li><strong>Button Container:</strong> Added background, padding, and shadow to step-actions container</li>
+                <li><strong>Z-Index:</strong> Added z-index: 10 to ensure buttons appear above other content</li>
+                <li><strong>Overflow:</strong> Changed step-card overflow from hidden to visible</li>
+                <li><strong>Hover Effects:</strong> Added color-coded hover states for each button type</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Manual Test Instructions</h2>
+        
+        <div class="test-instructions">
+            <h3>Test 1: Button Visibility</h3>
+            <ol>
+                <li>Open the main application (index.html)</li>
+                <li>Add a few command steps to the pipeline</li>
+                <li>Hover over any step card</li>
+                <li>✅ Expected: You should see 4 buttons appear in the top-right:
+                    <ul>
+                        <li>↑ Move Up (disabled if first step)</li>
+                        <li>↓ Move Down (disabled if last step)</li>
+                        <li>📋 Duplicate</li>
+                        <li>🗑️ Delete</li>
+                    </ul>
+                </li>
+                <li>✅ Expected: Buttons should have visible borders and backgrounds</li>
+            </ol>
+        </div>
+        
+        <div class="test-instructions">
+            <h3>Test 2: Button Functionality</h3>
+            <ol>
+                <li>Click the ↑ button on a step (not the first one)</li>
+                <li>✅ Expected: Step moves up in the list</li>
+                <li>✅ Expected: Console shows "Move up clicked for step: [stepId]"</li>
+                <li>Click the ↓ button on a step (not the last one)</li>
+                <li>✅ Expected: Step moves down in the list</li>
+                <li>Click the duplicate button</li>
+                <li>✅ Expected: A copy of the step appears below it</li>
+                <li>Click the delete button</li>
+                <li>✅ Expected: Confirmation dialog appears, then step is removed</li>
+            </ol>
+        </div>
+        
+        <div class="test-instructions">
+            <h3>Test 3: Button Hover States</h3>
+            <ol>
+                <li>Hover over each button type</li>
+                <li>✅ Expected hover colors:
+                    <ul>
+                        <li>Move Up/Down: Blue background</li>
+                        <li>Duplicate: Teal background</li>
+                        <li>Delete: Red background</li>
+                    </ul>
+                </li>
+                <li>✅ Expected: Buttons lift slightly on hover (translateY)</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Troubleshooting</h2>
+        <div class="troubleshooting">
+            <h3>⚠️ If buttons still don't work:</h3>
+            <ol>
+                <li>Check browser console for errors</li>
+                <li>Look for console logs when clicking buttons:
+                    <ul>
+                        <li><code>Move up clicked for step: [id]</code></li>
+                        <li><code>Move down clicked for step: [id]</code></li>
+                        <li><code>Delete clicked for step: [id]</code></li>
+                        <li><code>Duplicate clicked for step: [id]</code></li>
+                    </ul>
+                </li>
+                <li>Verify the step has a valid <code>data-step-id</code> attribute</li>
+                <li>Check if JavaScript errors are preventing event handlers from registering</li>
+            </ol>
+            
+            <h3>Common Issues:</h3>
+            <ul>
+                <li><strong>Buttons not visible:</strong> Clear browser cache and reload</li>
+                <li><strong>Clicks not working:</strong> Check if another element is blocking the buttons</li>
+                <li><strong>Wrong button clicked:</strong> Event bubbling issue - fixed with stopPropagation</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

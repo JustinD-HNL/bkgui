@@ -977,7 +977,7 @@ body {
     animation: fadeInUp 0.4s ease;
     position: relative;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    overflow: hidden;
+    overflow: visible; /* Changed from hidden to visible for buttons */
     margin: 0.5rem 0 1rem;
     will-change: transform, opacity;
 }
@@ -1018,9 +1018,14 @@ body {
     top: 0.5rem;
     right: 0.5rem;
     display: flex;
-    gap: 0.25rem;
+    gap: 0.5rem;
     opacity: 0;
     transition: opacity 0.2s ease;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.25rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
 }
 
 .step-card:hover .step-actions {
@@ -1214,19 +1219,26 @@ body {
 
 /* Button Icons (for step-card actions) */
 .btn-icon {
-    background: transparent;
-    border: 1px solid transparent;
-    padding: 0.375rem;
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--gray-600);
     font-size: 0.875rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
     background: var(--gray-100);
     color: var(--gray-800);
+    border-color: var(--gray-300);
+    transform: translateY(-1px);
 }
 
 .btn-icon:active {
@@ -1236,11 +1248,34 @@ body {
 .btn-icon:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+    background: #f7fafc;
 }
 
 .btn-icon:disabled:hover {
-    background: transparent;
+    background: #f7fafc;
     color: var(--gray-600);
+    transform: none;
+    border-color: #e2e8f0;
+}
+
+/* Specific button colors */
+.btn-icon[data-action="delete-step"]:hover {
+    background: #fee;
+    color: #e53e3e;
+    border-color: #feb2b2;
+}
+
+.btn-icon[data-action="duplicate-step"]:hover {
+    background: #e6fffa;
+    color: #319795;
+    border-color: #81e6d9;
+}
+
+.btn-icon[data-action="move-up"]:hover,
+.btn-icon[data-action="move-down"]:hover {
+    background: #ebf8ff;
+    color: #3182ce;
+    border-color: #90cdf4;
 }
 
 /* Step Details */
