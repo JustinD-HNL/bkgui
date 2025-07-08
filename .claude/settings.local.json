@@ -14,7 +14,11 @@
       "Bash(rm:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(mkdir:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(ls:*)",
+      "Bash(open index.html)",
+      "Bash(open:*)",
+      "Bash(osascript:*)"
     ],
     "deny": []
   }

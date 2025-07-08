@@ -4628,7 +4628,11 @@ class PipelineBuilder {
             if (savedData) {
                 const data = JSON.parse(savedData);
                 if (data.version === '1.0') {
-                    this.steps = data.steps || [];
+                    // Filter out empty or invalid steps
+                    this.steps = (data.steps || []).filter(step => {
+                        // Check if step has valid structure
+                        return step && step.id && step.type && step.properties;
+                    });
                     this.stepCounter = data.stepCounter || 0;
                     console.log('📂 Pipeline loaded from localStorage');
                 } else {

@@ -4,23 +4,23 @@
 
 /* CSS Variables for Theming - Enhanced with both color schemes */
 :root {
-    /* Primary Colors - Supporting both color schemes */
-    --primary: #667eea;
-    --primary-dark: #5a67d8;
-    --primary-light: #7c8eef;
-    --primary-alt: #14cc80;
-    --primary-alt-dark: #0fa968;
-    --primary-color: #667eea; /* Added for compatibility */
+    /* Primary Colors - Buildkite color scheme */
+    --primary: #dbadff;
+    --primary-dark: #9e99c4;
+    --primary-light: #e6c4ff;
+    --primary-alt: #00ff93;
+    --primary-alt-dark: #00cc74;
+    --primary-color: #dbadff; /* Added for compatibility */
     
     /* Secondary Colors */
-    --secondary: #667eea;
+    --secondary: #f6a8aa;
     
     /* Status Colors */
-    --success: #48bb78;
-    --warning: #ed8936;
-    --error: #e53e3e;
-    --danger: #f56565;
-    --info: #4299e1;
+    --success: #00ff93;
+    --warning: #ffa500;
+    --error: #ff4757;
+    --danger: #ff6b81;
+    --info: #70a1ff;
     
     /* Neutral Colors */
     --gray-50: #f9fafb;
@@ -53,7 +53,7 @@
     --transition-slow: 500ms ease;
     
     /* Fonts */
-    --font-mono: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    --font-mono: 'SF Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
     
     /* Theme-specific variables */
     --bg-primary: #ffffff;
@@ -194,17 +194,17 @@
 
 /* Dark mode theme */
 [data-theme="dark"] {
-    --primary: #818cf8;
-    --primary-dark: #6366f1;
-    --primary-light: #a5b4fc;
-    --primary-alt: #34d399;
-    --primary-alt-dark: #10b981;
+    --primary: #dbadff;
+    --primary-dark: #9e99c4;
+    --primary-light: #e6c4ff;
+    --primary-alt: #00ff93;
+    --primary-alt-dark: #00cc74;
     
-    --success: #34d399;
-    --warning: #fbbf24;
-    --error: #f87171;
-    --danger: #ef4444;
-    --info: #60a5fa;
+    --success: #00ff93;
+    --warning: #ffa500;
+    --error: #ff4757;
+    --danger: #ff6b81;
+    --info: #70a1ff;
     
     --gray-50: #1f2937;
     --gray-100: #374151;
@@ -228,15 +228,15 @@
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     
-    --bg-primary: #111827;
-    --bg-secondary: #1f2937;
-    --bg-tertiary: #374151;
-    --text-primary: #f9fafb;
-    --text-secondary: #e5e7eb;
-    --text-tertiary: #d1d5db;
-    --border-color: #374151;
-    --card-bg: #1f2937;
-    --hover-bg: #374151;
+    --bg-primary: #0d0d0d;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #262626;
+    --text-primary: #ffffff;
+    --text-secondary: #e5e5e5;
+    --text-tertiary: #cccccc;
+    --border-color: #333333;
+    --card-bg: #1a1a1a;
+    --hover-bg: #262626;
 }
 
 /* Reset and Base Styles */
@@ -260,7 +260,7 @@ body {
 }
 
 [data-theme="dark"] body {
-    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a1a 100%);
 }
 
 /* App Container */
@@ -288,7 +288,7 @@ body {
 }
 
 [data-theme="dark"] .header {
-    background: rgba(31, 41, 55, 0.95);
+    background: rgba(26, 26, 26, 0.95);
 }
 
 .header-content {

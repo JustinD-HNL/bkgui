@@ -8,12 +8,20 @@ class BuildkiteSDKIntegration {
 
     // Convert visual pipeline to SDK code
     generateSDKCode(steps, language = 'javascript') {
-        if (language === 'javascript') {
-            return this.generateJavaScriptSDK(steps);
-        } else if (language === 'typescript') {
-            return this.generateTypeScriptSDK(steps);
+        switch (language) {
+            case 'javascript':
+                return this.generateJavaScriptSDK(steps);
+            case 'typescript':
+                return this.generateTypeScriptSDK(steps);
+            case 'python':
+                return this.generatePythonSDK(steps);
+            case 'go':
+                return this.generateGoSDK(steps);
+            case 'ruby':
+                return this.generateRubySDK(steps);
+            default:
+                return '';
         }
-        return '';
     }
 
     // Generate JavaScript SDK code
@@ -44,6 +52,58 @@ class BuildkiteSDKIntegration {
         code += `\n// Export the pipeline\n`;
         code += `console.log(pipeline.toYaml());\n`;
         code += `export default pipeline;\n`;
+
+        return code;
+    }
+
+    // Generate Python SDK code
+    generatePythonSDK(steps) {
+        let code = `from buildkite import BuildkitePipeline, CommandStep, WaitStep, BlockStep, InputStep, TriggerStep, GroupStep\n\n`;
+        code += `pipeline = BuildkitePipeline()\n\n`;
+
+        steps.forEach((step, index) => {
+            code += this.generateStepSDKCodePython(step, index);
+        });
+
+        code += `\n# Export the pipeline\n`;
+        code += `print(pipeline.to_yaml())\n`;
+
+        return code;
+    }
+
+    // Generate Go SDK code
+    generateGoSDK(steps) {
+        let code = `package main\n\n`;
+        code += `import (\n`;
+        code += `    "fmt"\n`;
+        code += `    "github.com/buildkite/buildkite-sdk/sdk/go/sdk/buildkite"\n`;
+        code += `)\n\n`;
+        code += `func main() {\n`;
+        code += `    pipeline := buildkite.Pipeline{}\n\n`;
+
+        steps.forEach((step, index) => {
+            code += this.generateStepSDKCodeGo(step, index);
+        });
+
+        code += `\n    // Export the pipeline\n`;
+        code += `    yaml, _ := pipeline.ToYAML()\n`;
+        code += `    fmt.Println(yaml)\n`;
+        code += `}\n`;
+
+        return code;
+    }
+
+    // Generate Ruby SDK code
+    generateRubySDK(steps) {
+        let code = `require "buildkite"\n\n`;
+        code += `pipeline = Buildkite::Pipeline.new\n\n`;
+
+        steps.forEach((step, index) => {
+            code += this.generateStepSDKCodeRuby(step, index);
+        });
+
+        code += `\n# Export the pipeline\n`;
+        code += `puts pipeline.to_yaml\n`;
 
         return code;
     }
@@ -510,6 +570,584 @@ class BuildkiteSDKIntegration {
         }
 
         return { errors, warnings };
+    }
+
+    // Python step generator
+    generateStepSDKCodePython(step, index) {
+        let code = '';
+        const varName = `step${index + 1}`;
+
+        switch (step.type) {
+            case 'command':
+                code += this.generateCommandStepPython(step, varName);
+                break;
+            case 'wait':
+                code += this.generateWaitStepPython(step, varName);
+                break;
+            case 'block':
+                code += this.generateBlockStepPython(step, varName);
+                break;
+            case 'input':
+                code += this.generateInputStepPython(step, varName);
+                break;
+            case 'trigger':
+                code += this.generateTriggerStepPython(step, varName);
+                break;
+            case 'group':
+                code += this.generateGroupStepPython(step, varName);
+                break;
+            default:
+                code += `# Unknown step type: ${step.type}\n`;
+        }
+
+        return code;
+    }
+
+    // Python command step
+    generateCommandStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# ${props.label || 'Command Step'}\n`;
+        code += `${varName} = pipeline.add_command_step(\n`;
+        code += `    command=${this.formatValuePython(props.command || 'echo "Hello, World!"')},\n`;
+        
+        if (props.label) code += `    label=${this.formatValuePython(props.label)},\n`;
+        if (props.key) code += `    key=${this.formatValuePython(props.key)},\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.env) code += `    env=${this.formatObjectPython(props.env)},\n`;
+        if (props.timeout_in_minutes) code += `    timeout_in_minutes=${props.timeout_in_minutes},\n`;
+        if (props.parallelism) code += `    parallelism=${props.parallelism},\n`;
+        if (props.artifact_paths) code += `    artifact_paths=${this.formatValuePython(props.artifact_paths)},\n`;
+        if (props.agents) code += `    agents=${this.formatObjectPython(props.agents)},\n`;
+        if (props.retry) code += `    retry=${this.formatRetryPython(props.retry)},\n`;
+        if (props.soft_fail !== undefined) code += `    soft_fail=${this.formatSoftFailPython(props.soft_fail)},\n`;
+        if (props.plugins && Object.keys(props.plugins).length > 0) {
+            code += `    plugins=[\n`;
+            Object.entries(props.plugins).forEach(([name, config]) => {
+                code += `        {"${name}": ${JSON.stringify(config, null, 2).replace(/"/g, "'").replace(/\n/g, '\n        ')}},\n`;
+            });
+            code += `    ],\n`;
+        }
+        
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateWaitStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# Wait Step\n`;
+        code += `${varName} = pipeline.add_wait_step(\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.if) code += `    if_condition=${this.formatValuePython(props.if)},\n`;
+        if (props.allow_dependency_failure) code += `    allow_dependency_failure=${props.allow_dependency_failure ? 'True' : 'False'},\n`;
+        if (props.continue_on_failure) code += `    continue_on_failure=${props.continue_on_failure ? 'True' : 'False'},\n`;
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateBlockStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# Block Step: ${props.block || 'Manual Approval'}\n`;
+        code += `${varName} = pipeline.add_block_step(\n`;
+        code += `    block=${this.formatValuePython(props.block || 'Manual Approval')},\n`;
+        if (props.key) code += `    key=${this.formatValuePython(props.key)},\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.fields && props.fields.length > 0) {
+            code += `    fields=[\n`;
+            props.fields.forEach(field => {
+                code += `        ${this.formatBlockFieldPython(field)},\n`;
+            });
+            code += `    ],\n`;
+        }
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateInputStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# Input Step\n`;
+        code += `${varName} = pipeline.add_input_step(\n`;
+        code += `    prompt=${this.formatValuePython(props.prompt || 'Please provide input')},\n`;
+        if (props.key) code += `    key=${this.formatValuePython(props.key)},\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.fields && props.fields.length > 0) {
+            code += `    fields=[\n`;
+            props.fields.forEach(field => {
+                code += `        ${this.formatInputFieldPython(field)},\n`;
+            });
+            code += `    ],\n`;
+        }
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateTriggerStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# Trigger Step\n`;
+        code += `${varName} = pipeline.add_trigger_step(\n`;
+        code += `    trigger=${this.formatValuePython(props.trigger || 'downstream-pipeline')},\n`;
+        if (props.label) code += `    label=${this.formatValuePython(props.label)},\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.build) {
+            const build = props.build;
+            code += `    build={\n`;
+            if (build.message) code += `        "message": ${this.formatValuePython(build.message)},\n`;
+            if (build.branch) code += `        "branch": ${this.formatValuePython(build.branch)},\n`;
+            if (build.commit) code += `        "commit": ${this.formatValuePython(build.commit)},\n`;
+            if (build.env) code += `        "env": ${this.formatObjectPython(build.env)},\n`;
+            if (build.meta_data) code += `        "meta_data": ${this.formatObjectPython(build.meta_data)},\n`;
+            code += `    },\n`;
+        }
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateGroupStepPython(step, varName) {
+        const props = step.properties || {};
+        let code = `# Group Step: ${props.group || 'Step Group'}\n`;
+        code += `${varName} = pipeline.add_group_step(\n`;
+        code += `    group=${this.formatValuePython(props.group || 'Step Group')},\n`;
+        if (props.key) code += `    key=${this.formatValuePython(props.key)},\n`;
+        if (props.depends_on) code += `    depends_on=${this.formatValuePython(props.depends_on)},\n`;
+        if (props.steps && props.steps.length > 0) {
+            code += `    steps=[\n`;
+            props.steps.forEach(subStep => {
+                code += `        # Add sub-steps here\n`;
+            });
+            code += `    ],\n`;
+        }
+        code += `)\n\n`;
+        return code;
+    }
+
+    // Go step generator
+    generateStepSDKCodeGo(step, index) {
+        let code = '';
+        
+        switch (step.type) {
+            case 'command':
+                code += this.generateCommandStepGo(step, index);
+                break;
+            case 'wait':
+                code += this.generateWaitStepGo(step, index);
+                break;
+            case 'block':
+                code += this.generateBlockStepGo(step, index);
+                break;
+            case 'input':
+                code += this.generateInputStepGo(step, index);
+                break;
+            case 'trigger':
+                code += this.generateTriggerStepGo(step, index);
+                break;
+            case 'group':
+                code += this.generateGroupStepGo(step, index);
+                break;
+            default:
+                code += `    // Unknown step type: ${step.type}\n`;
+        }
+
+        return code;
+    }
+
+    generateCommandStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // ${props.label || 'Command Step'}\n`;
+        code += `    command${index + 1} := "${props.command || 'echo "Hello, World!"'}"\n`;
+        code += `    pipeline.AddCommandStep(buildkite.CommandStep{\n`;
+        code += `        Command: &buildkite.CommandUnion{\n`;
+        code += `            String: &command${index + 1},\n`;
+        code += `        },\n`;
+        
+        if (props.label) code += `        Label: buildkite.String("${props.label}"),\n`;
+        if (props.key) code += `        Key: buildkite.String("${props.key}"),\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        if (props.env) code += `        Env: ${this.formatGoMap(props.env)},\n`;
+        if (props.timeout_in_minutes) code += `        TimeoutInMinutes: buildkite.Int(${props.timeout_in_minutes}),\n`;
+        if (props.parallelism) code += `        Parallelism: buildkite.Int(${props.parallelism}),\n`;
+        if (props.artifact_paths) code += `        ArtifactPaths: ${this.formatGoStringSlice(props.artifact_paths)},\n`;
+        if (props.retry) code += `        Retry: ${this.formatRetryGo(props.retry)},\n`;
+        if (props.soft_fail !== undefined) code += `        SoftFail: ${this.formatSoftFailGo(props.soft_fail)},\n`;
+        
+        code += `    })\n\n`;
+        return code;
+    }
+
+    generateWaitStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // Wait Step\n`;
+        code += `    pipeline.AddWaitStep(buildkite.WaitStep{\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        if (props.if) code += `        If: buildkite.String("${props.if}"),\n`;
+        if (props.allow_dependency_failure) code += `        AllowDependencyFailure: buildkite.Bool(${props.allow_dependency_failure}),\n`;
+        if (props.continue_on_failure) code += `        ContinueOnFailure: buildkite.Bool(${props.continue_on_failure}),\n`;
+        code += `    })\n\n`;
+        return code;
+    }
+
+    generateBlockStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // Block Step: ${props.block || 'Manual Approval'}\n`;
+        code += `    pipeline.AddBlockStep(buildkite.BlockStep{\n`;
+        code += `        Block: buildkite.String("${props.block || 'Manual Approval'}"),\n`;
+        if (props.key) code += `        Key: buildkite.String("${props.key}"),\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        code += `    })\n\n`;
+        return code;
+    }
+
+    generateInputStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // Input Step\n`;
+        code += `    pipeline.AddInputStep(buildkite.InputStep{\n`;
+        code += `        Prompt: buildkite.String("${props.prompt || 'Please provide input'}"),\n`;
+        if (props.key) code += `        Key: buildkite.String("${props.key}"),\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        code += `    })\n\n`;
+        return code;
+    }
+
+    generateTriggerStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // Trigger Step\n`;
+        code += `    pipeline.AddTriggerStep(buildkite.TriggerStep{\n`;
+        code += `        Trigger: buildkite.String("${props.trigger || 'downstream-pipeline'}"),\n`;
+        if (props.label) code += `        Label: buildkite.String("${props.label}"),\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        code += `    })\n\n`;
+        return code;
+    }
+
+    generateGroupStepGo(step, index) {
+        const props = step.properties || {};
+        let code = `    // Group Step: ${props.group || 'Step Group'}\n`;
+        code += `    pipeline.AddGroupStep(buildkite.GroupStep{\n`;
+        code += `        Group: buildkite.String("${props.group || 'Step Group'}"),\n`;
+        if (props.key) code += `        Key: buildkite.String("${props.key}"),\n`;
+        if (props.depends_on) code += `        DependsOn: ${this.formatGoStringSlice(props.depends_on)},\n`;
+        code += `    })\n\n`;
+        return code;
+    }
+
+    // Ruby step generator
+    generateStepSDKCodeRuby(step, index) {
+        let code = '';
+        
+        switch (step.type) {
+            case 'command':
+                code += this.generateCommandStepRuby(step);
+                break;
+            case 'wait':
+                code += this.generateWaitStepRuby(step);
+                break;
+            case 'block':
+                code += this.generateBlockStepRuby(step);
+                break;
+            case 'input':
+                code += this.generateInputStepRuby(step);
+                break;
+            case 'trigger':
+                code += this.generateTriggerStepRuby(step);
+                break;
+            case 'group':
+                code += this.generateGroupStepRuby(step);
+                break;
+            default:
+                code += `# Unknown step type: ${step.type}\n`;
+        }
+
+        return code;
+    }
+
+    generateCommandStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# ${props.label || 'Command Step'}\n`;
+        code += `pipeline.add_command_step(\n`;
+        code += `  command: ${this.formatValueRuby(props.command || 'echo "Hello, World!"')},\n`;
+        
+        if (props.label) code += `  label: ${this.formatValueRuby(props.label)},\n`;
+        if (props.key) code += `  key: ${this.formatValueRuby(props.key)},\n`;
+        if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+        if (props.env) code += `  env: ${this.formatObjectRuby(props.env)},\n`;
+        if (props.timeout_in_minutes) code += `  timeout_in_minutes: ${props.timeout_in_minutes},\n`;
+        if (props.parallelism) code += `  parallelism: ${props.parallelism},\n`;
+        if (props.artifact_paths) code += `  artifact_paths: ${this.formatValueRuby(props.artifact_paths)},\n`;
+        if (props.agents) code += `  agents: ${this.formatObjectRuby(props.agents)},\n`;
+        if (props.retry) code += `  retry: ${this.formatRetryRuby(props.retry)},\n`;
+        if (props.soft_fail !== undefined) code += `  soft_fail: ${this.formatSoftFailRuby(props.soft_fail)},\n`;
+        if (props.plugins && Object.keys(props.plugins).length > 0) {
+            code += `  plugins: [\n`;
+            Object.entries(props.plugins).forEach(([name, config]) => {
+                code += `    { "${name}" => ${JSON.stringify(config, null, 2).replace(/"/g, "'").replace(/\n/g, '\n    ')} },\n`;
+            });
+            code += `  ]\n`;
+        }
+        
+        code = code.replace(/,\n$/, '\n');
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateWaitStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# Wait Step\n`;
+        code += `pipeline.add_wait_step`;
+        
+        const hasProps = props.depends_on || props.if || props.allow_dependency_failure || props.continue_on_failure;
+        if (hasProps) {
+            code += `(\n`;
+            if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+            if (props.if) code += `  if: ${this.formatValueRuby(props.if)},\n`;
+            if (props.allow_dependency_failure) code += `  allow_dependency_failure: ${props.allow_dependency_failure},\n`;
+            if (props.continue_on_failure) code += `  continue_on_failure: ${props.continue_on_failure},\n`;
+            code = code.replace(/,\n$/, '\n');
+            code += `)`;
+        }
+        
+        code += `\n\n`;
+        return code;
+    }
+
+    generateBlockStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# Block Step: ${props.block || 'Manual Approval'}\n`;
+        code += `pipeline.add_block_step(\n`;
+        code += `  block: ${this.formatValueRuby(props.block || 'Manual Approval')},\n`;
+        if (props.key) code += `  key: ${this.formatValueRuby(props.key)},\n`;
+        if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+        if (props.fields && props.fields.length > 0) {
+            code += `  fields: [\n`;
+            props.fields.forEach(field => {
+                code += `    ${this.formatBlockFieldRuby(field)},\n`;
+            });
+            code += `  ],\n`;
+        }
+        code = code.replace(/,\n$/, '\n');
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateInputStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# Input Step\n`;
+        code += `pipeline.add_input_step(\n`;
+        code += `  prompt: ${this.formatValueRuby(props.prompt || 'Please provide input')},\n`;
+        if (props.key) code += `  key: ${this.formatValueRuby(props.key)},\n`;
+        if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+        if (props.fields && props.fields.length > 0) {
+            code += `  fields: [\n`;
+            props.fields.forEach(field => {
+                code += `    ${this.formatInputFieldRuby(field)},\n`;
+            });
+            code += `  ],\n`;
+        }
+        code = code.replace(/,\n$/, '\n');
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateTriggerStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# Trigger Step\n`;
+        code += `pipeline.add_trigger_step(\n`;
+        code += `  trigger: ${this.formatValueRuby(props.trigger || 'downstream-pipeline')},\n`;
+        if (props.label) code += `  label: ${this.formatValueRuby(props.label)},\n`;
+        if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+        if (props.build) {
+            const build = props.build;
+            code += `  build: {\n`;
+            if (build.message) code += `    message: ${this.formatValueRuby(build.message)},\n`;
+            if (build.branch) code += `    branch: ${this.formatValueRuby(build.branch)},\n`;
+            if (build.commit) code += `    commit: ${this.formatValueRuby(build.commit)},\n`;
+            if (build.env) code += `    env: ${this.formatObjectRuby(build.env)},\n`;
+            if (build.meta_data) code += `    meta_data: ${this.formatObjectRuby(build.meta_data)},\n`;
+            code = code.replace(/,\n(\s+)}/g, '\n$1}');
+            code += `  },\n`;
+        }
+        code = code.replace(/,\n$/, '\n');
+        code += `)\n\n`;
+        return code;
+    }
+
+    generateGroupStepRuby(step) {
+        const props = step.properties || {};
+        let code = `# Group Step: ${props.group || 'Step Group'}\n`;
+        code += `pipeline.add_group_step(\n`;
+        code += `  group: ${this.formatValueRuby(props.group || 'Step Group')},\n`;
+        if (props.key) code += `  key: ${this.formatValueRuby(props.key)},\n`;
+        if (props.depends_on) code += `  depends_on: ${this.formatValueRuby(props.depends_on)},\n`;
+        if (props.steps && props.steps.length > 0) {
+            code += `  steps: [\n`;
+            code += `    # Add sub-steps here\n`;
+            code += `  ],\n`;
+        }
+        code = code.replace(/,\n$/, '\n');
+        code += `)\n\n`;
+        return code;
+    }
+
+    // Helper methods for Python formatting
+    formatValuePython(value) {
+        if (Array.isArray(value)) {
+            return `[${value.map(v => this.formatValuePython(v)).join(', ')}]`;
+        }
+        if (typeof value === 'string') {
+            return `"${value}"`;
+        }
+        return value;
+    }
+
+    formatObjectPython(obj) {
+        if (!obj || Object.keys(obj).length === 0) return '{}';
+        const items = Object.entries(obj).map(([k, v]) => `"${k}": ${this.formatValuePython(v)}`);
+        return `{${items.join(', ')}}`;
+    }
+
+    formatRetryPython(retry) {
+        if (typeof retry === 'boolean') return retry ? 'True' : 'False';
+        if (typeof retry === 'object') {
+            const items = [];
+            if (retry.automatic !== undefined) {
+                items.push(`"automatic": ${retry.automatic ? 'True' : 'False'}`);
+            }
+            if (retry.manual !== undefined) {
+                items.push(`"manual": ${retry.manual ? 'True' : 'False'}`);
+            }
+            return `{${items.join(', ')}}`;
+        }
+        return 'None';
+    }
+
+    formatSoftFailPython(softFail) {
+        if (typeof softFail === 'boolean') return softFail ? 'True' : 'False';
+        if (Array.isArray(softFail)) {
+            return `[${softFail.map(v => this.formatValuePython(v)).join(', ')}]`;
+        }
+        return 'False';
+    }
+
+    formatBlockFieldPython(field) {
+        let items = [`"key": "${field.key}"`, `"type": "${field.type}"`];
+        if (field.text) items.push(`"text": "${field.text}"`);
+        if (field.hint) items.push(`"hint": "${field.hint}"`);
+        if (field.required) items.push(`"required": True`);
+        if (field.default) items.push(`"default": "${field.default}"`);
+        if (field.options && field.type === 'select') {
+            const options = field.options.map(opt => {
+                if (typeof opt === 'string') return `{"label": "${opt}", "value": "${opt}"}`;
+                return `{"label": "${opt.label}", "value": "${opt.value}"}`;
+            });
+            items.push(`"options": [${options.join(', ')}]`);
+        }
+        return `{${items.join(', ')}}`;
+    }
+
+    formatInputFieldPython(field) {
+        return this.formatBlockFieldPython(field);
+    }
+
+    // Helper methods for Go formatting
+    formatGoStringSlice(value) {
+        if (Array.isArray(value)) {
+            return `[]string{${value.map(v => `"${v}"`).join(', ')}}`;
+        }
+        if (typeof value === 'string') {
+            return `[]string{"${value}"}`;
+        }
+        return 'nil';
+    }
+
+    formatGoMap(obj) {
+        if (!obj || Object.keys(obj).length === 0) return 'nil';
+        const items = Object.entries(obj).map(([k, v]) => `"${k}": "${v}"`);
+        return `map[string]string{${items.join(', ')}}`;
+    }
+
+    formatRetryGo(retry) {
+        if (typeof retry === 'boolean') {
+            return retry ? '&buildkite.RetryRules{Automatic: buildkite.Bool(true)}' : 'nil';
+        }
+        if (typeof retry === 'object') {
+            let items = [];
+            if (retry.automatic !== undefined) items.push(`Automatic: buildkite.Bool(${retry.automatic})`);
+            if (retry.manual !== undefined) items.push(`Manual: buildkite.Bool(${retry.manual})`);
+            return `&buildkite.RetryRules{${items.join(', ')}}`;
+        }
+        return 'nil';
+    }
+
+    formatSoftFailGo(softFail) {
+        if (typeof softFail === 'boolean') {
+            return `buildkite.Bool(${softFail})`;
+        }
+        if (Array.isArray(softFail)) {
+            const exitStatuses = softFail.filter(v => typeof v === 'object' && v.exit_status !== undefined)
+                .map(v => v.exit_status);
+            if (exitStatuses.length > 0) {
+                return `&buildkite.SoftFailUnion{ExitStatuses: []int{${exitStatuses.join(', ')}}}`;
+            }
+        }
+        return 'nil';
+    }
+
+    // Helper methods for Ruby formatting
+    formatValueRuby(value) {
+        if (Array.isArray(value)) {
+            return `[${value.map(v => this.formatValueRuby(v)).join(', ')}]`;
+        }
+        if (typeof value === 'string') {
+            return `"${value}"`;
+        }
+        return value;
+    }
+
+    formatObjectRuby(obj) {
+        if (!obj || Object.keys(obj).length === 0) return '{}';
+        const items = Object.entries(obj).map(([k, v]) => `"${k}" => ${this.formatValueRuby(v)}`);
+        return `{ ${items.join(', ')} }`;
+    }
+
+    formatRetryRuby(retry) {
+        if (typeof retry === 'boolean') return retry;
+        if (typeof retry === 'object') {
+            const items = [];
+            if (retry.automatic !== undefined) items.push(`automatic: ${retry.automatic}`);
+            if (retry.manual !== undefined) items.push(`manual: ${retry.manual}`);
+            return `{ ${items.join(', ')} }`;
+        }
+        return 'nil';
+    }
+
+    formatSoftFailRuby(softFail) {
+        if (typeof softFail === 'boolean') return softFail;
+        if (Array.isArray(softFail)) {
+            return `[${softFail.map(v => {
+                if (typeof v === 'object' && v.exit_status !== undefined) {
+                    return `{ exit_status: ${v.exit_status} }`;
+                }
+                return this.formatValueRuby(v);
+            }).join(', ')}]`;
+        }
+        return 'false';
+    }
+
+    formatBlockFieldRuby(field) {
+        let items = [`key: "${field.key}"`, `type: "${field.type}"`];
+        if (field.text) items.push(`text: "${field.text}"`);
+        if (field.hint) items.push(`hint: "${field.hint}"`);
+        if (field.required) items.push(`required: true`);
+        if (field.default) items.push(`default: "${field.default}"`);
+        if (field.options && field.type === 'select') {
+            const options = field.options.map(opt => {
+                if (typeof opt === 'string') return `{ label: "${opt}", value: "${opt}" }`;
+                return `{ label: "${opt.label}", value: "${opt.value}" }`;
+            });
+            items.push(`options: [${options.join(', ')}]`);
+        }
+        return `{ ${items.join(', ')} }`;
+    }
+
+    formatInputFieldRuby(field) {
+        return this.formatBlockFieldRuby(field);
     }
 }
 
