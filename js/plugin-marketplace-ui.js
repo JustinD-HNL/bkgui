@@ -70,7 +70,8 @@ class PluginMarketplaceUI {
         modal.id = 'plugin-marketplace-modal';
         modal.className = 'modal hidden';
         modal.innerHTML = `
-            <div class="modal-content large">
+            <div class="modal-backdrop" onclick="event.stopPropagation()">
+                <div class="modal-content large" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <h2><i class="fas fa-store"></i> Buildkite Plugin Marketplace</h2>
                     <button class="close-modal">&times;</button>
@@ -132,7 +133,15 @@ class PluginMarketplaceUI {
                     </div>
                 </div>
             </div>
+            </div>
             <style>
+                .modal-backdrop {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
                 .marketplace-container {
                     display: flex;
                     height: 600px;
@@ -528,19 +537,26 @@ class PluginMarketplaceUI {
             });
         }
 
-        // Close modal
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('close-modal')) {
-                const modal = e.target.closest('.modal');
-                if (modal) modal.classList.add('hidden');
-            }
-        });
+        // Close modal - use event delegation on the modal itself to avoid conflicts
+        const modal = document.getElementById('plugin-marketplace-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('close-modal')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }
+            });
+        }
     }
 
     showMarketplace() {
         const modal = document.getElementById('plugin-marketplace-modal');
         if (modal) {
+            // Ensure modal is properly shown (remove both hidden class and display:none)
             modal.classList.remove('hidden');
+            modal.style.display = 'block';
             this.renderCategories();
             this.renderPlugins();
             this.updateStats();
@@ -910,8 +926,12 @@ ${this.formatYAML(plugin.example, 2)}</code></pre>
         if (this.marketplace.addPluginToStep(pluginKey, window.pipelineBuilder.selectedStep.id)) {
             this.showNotification(`Added ${plugin.name} plugin`, 'success');
             
-            // Close marketplace modal
-            document.getElementById('plugin-marketplace-modal')?.classList.add('hidden');
+            // Close marketplace modal properly
+            const marketplaceModal = document.getElementById('plugin-marketplace-modal');
+            if (marketplaceModal) {
+                marketplaceModal.classList.add('hidden');
+                marketplaceModal.style.display = 'none';
+            }
         }
     }
 
