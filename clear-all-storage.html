@@ -1,0 +1,20 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>Clear All Storage</title>
+    <script>
+        // Clear all localStorage items
+        localStorage.clear();
+        console.log('All localStorage cleared');
+        
+        // Redirect back to main page
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 500);
+    </script>
+</head>
+<body>
+    <p>Clearing all storage and redirecting...</p>
+</body>
+</html>
+EOF < /dev/null

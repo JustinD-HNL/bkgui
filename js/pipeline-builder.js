@@ -421,6 +421,9 @@ class PipelineBuilder {
         // Load from localStorage
         this.loadFromLocalStorage();
         
+        // Clean up any invalid steps that might have been loaded
+        this.cleanupInvalidSteps();
+        
         // Initial render
         this.renderPipeline();
         this.renderProperties();
@@ -2240,11 +2243,16 @@ class PipelineBuilder {
                     <small>Unique identifier for dependencies</small>
                 </div>
                 <div class="property-group">
-                    <label>Selected Plugins</label>
-                    <div id="selected-plugins">${this.renderSelectedPlugins(step.properties.plugins || {})}</div>
-                    <button type="button" class="btn btn-secondary btn-small" data-action="add-plugin">
-                        <i class="fas fa-plus"></i> Add Plugin
-                    </button>
+                    <label>Plugins</label>
+                    <div class="plugin-selector">
+                        <select id="plugin-select" class="plugin-dropdown">
+                            <option value="">-- Add a plugin --</option>
+                            ${this.renderPluginOptions()}
+                        </select>
+                    </div>
+                    <div id="selected-plugins" class="selected-plugins-list">
+                        ${this.renderSelectedPlugins(step.properties.plugins || {})}
+                    </div>
                 </div>
             </div>
         `;
@@ -2559,20 +2567,75 @@ class PipelineBuilder {
         return this.renderBlockFields(fields);
     }
 
+    renderPluginOptions() {
+        // Get plugins from the marketplace if available
+        const marketplace = window.pluginMarketplace;
+        if (!marketplace || !marketplace.plugins) {
+            return '<option value="">Loading plugins...</option>';
+        }
+        
+        // Group plugins by category
+        const pluginsByCategory = {};
+        Object.entries(marketplace.plugins).forEach(([key, plugin]) => {
+            const category = plugin.category || 'other';
+            if (!pluginsByCategory[category]) {
+                pluginsByCategory[category] = [];
+            }
+            pluginsByCategory[category].push({ key, ...plugin });
+        });
+        
+        // Sort categories and render options
+        let html = '';
+        const categoryNames = marketplace.categories || {};
+        
+        Object.entries(pluginsByCategory).sort((a, b) => {
+            const catA = categoryNames[a[0]]?.name || a[0];
+            const catB = categoryNames[b[0]]?.name || b[0];
+            return catA.localeCompare(catB);
+        }).forEach(([category, plugins]) => {
+            const categoryName = categoryNames[category]?.name || category;
+            html += `<optgroup label="${categoryName}">`;
+            
+            // Sort plugins by name
+            plugins.sort((a, b) => a.name.localeCompare(b.name)).forEach(plugin => {
+                const usage = plugin.usage ? ` (${marketplace.formatUsageCount(plugin.usage)} uses)` : '';
+                html += `<option value="${plugin.key}">${plugin.name}${usage}</option>`;
+            });
+            
+            html += '</optgroup>';
+        });
+        
+        return html;
+    }
+
     renderSelectedPlugins(plugins) {
-        return Object.entries(plugins).map(([key, config]) => `
-            <div class="selected-plugin">
-                <div class="plugin-header">
-                    <span class="plugin-name">${this.pluginCatalog[key]?.name || key}</span>
-                    <button class="remove-btn" data-action="remove-plugin" data-plugin="${key}">
-                        <i class="fas fa-times"></i>
-                    </button>
+        if (!plugins || Object.keys(plugins).length === 0) {
+            return '<div class="empty-list">No plugins configured</div>';
+        }
+        
+        const marketplace = window.pluginMarketplace;
+        
+        return Object.entries(plugins).map(([key, config]) => {
+            const pluginName = key.split('#')[0];
+            const pluginVersion = key.split('#')[1] || 'latest';
+            const pluginInfo = marketplace?.plugins?.[pluginName] || this.pluginCatalog[pluginName] || {};
+            
+            return `
+                <div class="selected-plugin">
+                    <div class="plugin-header">
+                        <i class="fas ${pluginInfo.icon || 'fa-puzzle-piece'}"></i>
+                        <span class="plugin-name">${pluginInfo.name || pluginName}</span>
+                        <span class="plugin-version">#${pluginVersion}</span>
+                        <button class="remove-btn" data-action="remove-plugin" data-plugin="${key}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="plugin-config">
+                        ${this.renderPluginConfig(key, config)}
+                    </div>
                 </div>
-                <div class="plugin-config">
-                    ${this.renderPluginConfig(key, config)}
-                </div>
-            </div>
-        `).join('') || '<div class="empty-list">No plugins configured</div>';
+            `;
+        }).join('');
     }
 
     formatAgentTags(agents) {
@@ -2586,6 +2649,67 @@ class PipelineBuilder {
         return tags.join(' ');
     }
 
+    addPluginToStep(pluginKey) {
+        if (!this.selectedStep || !pluginKey) return;
+        
+        // Initialize plugins object if needed
+        if (!this.selectedStep.properties.plugins) {
+            this.selectedStep.properties.plugins = {};
+        }
+        
+        // Get plugin info from marketplace
+        const marketplace = window.pluginMarketplace;
+        const pluginInfo = marketplace?.plugins?.[pluginKey];
+        
+        // Create plugin key with version
+        const versionedKey = `${pluginKey}#latest`;
+        
+        // Add basic configuration based on plugin type
+        let defaultConfig = {};
+        
+        // Try to get example configuration if available
+        if (pluginInfo?.example) {
+            const exampleKey = Object.keys(pluginInfo.example)[0];
+            defaultConfig = pluginInfo.example[exampleKey] || {};
+        } else {
+            // Provide some common defaults based on plugin type
+            switch (pluginKey) {
+                case 'docker-compose':
+                    defaultConfig = { run: 'app' };
+                    break;
+                case 'docker':
+                    defaultConfig = { image: 'myapp' };
+                    break;
+                case 'cache':
+                    defaultConfig = { 
+                        key: 'v1-cache-{{ checksum "package-lock.json" }}',
+                        paths: ['node_modules']
+                    };
+                    break;
+                case 'artifacts':
+                    defaultConfig = { upload: 'dist/**/*' };
+                    break;
+                default:
+                    defaultConfig = {};
+            }
+        }
+        
+        // Add plugin to step
+        this.selectedStep.properties.plugins[versionedKey] = defaultConfig;
+        
+        // Update UI
+        this.renderProperties();
+        this.renderPipeline();
+        
+        if (this.debouncedSave) {
+            this.debouncedSave();
+        } else {
+            this.saveToLocalStorage();
+        }
+        
+        console.log(`Added plugin ${pluginKey} to step`);
+    }
+
     handlePropertyChange(e) {
         if (!this.selectedStep) return;
         
@@ -2597,6 +2721,12 @@ class PipelineBuilder {
             this.selectedStep.properties.label = value;
         } else if (input.id === 'step-key') {
             this.selectedStep.properties.key = value;
+        } else if (input.id === 'plugin-select') {
+            // Handle plugin selection from dropdown
+            if (value) {
+                this.addPluginToStep(value);
+                input.value = ''; // Reset dropdown
+            }
         } else if (input.id === 'step-command') {
             this.selectedStep.properties.command = value;
         } else if (input.id === 'step-artifact-paths') {
@@ -2802,8 +2932,7 @@ class PipelineBuilder {
         
         switch (action) {
             case 'add-plugin':
-                window.buildkiteApp?.showNotification('Opening plugin catalog...', 'info');
-                window.showModal?.('plugin-catalog-modal');
+                // This case is no longer needed as we use a dropdown
                 break;
                 
             case 'remove-plugin':
@@ -4631,7 +4760,17 @@ class PipelineBuilder {
                     // Filter out empty or invalid steps
                     this.steps = (data.steps || []).filter(step => {
                         // Check if step has valid structure
-                        return step && step.id && step.type && step.properties;
+                        if (!step || !step.id || !step.type || !step.properties) {
+                            return false;
+                        }
+                        // Also filter out steps with empty/default properties
+                        if (step.type === 'command' && (!step.properties.command || step.properties.command === '')) {
+                            // If it's a command step with no command, check if it has a label
+                            if (!step.properties.label || step.properties.label === 'command step') {
+                                return false;
+                            }
+                        }
+                        return true;
                     });
                     this.stepCounter = data.stepCounter || 0;
                     console.log('📂 Pipeline loaded from localStorage');
@@ -4678,6 +4817,35 @@ class PipelineBuilder {
             }
         } catch (e) {
             console.warn('⚠️ Failed to load from localStorage:', e);
+        }
+    }
+
+    cleanupInvalidSteps() {
+        // Additional cleanup to ensure no invalid steps remain
+        const validSteps = this.steps.filter(step => {
+            if (!step || !step.id || !step.type || !step.properties) {
+                console.warn('Removing invalid step:', step);
+                return false;
+            }
+            
+            // Check for empty command steps
+            if (step.type === 'command') {
+                const hasValidCommand = step.properties.command && step.properties.command.trim() !== '';
+                const hasValidLabel = step.properties.label && step.properties.label !== 'command step' && step.properties.label !== 'Command Step';
+                
+                if (!hasValidCommand && !hasValidLabel) {
+                    console.warn('Removing empty command step:', step);
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        if (validSteps.length !== this.steps.length) {
+            console.log(`🧹 Cleaned up ${this.steps.length - validSteps.length} invalid steps`);
+            this.steps = validSteps;
+            this.saveToLocalStorage();
         }
     }
 
