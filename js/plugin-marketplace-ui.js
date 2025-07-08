@@ -801,6 +801,13 @@ class PluginMarketplaceUI {
             details = await this.marketplace.fetchPluginDetails(pluginKey);
         } catch (error) {
             console.error('Error fetching plugin details:', error);
+            details = {
+                stars: plugin.stars || 0,
+                forks: plugin.forks || 0,
+                issues: 0,
+                description: plugin.description,
+                error: 'Unable to fetch GitHub data'
+            };
         }
         
         const example = this.marketplace.getPluginExample(pluginKey);
@@ -815,12 +822,16 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                 
                 ${plugin.github ? `
                 <h4>Repository Information</h4>
+                ${details && !details.error ? `
                 <div class="plugin-stats" style="margin-bottom: 1rem;">
-                    ${details?.stars ? `<div class="plugin-stat"><i class="fas fa-star"></i> ${details.stars} stars</div>` : ''}
-                    ${details?.forks ? `<div class="plugin-stat"><i class="fas fa-code-branch"></i> ${details.forks} forks</div>` : ''}
-                    ${details?.issues ? `<div class="plugin-stat"><i class="fas fa-exclamation-circle"></i> ${details.issues} issues</div>` : ''}
-                    ${details?.latestVersion ? `<div class="plugin-stat"><i class="fas fa-tag"></i> ${details.latestVersion}</div>` : ''}
+                    ${details.stars ? `<div class="plugin-stat"><i class="fas fa-star"></i> ${details.stars} stars</div>` : ''}
+                    ${details.forks ? `<div class="plugin-stat"><i class="fas fa-code-branch"></i> ${details.forks} forks</div>` : ''}
+                    ${details.issues ? `<div class="plugin-stat"><i class="fas fa-exclamation-circle"></i> ${details.issues} issues</div>` : ''}
+                    ${details.latestVersion ? `<div class="plugin-stat"><i class="fas fa-tag"></i> ${details.latestVersion}</div>` : ''}
                 </div>
+                ` : `
+                <p class="text-muted"><em>GitHub statistics unavailable due to security restrictions.</em></p>
+                `}
                 ` : ''}
                 
                 <h4>Tags</h4>
@@ -854,33 +865,23 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
         const example = this.marketplace.getPluginExample(pluginKey) || {};
         const pluginName = Object.keys(example)[0] || `${pluginKey}#latest`;
         const defaultConfig = example[pluginName] || {};
-
-        return `
-            <div class="plugin-configure">
-                <h4>Configure ${plugin.name}</h4>
-                <p>Adding to step: <strong>${step.properties.label || step.type}</strong></p>
+        
+        // Generate unique form ID
+        const formId = `plugin-config-form-${Date.now()}`;
+        
+        // Setup form handler after rendering
+        setTimeout(() => {
+            const form = document.getElementById(formId);
+            if (form) {
+                const cancelBtn = form.querySelector('.plugin-config-cancel');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        const modal = document.querySelector('.plugin-details-modal');
+                        if (modal) modal.remove();
+                    });
+                }
                 
-                <form id="plugin-config-form" class="plugin-config-form">
-                    ${Object.entries(defaultConfig).map(([key, value]) => `
-                        <div class="config-field">
-                            <label for="config-${key}">${this.formatConfigKey(key)}</label>
-                            ${this.renderConfigInput(key, value)}
-                        </div>
-                    `).join('')}
-                    
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('plugin-details-modal').style.display='none';document.getElementById('plugin-details-modal').classList.add('hidden')">
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Add Plugin
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
-            <script>
-                document.getElementById('plugin-config-form').addEventListener('submit', (e) => {
+                form.addEventListener('submit', (e) => {
                     e.preventDefault();
                     const formData = new FormData(e.target);
                     const config = {};
@@ -889,16 +890,38 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                         config[cleanKey] = value;
                     }
                     
-                    if (window.pluginMarketplaceUI.addPluginWithConfig('${pluginKey}', config)) {
-                        const modal = document.getElementById('plugin-details-modal');
-                        if (modal) {
-                            modal.style.display = 'none';
-                            modal.classList.add('hidden');
-                        }
-                        window.pluginMarketplaceUI.showNotification('Plugin added successfully', 'success');
+                    if (this.addPluginWithConfig(pluginKey, config)) {
+                        const modal = document.querySelector('.plugin-details-modal');
+                        if (modal) modal.remove();
+                        this.showNotification('Plugin added successfully', 'success');
                     }
                 });
-            </script>
+            }
+        }, 0);
+
+        return `
+            <div class="plugin-configure">
+                <h4>Configure ${plugin.name}</h4>
+                <p>Adding to step: <strong>${step.properties.label || step.type}</strong></p>
+                
+                <form id="${formId}" class="plugin-config-form" data-plugin-key="${pluginKey}">
+                    ${Object.entries(defaultConfig).map(([key, value]) => `
+                        <div class="config-field">
+                            <label for="config-${key}">${this.formatConfigKey(key)}</label>
+                            ${this.renderConfigInput(key, value)}
+                        </div>
+                    `).join('')}
+                    
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-secondary plugin-config-cancel">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Plugin
+                        </button>
+                    </div>
+                </form>
+            </div>
         `;
     }
 
