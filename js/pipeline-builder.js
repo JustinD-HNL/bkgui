@@ -2244,11 +2244,14 @@ class PipelineBuilder {
                 </div>
                 <div class="property-group">
                     <label>Plugins</label>
-                    <div class="plugin-selector">
-                        <select id="plugin-select" class="plugin-dropdown">
+                    <div class="plugin-selector" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="plugin-select" class="plugin-dropdown" style="flex: 1;">
                             <option value="">-- Add a plugin --</option>
                             ${this.renderPluginOptions()}
                         </select>
+                        <button type="button" class="btn btn-secondary" id="open-marketplace-btn" title="Browse Plugin Marketplace">
+                            <i class="fas fa-store"></i> Browse Marketplace
+                        </button>
                     </div>
                     <div id="selected-plugins" class="selected-plugins-list">
                         ${this.renderSelectedPlugins(step.properties.plugins || {})}
@@ -3522,6 +3525,28 @@ class PipelineBuilder {
     }
 
     setupPluginStepListeners(step, container) {
+        // Handle marketplace button click
+        const marketplaceBtn = container.querySelector('#open-marketplace-btn');
+        if (marketplaceBtn) {
+            marketplaceBtn.addEventListener('click', () => {
+                // Open the plugin marketplace modal
+                if (window.pluginMarketplaceUI) {
+                    window.pluginMarketplaceUI.showMarketplace();
+                    
+                    // Set up a callback to add selected plugin to this step
+                    window.pluginMarketplaceUI.onPluginSelect = (pluginKey) => {
+                        this.addPluginToStep(pluginKey);
+                        // Close the marketplace modal
+                        const modal = document.getElementById('plugin-marketplace-modal');
+                        if (modal) {
+                            modal.classList.add('hidden');
+                            modal.style.display = 'none';
+                        }
+                    };
+                }
+            });
+        }
+        
         container.addEventListener('click', (e) => {
             if (e.target.closest('[data-action="add-plugin"]')) {
                 this.showPluginSelector(step);

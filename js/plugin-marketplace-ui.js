@@ -664,7 +664,7 @@ class PluginMarketplaceUI {
                         <button class="btn btn-secondary btn-sm" onclick="window.pluginMarketplaceUI.showPluginDetails('${key}')">
                             <i class="fas fa-info-circle"></i> Details
                         </button>
-                        ${window.pipelineBuilder?.selectedStep ? `
+                        ${(window.pipelineBuilder?.selectedStep || this.onPluginSelect) ? `
                         <button class="btn btn-primary btn-sm" onclick="window.pluginMarketplaceUI.quickAddPlugin('${key}')">
                             <i class="fas fa-plus"></i> Add to Step
                         </button>
@@ -917,13 +917,24 @@ ${this.formatYAML(plugin.example, 2)}</code></pre>
     }
 
     quickAddPlugin(pluginKey) {
+        const plugin = this.marketplace.plugins[pluginKey];
+        
+        // If there's a callback function set (from pipeline builder), use it
+        if (this.onPluginSelect) {
+            this.onPluginSelect(pluginKey);
+            this.showNotification(`Added ${plugin.name} plugin`, 'success');
+            return;
+        }
+        
+        // Otherwise, check if there's a selected step in pipeline builder
         if (!window.pipelineBuilder?.selectedStep) {
             this.showNotification('Please select a step first', 'warning');
             return;
         }
 
-        const plugin = this.marketplace.plugins[pluginKey];
-        if (this.marketplace.addPluginToStep(pluginKey, window.pipelineBuilder.selectedStep.id)) {
+        // Add plugin to the selected step
+        if (window.pipelineBuilder.addPluginToStep) {
+            window.pipelineBuilder.addPluginToStep(pluginKey);
             this.showNotification(`Added ${plugin.name} plugin`, 'success');
             
             // Close marketplace modal properly
