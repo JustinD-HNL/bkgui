@@ -14,7 +14,8 @@ class AIAssistant {
                 requiresAuth: true,
                 authType: 'api-key',
                 baseUrl: 'https://api.anthropic.com/v1',
-                models: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+                models: [], // Will be fetched dynamically
+                defaultModels: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
             },
             chatgpt: {
                 name: 'ChatGPT',
@@ -22,7 +23,8 @@ class AIAssistant {
                 requiresAuth: true,
                 authType: 'api-key',
                 baseUrl: 'https://api.openai.com/v1',
-                models: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo']
+                models: [], // Will be fetched dynamically
+                defaultModels: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo']
             }
         };
 
@@ -181,7 +183,8 @@ For other requests that don't involve creating a pipeline, respond normally with
                 .ai-assistant-container {
                     display: flex;
                     flex-direction: column;
-                    height: 600px;
+                    height: 70vh;
+                    max-height: 600px;
                 }
 
                 .ai-settings {
@@ -261,6 +264,7 @@ For other requests that don't involve creating a pipeline, respond normally with
                     display: flex;
                     flex-direction: column;
                     overflow: hidden;
+                    min-height: 0; /* Important for flex children */
                 }
 
                 .ai-examples {
@@ -461,8 +465,11 @@ For other requests that don't involve creating a pipeline, respond normally with
         // API key input
         const apiKeyInput = document.getElementById('ai-api-key');
         if (apiKeyInput) {
-            apiKeyInput.addEventListener('input', () => {
+            apiKeyInput.addEventListener('input', async () => {
                 this.apiKey = apiKeyInput.value;
+                if (this.apiKey && this.apiKey.length > 10) {
+                    await this.fetchAvailableModels();
+                }
                 this.checkReadyToChat();
             });
         }
@@ -517,7 +524,8 @@ For other requests that don't involve creating a pipeline, respond normally with
         
         // Populate models
         const modelSelect = document.getElementById('ai-model');
-        const models = this.providers[provider].models;
+        const providerData = this.providers[provider];
+        const models = providerData.models.length > 0 ? providerData.models : providerData.defaultModels;
         modelSelect.innerHTML = '<option value="">Select a model</option>' + 
             models.map(model => `<option value="${model}">${model}</option>`).join('');
         
@@ -527,6 +535,104 @@ For other requests that don't involve creating a pipeline, respond normally with
         
         this.saveSettings();
         this.checkReadyToChat();
+    }
+
+    async fetchAvailableModels() {
+        if (!this.currentProvider || !this.apiKey) return;
+        
+        const modelSelect = document.getElementById('ai-model');
+        const provider = this.providers[this.currentProvider];
+        
+        // Show loading state
+        modelSelect.innerHTML = '<option value="">Loading models...</option>';
+        modelSelect.disabled = true;
+        
+        try {
+            let models = [];
+            
+            if (this.currentProvider === 'chatgpt') {
+                // Fetch models from OpenAI
+                const response = await fetch(`${provider.baseUrl}/models`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    models = data.data
+                        .filter(model => model.id.includes('gpt'))
+                        .map(model => model.id)
+                        .sort();
+                    
+                    // Store fetched models
+                    provider.models = models;
+                } else {
+                    throw new Error('Invalid API key or unable to fetch models');
+                }
+            } else if (this.currentProvider === 'claude') {
+                // Anthropic doesn't have a models endpoint, use defaults
+                // But we can validate the API key with a test request
+                try {
+                    const response = await fetch(`${provider.baseUrl}/messages`, {
+                        method: 'POST',
+                        headers: {
+                            'x-api-key': this.apiKey,
+                            'anthropic-version': '2023-06-01',
+                            'content-type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: 'claude-3-haiku-20240307',
+                            messages: [{role: 'user', content: 'test'}],
+                            max_tokens: 1
+                        })
+                    });
+                    
+                    // If we get a 401, the API key is invalid
+                    if (response.status === 401) {
+                        throw new Error('Invalid API key');
+                    }
+                    
+                    // Use default models for Claude
+                    models = provider.defaultModels;
+                    provider.models = models;
+                } catch (error) {
+                    if (error.message === 'Invalid API key') {
+                        throw error;
+                    }
+                    // If it's a different error (like CORS), assume key might be valid
+                    models = provider.defaultModels;
+                    provider.models = models;
+                }
+            }
+            
+            // Populate model dropdown
+            modelSelect.innerHTML = '<option value="">Select a model</option>' + 
+                models.map(model => `<option value="${model}">${model}</option>`).join('');
+            modelSelect.disabled = false;
+            
+            // If a model was previously selected and is still available, select it
+            if (this.selectedModel && models.includes(this.selectedModel)) {
+                modelSelect.value = this.selectedModel;
+            }
+            
+            // Show success notification
+            this.showNotification('API key validated successfully', 'success');
+            
+        } catch (error) {
+            console.error('Error fetching models:', error);
+            
+            // Use default models as fallback
+            const models = provider.defaultModels;
+            provider.models = models;
+            
+            modelSelect.innerHTML = '<option value="">Select a model</option>' + 
+                models.map(model => `<option value="${model}">${model}</option>`).join('');
+            modelSelect.disabled = false;
+            
+            // Show error notification
+            this.showNotification('API key validation failed: ' + error.message, 'error');
+        }
     }
 
     checkReadyToChat() {
