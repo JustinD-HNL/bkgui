@@ -99,10 +99,10 @@ class TemplatesUI {
                                 </ul>
                             </div>
                             <div class="templates-actions">
-                                <button class="btn btn-secondary" onclick="window.templatesUI.importTemplate()">
+                                <button class="btn btn-secondary" id="import-template-btn">
                                     <i class="fas fa-upload"></i> Import Template
                                 </button>
-                                <button class="btn btn-secondary" onclick="window.templatesUI.exportCurrentAsTemplate()">
+                                <button class="btn btn-secondary" id="export-current-template-btn">
                                     <i class="fas fa-download"></i> Export Current
                                 </button>
                             </div>
@@ -486,6 +486,17 @@ class TemplatesUI {
                 if (modal) modal.classList.add('hidden');
             }
         });
+        
+        // Import/Export buttons
+        const importBtn = document.getElementById('import-template-btn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.importTemplate());
+        }
+        
+        const exportBtn = document.getElementById('export-current-template-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportCurrentAsTemplate());
+        }
     }
 
     showTemplatesModal() {
@@ -681,7 +692,7 @@ class TemplatesUI {
                         <h3><i class="fas ${template.icon || 'fa-file-code'}"></i> ${template.name}</h3>
                         <p>${template.description}</p>
                     </div>
-                    <button class="close-modal" onclick="this.closest('.template-details-modal').remove()">
+                    <button class="close-modal">
                         &times;
                     </button>
                 </div>
@@ -692,15 +703,24 @@ class TemplatesUI {
                     </div>
                 </div>
                 <div class="template-details-footer">
-                    <button class="btn btn-secondary" onclick="this.closest('.template-details-modal').remove()">
+                    <button class="btn btn-secondary cancel-btn">
                         Cancel
                     </button>
-                    <button class="btn btn-primary" onclick="window.templatesUI.loadTemplate('${templateKey}')">
+                    <button class="btn btn-primary load-template-btn" data-template-key="${templateKey}">
                         <i class="fas fa-download"></i> Load Template
                     </button>
                 </div>
             </div>
         `;
+        
+        // Add event listeners
+        modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+        modal.querySelector('.cancel-btn').addEventListener('click', () => modal.remove());
+        modal.querySelector('.load-template-btn').addEventListener('click', (e) => {
+            const key = e.currentTarget.dataset.templateKey;
+            this.loadTemplate(key);
+            modal.remove();
+        });
 
         document.body.appendChild(modal);
     }

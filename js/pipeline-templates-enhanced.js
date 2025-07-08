@@ -277,7 +277,7 @@ class EnhancedPipelineTemplates {
                                     plugins: {
                                         'junit-annotate': {
                                             artifacts: 'junit.xml',
-                                            job-uuid-file-pattern: '_(*).xml'
+                                            'job-uuid-file-pattern': '_(*).xml'
                                         }
                                     }
                                 },

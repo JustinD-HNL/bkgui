@@ -81,7 +81,7 @@ class PluginMarketplaceUI {
                         <div class="marketplace-sidebar">
                             <div class="marketplace-search">
                                 <i class="fas fa-search"></i>
-                                <input type="text" id="plugin-search" placeholder="Search plugins..." />
+                                <input type="text" id="plugin-marketplace-search" placeholder="Search plugins..." />
                             </div>
                             
                             <div class="marketplace-filters">
@@ -520,7 +520,7 @@ class PluginMarketplaceUI {
 
     setupEventListeners() {
         // Search
-        const searchInput = document.getElementById('plugin-search');
+        const searchInput = document.getElementById('plugin-marketplace-search');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.marketplace.searchQuery = e.target.value;
@@ -602,6 +602,23 @@ class PluginMarketplaceUI {
                 this.renderPlugins();
             });
         });
+        
+        // Plugin card button event delegation
+        document.addEventListener('click', (e) => {
+            // Handle details button
+            if (e.target.closest('.plugin-details-btn')) {
+                const btn = e.target.closest('.plugin-details-btn');
+                const pluginKey = btn.dataset.plugin;
+                this.showPluginDetails(pluginKey);
+            }
+            
+            // Handle add button
+            if (e.target.closest('.plugin-add-btn')) {
+                const btn = e.target.closest('.plugin-add-btn');
+                const pluginKey = btn.dataset.plugin;
+                this.quickAddPlugin(pluginKey);
+            }
+        });
     }
 
     renderPlugins() {
@@ -661,11 +678,11 @@ class PluginMarketplaceUI {
                     </div>
                     
                     <div class="plugin-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="window.pluginMarketplaceUI.showPluginDetails('${key}')">
+                        <button class="btn btn-secondary btn-sm plugin-details-btn" data-plugin="${key}">
                             <i class="fas fa-info-circle"></i> Details
                         </button>
                         ${(window.pipelineBuilder?.selectedStep || this.onPluginSelect) ? `
-                        <button class="btn btn-primary btn-sm" onclick="window.pluginMarketplaceUI.quickAddPlugin('${key}')">
+                        <button class="btn btn-primary btn-sm plugin-add-btn" data-plugin="${key}">
                             <i class="fas fa-plus"></i> Add to Step
                         </button>
                         ` : ''}
@@ -689,7 +706,7 @@ class PluginMarketplaceUI {
                         <h3><i class="fas ${plugin.icon || 'fa-puzzle-piece'}"></i> ${plugin.name}</h3>
                         <p>${plugin.description}</p>
                     </div>
-                    <button class="close-modal" onclick="this.closest('.plugin-details-modal').remove()">
+                    <button class="close-modal">
                         &times;
                     </button>
                 </div>
@@ -710,6 +727,9 @@ class PluginMarketplaceUI {
         `;
 
         document.body.appendChild(modal);
+        
+        // Setup close button
+        modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
 
         // Setup tab handlers
         modal.querySelectorAll('.plugin-tab').forEach(tab => {
