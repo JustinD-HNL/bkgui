@@ -2039,7 +2039,7 @@ class BuildkiteApp {
         
         if (!yamlContent || !this.yamlGenerator) return;
         
-        const result = this.yamlGenerator.validateYAML(yamlContent);
+        const result = this.yamlGenerator.validate(yamlContent);
         const validationContent = document.getElementById('validation-content') ||
                                  document.getElementById('validation-result');
         
@@ -2050,7 +2050,7 @@ class BuildkiteApp {
             } else {
                 validationContent.innerHTML = `
                     <p style="color: red;"><i class="fas fa-times"></i> YAML validation failed:</p>
-                    <ul>${result.errors.map(e => `<li>${e}</li>`).join('')}</ul>
+                    <ul>${(result.errors || result.issues || []).map(e => `<li>${e}</li>`).join('')}</ul>
                 `;
                 this.showNotification('YAML validation failed', 'error');
             }
