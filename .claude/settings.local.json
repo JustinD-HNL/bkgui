@@ -18,7 +18,8 @@
       "Bash(ls:*)",
       "Bash(open index.html)",
       "Bash(open:*)",
-      "Bash(osascript:*)"
+      "Bash(osascript:*)",
+      "Bash(node test-yaml-cli.js)"
     ],
     "deny": []
   }

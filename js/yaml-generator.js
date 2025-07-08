@@ -129,31 +129,46 @@ class YAMLGenerator {
     }
 
     generateCommandStep(step) {
-        let yaml = this.indent() + '-';
+        let yaml = '';
         
         // Single line command
         if (this.isSimpleCommand(step)) {
-            yaml += ` command: ${this.quote(step.command)}\n`;
+            yaml += this.indent() + `- command: ${this.quote(step.command)}\n`;
         } else {
-            yaml += '\n';
+            yaml += this.indent() + '- ';
             this.currentIndent++;
             
             // Label
             if (step.label) {
-                yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
+                yaml += `label: ${this.quote(step.label)}\n`;
             }
             
             // Command(s)
             if (step.command) {
-                if (step.command.includes('\n')) {
-                    yaml += this.indent() + 'commands:\n';
-                    this.currentIndent++;
-                    step.command.split('\n').forEach(cmd => {
-                        yaml += this.indent() + `- ${this.quote(cmd.trim())}\n`;
-                    });
-                    this.currentIndent--;
+                if (!step.label) {
+                    // If no label, command goes on same line as dash
+                    if (step.command.includes('\n')) {
+                        yaml += 'commands:\n';
+                        this.currentIndent++;
+                        step.command.split('\n').forEach(cmd => {
+                            yaml += this.indent() + `- ${this.quote(cmd.trim())}\n`;
+                        });
+                        this.currentIndent--;
+                    } else {
+                        yaml += `command: ${this.quote(step.command)}\n`;
+                    }
                 } else {
-                    yaml += this.indent() + `command: ${this.quote(step.command)}\n`;
+                    // If label exists, command is indented
+                    if (step.command.includes('\n')) {
+                        yaml += this.indent() + 'commands:\n';
+                        this.currentIndent++;
+                        step.command.split('\n').forEach(cmd => {
+                            yaml += this.indent() + `- ${this.quote(cmd.trim())}\n`;
+                        });
+                        this.currentIndent--;
+                    } else {
+                        yaml += this.indent() + `command: ${this.quote(step.command)}\n`;
+                    }
                 }
             }
             
@@ -294,15 +309,15 @@ class YAMLGenerator {
     }
 
     generateBlockStep(step) {
-        let yaml = this.indent() + '-';
+        let yaml = '';
         
         if (this.isSimpleBlock(step)) {
-            yaml += ` block: ${this.quote(step.block || step.prompt)}\n`;
+            yaml += this.indent() + `- block: ${this.quote(step.block || step.prompt)}\n`;
         } else {
-            yaml += '\n';
+            yaml += this.indent() + '- ';
             this.currentIndent++;
             
-            yaml += this.indent() + `block: ${this.quote(step.block || step.prompt || 'Block')}\n`;
+            yaml += `block: ${this.quote(step.block || step.prompt || 'Block')}\n`;
             
             // Label (from version 2)
             if (step.label && step.label !== step.block && step.label !== step.prompt) {
@@ -335,10 +350,10 @@ class YAMLGenerator {
     }
 
     generateInputStep(step) {
-        let yaml = this.indent() + '-\n';
+        let yaml = this.indent() + '- ';
         this.currentIndent++;
         
-        yaml += this.indent() + `input: ${this.quote(step.input || step.prompt || 'Input')}\n`;
+        yaml += `input: ${this.quote(step.input || step.prompt || 'Input')}\n`;
         
         // Label handling from version 2
         if (step.label && step.label !== step.input && step.label !== step.prompt) {
@@ -365,10 +380,10 @@ class YAMLGenerator {
     }
 
     generateTriggerStep(step) {
-        let yaml = this.indent() + '-\n';
+        let yaml = this.indent() + '- ';
         this.currentIndent++;
         
-        yaml += this.indent() + `trigger: ${this.quote(step.trigger)}\n`;
+        yaml += `trigger: ${this.quote(step.trigger)}\n`;
         
         if (step.label) {
             yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
@@ -424,10 +439,10 @@ class YAMLGenerator {
     }
 
     generateGroupStep(step) {
-        let yaml = this.indent() + '-\n';
+        let yaml = this.indent() + '- ';
         this.currentIndent++;
         
-        yaml += this.indent() + `group: ${this.quote(step.group || 'Group')}\n`;
+        yaml += `group: ${this.quote(step.group || 'Group')}\n`;
         
         // Label from version 2
         if (step.label && step.label !== step.group) {
@@ -457,14 +472,16 @@ class YAMLGenerator {
         // Check which version's approach to use
         if (step.annotate && typeof step.annotate === 'object') {
             // Version 2 approach - structured annotation
-            let yaml = this.indent() + '-\n';
+            let yaml = this.indent() + '- ';
             this.currentIndent++;
             
             if (step.label) {
-                yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
+                yaml += `label: ${this.quote(step.label)}\n`;
+                yaml += this.indent() + 'annotate:\n';
+            } else {
+                yaml += 'annotate:\n';
             }
             
-            yaml += this.indent() + 'annotate:\n';
             this.currentIndent++;
             
             yaml += this.indent() + `body: ${this.quote(step.annotate.body || step.body || '')}\n`;
@@ -483,12 +500,10 @@ class YAMLGenerator {
             return yaml;
         } else {
             // Version 1 approach - command-based annotation
-            let yaml = '';
-            
-            yaml += this.indent() + '-\n';
+            let yaml = this.indent() + '- ';
             this.currentIndent++;
             
-            yaml += this.indent() + `command: buildkite-agent annotate ${this.quote(step.body || step.annotate || '')}`;
+            yaml += `command: buildkite-agent annotate ${this.quote(step.body || step.annotate || '')}`;
             
             if (step.style && step.style !== 'info') {
                 yaml += ` --style ${step.style}`;
@@ -517,11 +532,11 @@ class YAMLGenerator {
 
     generateNotifyStep(step) {
         // Version 2 structured approach
-        let yaml = this.indent() + '-\n';
+        let yaml = this.indent() + '- ';
         this.currentIndent++;
         
         if (step.label) {
-            yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
+            yaml += `label: ${this.quote(step.label)}\n`;
         }
         
         // Build notify array
@@ -565,11 +580,11 @@ class YAMLGenerator {
     }
 
     generatePluginStep(step) {
-        let yaml = this.indent() + '-\n';
+        let yaml = this.indent() + '- ';
         this.currentIndent++;
         
         if (step.label) {
-            yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
+            yaml += `label: ${this.quote(step.label)}\n`;
         }
         
         if (step.key) {
@@ -732,10 +747,8 @@ class YAMLGenerator {
     }
 
     generateField(field) {
-        let yaml = this.indent() + `-\n`;
+        let yaml = this.indent() + `- key: ${this.quote(field.key)}\n`;
         this.currentIndent++;
-        
-        yaml += this.indent() + `key: ${this.quote(field.key)}\n`;
         
         // Type (from version 2 - before text)
         if (field.type && field.type !== 'text') {
