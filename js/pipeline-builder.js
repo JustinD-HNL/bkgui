@@ -4857,8 +4857,10 @@ class PipelineBuilder {
             if (step.type === 'command') {
                 const hasValidCommand = step.properties.command && step.properties.command.trim() !== '';
                 const hasValidLabel = step.properties.label && step.properties.label !== 'command step' && step.properties.label !== 'Command Step';
+                const hasPlugins = step.properties.plugins && Object.keys(step.properties.plugins).length > 0;
                 
-                if (!hasValidCommand && !hasValidLabel) {
+                // Keep the step if it has a command, a meaningful label, or plugins
+                if (!hasValidCommand && !hasValidLabel && !hasPlugins) {
                     console.warn('Removing empty command step:', step);
                     return false;
                 }

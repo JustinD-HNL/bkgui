@@ -849,7 +849,7 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                     `).join('')}
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.plugin-details-modal').remove()">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('plugin-details-modal').style.display='none';document.getElementById('plugin-details-modal').classList.add('hidden')">
                             Cancel
                         </button>
                         <button type="submit" class="btn btn-primary">
@@ -870,7 +870,11 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                     }
                     
                     if (window.pluginMarketplaceUI.addPluginWithConfig('${pluginKey}', config)) {
-                        document.querySelector('.plugin-details-modal').remove();
+                        const modal = document.getElementById('plugin-details-modal');
+                        if (modal) {
+                            modal.style.display = 'none';
+                            modal.classList.add('hidden');
+                        }
                         window.pluginMarketplaceUI.showNotification('Plugin added successfully', 'success');
                     }
                 });
@@ -985,19 +989,43 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
 
     addPluginWithConfig(pluginKey, config) {
         if (!window.pipelineBuilder?.selectedStep) {
+            this.showNotification('Please select a step first', 'warning');
             return false;
         }
 
+        const step = window.pipelineBuilder.selectedStep;
+        
+        // Initialize plugins object if needed
+        if (!step.properties.plugins) {
+            step.properties.plugins = {};
+        }
+        
         // Process config values
         const processedConfig = {};
         Object.entries(config).forEach(([key, value]) => {
             if (value === 'true') processedConfig[key] = true;
             else if (value === 'false') processedConfig[key] = false;
-            else if (value.includes(',')) processedConfig[key] = value.split(',').map(v => v.trim());
+            else if (typeof value === 'string' && value.includes(',')) processedConfig[key] = value.split(',').map(v => v.trim());
             else processedConfig[key] = value;
         });
 
-        return this.marketplace.addPluginToStep(pluginKey, window.pipelineBuilder.selectedStep.id, processedConfig);
+        // Add plugin with version
+        const versionedKey = `${pluginKey}#latest`;
+        step.properties.plugins[versionedKey] = processedConfig;
+        
+        // Update the UI without clearing other steps
+        if (window.pipelineBuilder.renderProperties) {
+            window.pipelineBuilder.renderProperties();
+        }
+        if (window.pipelineBuilder.renderPipeline) {
+            window.pipelineBuilder.renderPipeline();
+        }
+        if (window.pipelineBuilder.saveToLocalStorage) {
+            window.pipelineBuilder.saveToLocalStorage();
+        }
+        
+        console.log(`Added plugin ${pluginKey} with config to step`);
+        return true;
     }
 
     refreshPlugins() {
