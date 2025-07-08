@@ -84,18 +84,65 @@ class PluginMarketplace {
         const plugin = this.plugins[pluginKey];
         if (!plugin) return null;
         
-        // Generate a basic example if not provided
-        const example = {};
-        example[`${pluginKey}#latest`] = {
-            // Add basic configuration based on plugin type
-        };
+        // Return existing example if available
+        if (plugin.example) {
+            return plugin.example;
+        }
         
-        return plugin.example || example;
+        // Generate a basic example based on plugin type
+        const example = {};
+        const pluginFullKey = `${pluginKey}#v1.0.0`;
+        
+        // Add common configurations based on plugin category
+        switch (plugin.category) {
+            case 'docker':
+                example[pluginFullKey] = {
+                    image: 'node:16',
+                    command: ['npm', 'test']
+                };
+                break;
+            case 'testing':
+                example[pluginFullKey] = {
+                    pattern: '**/*_test.go',
+                    coverage: true
+                };
+                break;
+            case 'security':
+                example[pluginFullKey] = {
+                    scan: true,
+                    severity: 'high'
+                };
+                break;
+            case 'notifications':
+                example[pluginFullKey] = {
+                    channels: ['#builds'],
+                    when: 'failed'
+                };
+                break;
+            default:
+                example[pluginFullKey] = {};
+                break;
+        }
+        
+        return example;
     }
     
     async fetchPluginDetails(pluginKey) {
         const plugin = this.plugins[pluginKey];
         if (!plugin || !plugin.github) return null;
+        
+        // Check if running from file:// protocol
+        if (window.location.protocol === 'file:') {
+            console.warn('Cannot fetch GitHub data from file:// protocol due to CORS restrictions');
+            return {
+                stars: plugin.stars || 0,
+                forks: plugin.forks || 0,
+                issues: 0,
+                description: plugin.description,
+                readme: plugin.readme || '',
+                error: 'GitHub API not available from local files'
+            };
+        }
         
         // Extract owner and repo from GitHub URL
         const match = plugin.github.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -130,8 +177,21 @@ class PluginMarketplace {
             };
         } catch (error) {
             console.warn(`Failed to fetch details for ${pluginKey}:`, error);
-            return null;
+            // Return cached/default data if available
+            return {
+                stars: plugin.stars || 0,
+                forks: plugin.forks || 0,
+                issues: 0,
+                description: plugin.description,
+                readme: plugin.readme || '',
+                error: error.message
+            };
         }
+    }
+    
+    async fetchReadme(pluginKey) {
+        const details = await this.fetchPluginDetails(pluginKey);
+        return details?.readme || null;
     }
     
     async fetchAllPlugins() {

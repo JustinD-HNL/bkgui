@@ -737,10 +737,35 @@ class PluginMarketplaceUI {
                 break;
             case 'readme':
                 content.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i> Loading documentation...</div>';
-                const readme = await this.marketplace.fetchReadme(pluginKey);
-                content.innerHTML = readme 
-                    ? `<div class="plugin-readme">${this.renderMarkdown(readme)}</div>`
-                    : '<p>Documentation not available</p>';
+                try {
+                    const readme = await this.marketplace.fetchReadme(pluginKey);
+                    if (readme) {
+                        content.innerHTML = `<div class="plugin-readme">${this.renderMarkdown(readme)}</div>`;
+                    } else {
+                        const plugin = this.marketplace.plugins[pluginKey];
+                        content.innerHTML = `
+                            <div class="plugin-readme">
+                                <p><strong>Documentation:</strong></p>
+                                <p>${plugin.description}</p>
+                                ${window.location.protocol === 'file:' ? 
+                                    '<p class="text-muted"><em>Note: Full documentation requires running from a web server (not file://).</em></p>' :
+                                    '<p class="text-muted"><em>Full documentation not available at this time.</em></p>'
+                                }
+                                ${plugin.github ? `<p>View full documentation on <a href="${plugin.github}" target="_blank">GitHub</a></p>` : ''}
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Error loading readme:', error);
+                    const plugin = this.marketplace.plugins[pluginKey];
+                    content.innerHTML = `
+                        <div class="plugin-readme">
+                            <p><strong>Documentation:</strong></p>
+                            <p>${plugin.description}</p>
+                            ${plugin.github ? `<p>View full documentation on <a href="${plugin.github}" target="_blank">GitHub</a></p>` : ''}
+                        </div>
+                    `;
+                }
                 break;
             case 'configure':
                 content.innerHTML = this.renderPluginConfigure(pluginKey);
@@ -750,14 +775,22 @@ class PluginMarketplaceUI {
 
     async renderPluginOverview(pluginKey) {
         const plugin = this.marketplace.plugins[pluginKey];
-        const details = await this.marketplace.fetchPluginDetails(pluginKey);
+        let details = null;
+        
+        try {
+            details = await this.marketplace.fetchPluginDetails(pluginKey);
+        } catch (error) {
+            console.error('Error fetching plugin details:', error);
+        }
+        
+        const example = this.marketplace.getPluginExample(pluginKey);
         
         return `
             <div class="plugin-overview">
                 <h4>Example Usage</h4>
                 <div class="plugin-example">
                     <pre><code>plugins:
-${this.formatYAML(plugin.example, 2)}</code></pre>
+${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add your configuration here`}</code></pre>
                 </div>
                 
                 ${plugin.github ? `
@@ -798,9 +831,9 @@ ${this.formatYAML(plugin.example, 2)}</code></pre>
         }
 
         const step = window.pipelineBuilder.selectedStep;
-        const example = plugin.example;
-        const pluginName = Object.keys(example)[0];
-        const defaultConfig = example[pluginName];
+        const example = this.marketplace.getPluginExample(pluginKey) || {};
+        const pluginName = Object.keys(example)[0] || `${pluginKey}#latest`;
+        const defaultConfig = example[pluginName] || {};
 
         return `
             <div class="plugin-configure">
@@ -883,6 +916,10 @@ ${this.formatYAML(plugin.example, 2)}</code></pre>
     formatYAML(obj, indent = 0) {
         const spaces = ' '.repeat(indent);
         let yaml = '';
+        
+        if (!obj || typeof obj !== 'object') {
+            return `${spaces}# Invalid configuration`;
+        }
         
         Object.entries(obj).forEach(([key, value]) => {
             if (typeof value === 'object' && !Array.isArray(value)) {
