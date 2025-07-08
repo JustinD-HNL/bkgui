@@ -125,6 +125,8 @@ For other requests that don't involve creating a pipeline, respond normally with
                                 <label>API Key:</label>
                                 <input type="password" id="ai-api-key" placeholder="Enter your API key" />
                                 <small>Your API key is not stored and must be entered each session</small>
+                                ${window.location.protocol !== 'file:' && !window.location.hostname.includes('localhost') ? 
+                                '<small style="color: var(--warning); display: block; margin-top: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> Note: This domain has security restrictions. The AI assistant may not work unless deployed with proper CORS/CSP headers.</small>' : ''}
                                 
                                 <label>Model:</label>
                                 <select id="ai-model" class="form-control">
@@ -550,6 +552,31 @@ For other requests that don't involve creating a pipeline, respond normally with
         try {
             let models = [];
             
+            // Check if we're running with CSP restrictions
+            const isCSPRestricted = window.location.protocol !== 'file:' && 
+                                   !window.location.hostname.includes('localhost');
+            
+            if (isCSPRestricted) {
+                // Running in a CSP-restricted environment
+                console.warn('CSP restrictions detected. Using default models.');
+                models = provider.defaultModels;
+                provider.models = models;
+                
+                // Populate model dropdown
+                modelSelect.innerHTML = '<option value="">Select a model</option>' + 
+                    models.map(model => `<option value="${model}">${model}</option>`).join('');
+                modelSelect.disabled = false;
+                
+                // If a model was previously selected and is still available, select it
+                if (this.selectedModel && models.includes(this.selectedModel)) {
+                    modelSelect.value = this.selectedModel;
+                }
+                
+                // Show notification about CSP
+                this.showNotification('Using default models due to security restrictions. API calls will be made when sending messages.', 'info');
+                return;
+            }
+            
             if (this.currentProvider === 'chatgpt') {
                 // Fetch models from OpenAI
                 const response = await fetch(`${provider.baseUrl}/models`, {
@@ -622,6 +649,9 @@ For other requests that don't involve creating a pipeline, respond normally with
         } catch (error) {
             console.error('Error fetching models:', error);
             
+            // Check if it's a CSP error
+            const isCSPError = error.message && error.message.includes('Content Security Policy');
+            
             // Use default models as fallback
             const models = provider.defaultModels;
             provider.models = models;
@@ -630,8 +660,17 @@ For other requests that don't involve creating a pipeline, respond normally with
                 models.map(model => `<option value="${model}">${model}</option>`).join('');
             modelSelect.disabled = false;
             
-            // Show error notification
-            this.showNotification('API key validation failed: ' + error.message, 'error');
+            // Show appropriate error notification
+            if (isCSPError) {
+                this.showNotification('Using default models due to security restrictions. Your API key will be used when sending messages.', 'info');
+            } else {
+                this.showNotification('Unable to validate API key: ' + error.message, 'warning');
+            }
+            
+            // If a model was previously selected and is still available, select it
+            if (this.selectedModel && models.includes(this.selectedModel)) {
+                modelSelect.value = this.selectedModel;
+            }
         }
     }
 
@@ -688,7 +727,20 @@ For other requests that don't involve creating a pipeline, respond normally with
             this.processAIResponse(response);
         } catch (error) {
             this.removeThinkingIndicator(thinkingId);
-            this.addMessage('assistant', 'Sorry, I encountered an error: ' + error.message, true);
+            
+            // Check if it's a CSP error
+            if (error.message && (error.message.includes('Content Security Policy') || error.message.includes('Refused to connect'))) {
+                this.addMessage('assistant', `I'm unable to connect to the AI service due to security restrictions on this domain. 
+
+To use the AI assistant, you have a few options:
+1. Run this application locally on your computer
+2. Deploy it to a server with appropriate CORS/CSP headers
+3. Use a proxy server to handle the API requests
+
+The application is currently restricted to only connect to 'self' and 'api.buildkite.com'.`, true);
+            } else {
+                this.addMessage('assistant', 'Sorry, I encountered an error: ' + error.message, true);
+            }
         }
     }
 
