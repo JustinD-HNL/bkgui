@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Integration Test</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            padding: 2rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .test-section h2 {
+            margin-top: 0;
+        }
+        .test-btn {
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+        .test-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+        .status-dot.connected {
+            background: var(--success);
+        }
+        .status-dot.error {
+            background: var(--danger);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1><i class="fas fa-server"></i> MCP Integration Test Page</h1>
+        
+        <div class="test-section">
+            <h2>1. MCP Client Status</h2>
+            <div class="status-indicator">
+                <span class="status-dot" id="mcp-status-dot"></span>
+                <span id="mcp-status-text">Not initialized</span>
+            </div>
+            <button class="btn btn-primary test-btn" onclick="testMCPClient()">
+                <i class="fas fa-check"></i> Test MCP Client
+            </button>
+            <div id="mcp-client-result" class="test-result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. MCP Configuration UI</h2>
+            <button class="btn btn-primary test-btn" onclick="testMCPConfigUI()">
+                <i class="fas fa-cog"></i> Open MCP Config UI
+            </button>
+            <button class="btn btn-secondary test-btn" onclick="testMCPConfigButton()">
+                <i class="fas fa-search"></i> Check Header Button
+            </button>
+            <div id="mcp-ui-result" class="test-result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. AI Assistant Integration</h2>
+            <button class="btn btn-primary test-btn" onclick="testAIAssistant()">
+                <i class="fas fa-magic"></i> Open AI Assistant
+            </button>
+            <button class="btn btn-secondary test-btn" onclick="testMCPStatus()">
+                <i class="fas fa-info"></i> Check MCP Status in AI
+            </button>
+            <div id="ai-result" class="test-result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. MCP Tools Test</h2>
+            <button class="btn btn-primary test-btn" onclick="testMCPTools()">
+                <i class="fas fa-tools"></i> List Available Tools
+            </button>
+            <button class="btn btn-secondary test-btn" onclick="testMCPConnection()">
+                <i class="fas fa-plug"></i> Test Connection
+            </button>
+            <div id="tools-result" class="test-result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Load MCP scripts -->
+    <script src="js/mcp-client.js"></script>
+    <script src="js/mcp-config-ui.js"></script>
+    <script src="js/ai-assistant.js"></script>
+    
+    <script>
+        // Test functions
+        function updateStatus(connected, text) {
+            const dot = document.getElementById('mcp-status-dot');
+            const statusText = document.getElementById('mcp-status-text');
+            
+            dot.className = 'status-dot ' + (connected ? 'connected' : 'error');
+            statusText.textContent = text;
+        }
+        
+        function showResult(elementId, content) {
+            const resultDiv = document.getElementById(elementId);
+            resultDiv.textContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
+            resultDiv.style.display = 'block';
+        }
+        
+        function testMCPClient() {
+            try {
+                const client = window.mcpClient;
+                if (!client) {
+                    updateStatus(false, 'MCP Client not found');
+                    showResult('mcp-client-result', 'Error: window.mcpClient is not initialized');
+                    return;
+                }
+                
+                const info = {
+                    'MCP Client exists': !!client,
+                    'Server URL': client.serverUrl || 'Not configured',
+                    'Is Connected': client.isConnected,
+                    'Available Tools': Object.keys(client.availableTools).length,
+                    'Tool Names': Object.keys(client.availableTools)
+                };
+                
+                updateStatus(client.isConnected, client.isConnected ? 'Connected' : 'Not connected');
+                showResult('mcp-client-result', info);
+            } catch (error) {
+                updateStatus(false, 'Error testing MCP Client');
+                showResult('mcp-client-result', 'Error: ' + error.message);
+            }
+        }
+        
+        function testMCPConfigUI() {
+            try {
+                const configUI = window.mcpConfigUI;
+                if (!configUI) {
+                    showResult('mcp-ui-result', 'Error: window.mcpConfigUI is not initialized');
+                    return;
+                }
+                
+                configUI.show();
+                showResult('mcp-ui-result', 'MCP Configuration UI opened successfully');
+            } catch (error) {
+                showResult('mcp-ui-result', 'Error: ' + error.message);
+            }
+        }
+        
+        function testMCPConfigButton() {
+            const button = document.getElementById('mcp-config-btn');
+            if (button) {
+                showResult('mcp-ui-result', 'MCP Config button found in header: ' + button.outerHTML);
+            } else {
+                showResult('mcp-ui-result', 'MCP Config button not found in header. It should be created when the page loads.');
+            }
+        }
+        
+        function testAIAssistant() {
+            try {
+                const aiAssistant = window.aiAssistant;
+                if (!aiAssistant) {
+                    showResult('ai-result', 'Error: window.aiAssistant is not initialized');
+                    return;
+                }
+                
+                aiAssistant.showAssistant();
+                showResult('ai-result', 'AI Assistant opened successfully');
+            } catch (error) {
+                showResult('ai-result', 'Error: ' + error.message);
+            }
+        }
+        
+        function testMCPStatus() {
+            try {
+                const aiAssistant = window.aiAssistant;
+                if (!aiAssistant) {
+                    showResult('ai-result', 'Error: window.aiAssistant is not initialized');
+                    return;
+                }
+                
+                const info = {
+                    'AI Assistant exists': !!aiAssistant,
+                    'MCP Client reference': !!aiAssistant.mcpClient,
+                    'Use MCP': aiAssistant.useMCP,
+                    'Current Provider': aiAssistant.currentProvider,
+                    'Has API Key': !!aiAssistant.apiKey
+                };
+                
+                aiAssistant.updateMCPStatus();
+                showResult('ai-result', info);
+            } catch (error) {
+                showResult('ai-result', 'Error: ' + error.message);
+            }
+        }
+        
+        function testMCPTools() {
+            try {
+                const client = window.mcpClient;
+                if (!client) {
+                    showResult('tools-result', 'Error: MCP Client not initialized');
+                    return;
+                }
+                
+                const tools = client.getToolsForAI();
+                showResult('tools-result', 'Available MCP Tools:\n\n' + JSON.stringify(tools, null, 2));
+            } catch (error) {
+                showResult('tools-result', 'Error: ' + error.message);
+            }
+        }
+        
+        async function testMCPConnection() {
+            try {
+                const client = window.mcpClient;
+                if (!client) {
+                    showResult('tools-result', 'Error: MCP Client not initialized');
+                    return;
+                }
+                
+                if (!client.serverUrl) {
+                    showResult('tools-result', 'No server URL configured. Please configure MCP server first.');
+                    return;
+                }
+                
+                showResult('tools-result', 'Testing connection to: ' + client.serverUrl + '\n\nPlease wait...');
+                
+                const result = await client.testConnection();
+                if (result) {
+                    updateStatus(true, 'Connected to MCP Server');
+                    showResult('tools-result', 'Connection successful!\n\nYou can now use MCP tools in the AI Assistant.');
+                } else {
+                    updateStatus(false, 'Connection failed');
+                    showResult('tools-result', 'Connection failed. Please check your MCP server configuration.');
+                }
+            } catch (error) {
+                updateStatus(false, 'Connection error');
+                showResult('tools-result', 'Connection error: ' + error.message);
+            }
+        }
+        
+        // Initial status check
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                testMCPClient();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

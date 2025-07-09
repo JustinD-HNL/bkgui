@@ -32,6 +32,8 @@ class AIAssistant {
         this.apiKey = null;
         this.selectedModel = null;
         this.conversationHistory = [];
+        this.mcpClient = window.mcpClient || null;
+        this.useMCP = false;
         
         this.systemPrompt = `You are a Buildkite pipeline expert assistant. Your role is to help users create, modify, and optimize Buildkite pipelines.
 
@@ -57,6 +59,24 @@ For command steps, you can include properties like:
 - label, command, key, depends_on, env, agents, artifact_paths, timeout_in_minutes, retry, soft_fail, parallelism, matrix, plugins
 
 For other requests that don't involve creating a pipeline, respond normally with helpful information about Buildkite.`;
+        
+        this.mcpSystemPrompt = `You are a Buildkite pipeline expert assistant with access to live Buildkite data through MCP tools.
+
+You have access to the following Buildkite tools:
+{tools}
+
+When users ask about their Buildkite organization, pipelines, builds, or tests, use these tools to get real-time information.
+
+For tool usage, respond with:
+{
+    "action": "mcp_tool",
+    "tool": "tool_name",
+    "parameters": {
+        // tool parameters
+    }
+}
+
+You can also create and update pipelines using the available tools. Always provide helpful context with the data you retrieve.`;
 
         this.init();
     }
@@ -64,6 +84,7 @@ For other requests that don't involve creating a pipeline, respond normally with
     init() {
         this.loadSettings();
         this.createUI();
+        this.updateMCPStatus();
     }
 
     loadSettings() {
@@ -132,6 +153,17 @@ For other requests that don't involve creating a pipeline, respond normally with
                                 <select id="ai-model" class="form-control">
                                     <option value="">Select a model</option>
                                 </select>
+                                
+                                <div id="mcp-status" class="mcp-status">
+                                    <label>MCP Server Status:</label>
+                                    <div class="mcp-status-indicator">
+                                        <span class="status-dot"></span>
+                                        <span class="status-text">Not configured</span>
+                                        <button class="btn btn-sm btn-link" onclick="window.mcpConfigUI.show()">
+                                            <i class="fas fa-cog"></i> Configure
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -422,6 +454,46 @@ For other requests that don't involve creating a pipeline, respond normally with
                 @keyframes spin {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
+                }
+                
+                .mcp-status {
+                    margin-top: 1rem;
+                    padding-top: 1rem;
+                    border-top: 1px solid var(--border-color);
+                }
+                
+                .mcp-status-indicator {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-top: 0.5rem;
+                }
+                
+                .status-dot {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background: var(--text-tertiary);
+                }
+                
+                .status-dot.connected {
+                    background: var(--success);
+                }
+                
+                .status-text {
+                    font-size: 0.875rem;
+                    color: var(--text-secondary);
+                }
+                
+                .btn-link {
+                    background: none;
+                    border: none;
+                    color: var(--primary);
+                    text-decoration: underline;
+                    cursor: pointer;
+                    font-size: 0.875rem;
+                    padding: 0;
+                    margin-left: 0.5rem;
                 }
 
                 .ai-error {
@@ -816,6 +888,8 @@ The application is currently restricted to only connect to 'self' and 'api.build
             
             if (parsed.action === 'create_pipeline' && parsed.steps) {
                 this.handlePipelineCreation(parsed.steps, response);
+            } else if (parsed.action === 'mcp_tool' && parsed.tool) {
+                this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
             } else {
                 // Regular response
                 this.addMessage('assistant', response);
@@ -982,6 +1056,242 @@ The application is currently restricted to only connect to 'self' and 'api.build
         } else {
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
+    }
+    
+    updateMCPStatus() {
+        if (!this.mcpClient) return;
+        
+        const statusDot = document.querySelector('.status-dot');
+        const statusText = document.querySelector('.status-text');
+        
+        if (statusDot && statusText) {
+            if (this.mcpClient.isConnected) {
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+                this.useMCP = true;
+                
+                // Update system prompt with available tools
+                if (this.mcpClient.availableTools) {
+                    const toolsList = this.mcpClient.getToolsForAI()
+                        .map(tool => `- ${tool.name}: ${tool.description}`)
+                        .join('\n');
+                    
+                    this.currentSystemPrompt = this.mcpSystemPrompt.replace('{tools}', toolsList);
+                }
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Not connected';
+                this.useMCP = false;
+                this.currentSystemPrompt = this.systemPrompt;
+            }
+        }
+    }
+    
+    async handleMCPToolCall(toolName, parameters) {
+        // Show thinking indicator
+        const thinkingId = this.addThinkingIndicator();
+        
+        try {
+            const result = await this.mcpClient.callTool(toolName, parameters);
+            this.removeThinkingIndicator(thinkingId);
+            
+            if (result.success) {
+                // Format the result nicely
+                const formattedResult = this.formatMCPResult(toolName, result.data);
+                this.addMessage('assistant', formattedResult);
+            } else {
+                this.addMessage('assistant', `Error calling ${toolName}: ${result.error}`, true);
+            }
+        } catch (error) {
+            this.removeThinkingIndicator(thinkingId);
+            this.addMessage('assistant', `Error: ${error.message}`, true);
+        }
+    }
+    
+    formatMCPResult(toolName, data) {
+        // Format the MCP tool result based on the tool type
+        switch (toolName) {
+            case 'list_pipelines':
+                return this.formatPipelinesList(data);
+            case 'get_pipeline':
+                return this.formatPipelineDetails(data);
+            case 'list_builds':
+                return this.formatBuildsList(data);
+            case 'get_build':
+                return this.formatBuildDetails(data);
+            default:
+                return `Result from ${toolName}:\n\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
+        }
+    }
+    
+    formatPipelinesList(data) {
+        if (!data.pipelines || data.pipelines.length === 0) {
+            return 'No pipelines found.';
+        }
+        
+        let message = `Found ${data.pipelines.length} pipeline${data.pipelines.length > 1 ? 's' : ''}:\n\n`;
+        
+        data.pipelines.forEach(pipeline => {
+            message += `**${pipeline.name}**\n`;
+            message += `- Slug: \`${pipeline.slug}\`\n`;
+            message += `- Repository: ${pipeline.repository}\n`;
+            if (pipeline.description) {
+                message += `- Description: ${pipeline.description}\n`;
+            }
+            message += '\n';
+        });
+        
+        return message;
+    }
+    
+    formatPipelineDetails(data) {
+        const pipeline = data.pipeline;
+        if (!pipeline) return 'Pipeline not found.';
+        
+        let message = `**${pipeline.name}**\n\n`;
+        message += `- Slug: \`${pipeline.slug}\`\n`;
+        message += `- Repository: ${pipeline.repository}\n`;
+        message += `- Default Branch: ${pipeline.default_branch || 'main'}\n`;
+        
+        if (pipeline.description) {
+            message += `- Description: ${pipeline.description}\n`;
+        }
+        
+        if (pipeline.configuration) {
+            message += `\n**Configuration:**\n\`\`\`yaml\n${pipeline.configuration}\n\`\`\``;
+        }
+        
+        return message;
+    }
+    
+    formatBuildsList(data) {
+        if (!data.builds || data.builds.length === 0) {
+            return 'No builds found.';
+        }
+        
+        let message = `Found ${data.builds.length} build${data.builds.length > 1 ? 's' : ''}:\n\n`;
+        
+        data.builds.forEach(build => {
+            const status = build.state.toUpperCase();
+            const statusIcon = build.state === 'passed' ? '✅' : 
+                             build.state === 'failed' ? '❌' : 
+                             build.state === 'running' ? '🔄' : '⏸️';
+            
+            message += `${statusIcon} **Build #${build.number}** - ${status}\n`;
+            message += `- Branch: \`${build.branch}\`\n`;
+            message += `- Commit: \`${build.commit.substring(0, 7)}\`\n`;
+            message += `- Message: ${build.message}\n`;
+            message += `- Created: ${new Date(build.created_at).toLocaleString()}\n`;
+            message += '\n';
+        });
+        
+        return message;
+    }
+    
+    formatBuildDetails(data) {
+        const build = data.build;
+        if (!build) return 'Build not found.';
+        
+        const statusIcon = build.state === 'passed' ? '✅' : 
+                         build.state === 'failed' ? '❌' : 
+                         build.state === 'running' ? '🔄' : '⏸️';
+        
+        let message = `${statusIcon} **Build #${build.number}** - ${build.state.toUpperCase()}\n\n`;
+        message += `- Branch: \`${build.branch}\`\n`;
+        message += `- Commit: \`${build.commit}\`\n`;
+        message += `- Message: ${build.message}\n`;
+        message += `- Author: ${build.creator.name}\n`;
+        message += `- Created: ${new Date(build.created_at).toLocaleString()}\n`;
+        
+        if (build.started_at) {
+            message += `- Started: ${new Date(build.started_at).toLocaleString()}\n`;
+        }
+        
+        if (build.finished_at) {
+            message += `- Finished: ${new Date(build.finished_at).toLocaleString()}\n`;
+            const duration = (new Date(build.finished_at) - new Date(build.started_at)) / 1000;
+            message += `- Duration: ${Math.floor(duration / 60)}m ${Math.floor(duration % 60)}s\n`;
+        }
+        
+        if (build.jobs && build.jobs.length > 0) {
+            message += `\n**Jobs:**\n`;
+            build.jobs.forEach(job => {
+                const jobIcon = job.state === 'passed' ? '✅' : 
+                               job.state === 'failed' ? '❌' : 
+                               job.state === 'running' ? '🔄' : '⏸️';
+                message += `${jobIcon} ${job.name || job.id}\n`;
+            });
+        }
+        
+        return message;
+    }
+    
+    // Override the callAI method to use appropriate system prompt
+    async callAI(message) {
+        const provider = this.providers[this.currentProvider];
+        const systemPrompt = this.useMCP && this.currentSystemPrompt ? 
+                           this.currentSystemPrompt : this.systemPrompt;
+        
+        if (this.currentProvider === 'claude') {
+            return this.callClaudeWithPrompt(message, systemPrompt);
+        } else if (this.currentProvider === 'chatgpt') {
+            return this.callChatGPTWithPrompt(message, systemPrompt);
+        }
+    }
+    
+    async callClaudeWithPrompt(message, systemPrompt) {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': this.apiKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: this.selectedModel,
+                messages: [
+                    { role: 'user', content: systemPrompt + '\n\nUser: ' + message }
+                ],
+                max_tokens: 4096
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'Claude API error');
+        }
+
+        const data = await response.json();
+        return data.content[0].text;
+    }
+    
+    async callChatGPTWithPrompt(message, systemPrompt) {
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...this.conversationHistory.slice(-10), // Last 10 messages for context
+            { role: 'user', content: message }
+        ];
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.selectedModel,
+                messages: messages,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'OpenAI API error');
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
     }
 }
 

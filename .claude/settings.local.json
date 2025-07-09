@@ -19,7 +19,8 @@
       "Bash(open index.html)",
       "Bash(open:*)",
       "Bash(osascript:*)",
-      "Bash(node test-yaml-cli.js)"
+      "Bash(node test-yaml-cli.js)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }
