@@ -15,7 +15,7 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.anthropic.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
             },
             chatgpt: {
                 name: 'ChatGPT',
@@ -24,7 +24,7 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.openai.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo']
+                defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
             }
         };
 
@@ -172,7 +172,7 @@ You can also create and update pipelines using the available tools. Always provi
                                     <div class="mcp-status-indicator">
                                         <span class="status-dot"></span>
                                         <span class="status-text">Not configured</span>
-                                        <button class="btn btn-sm btn-link" onclick="window.mcpConfigUI.show()">
+                                        <button id="mcp-configure-btn" class="btn btn-sm btn-link">
                                             <i class="fas fa-cog"></i> Configure
                                         </button>
                                     </div>
@@ -525,6 +525,16 @@ You can also create and update pipelines using the available tools. Always provi
     }
 
     setupEventListeners() {
+        // MCP Configure button
+        const mcpConfigBtn = document.getElementById('mcp-configure-btn');
+        if (mcpConfigBtn) {
+            mcpConfigBtn.addEventListener('click', () => {
+                if (window.mcpConfigUI) {
+                    window.mcpConfigUI.show();
+                }
+            });
+        }
+        
         // Provider selection
         document.addEventListener('click', (e) => {
             if (e.target.closest('.provider-btn')) {
@@ -609,15 +619,16 @@ You can also create and update pipelines using the available tools. Always provi
         const authSection = document.getElementById('ai-auth-section');
         authSection.classList.remove('hidden');
         
-        // Populate models
+        // Clear models until API key is entered
         const modelSelect = document.getElementById('ai-model');
         const providerData = this.providers[provider];
-        const models = providerData.models.length > 0 ? providerData.models : providerData.defaultModels;
-        modelSelect.innerHTML = '<option value="">Select a model</option>' + 
-            models.map(model => `<option value="${model}">${model}</option>`).join('');
+        modelSelect.innerHTML = '<option value="">Enter API key to see available models</option>';
+        modelSelect.disabled = true;
         
         // Clear API key for security
-        document.getElementById('ai-api-key').value = '';
+        const apiKeyInput = document.getElementById('ai-api-key');
+        apiKeyInput.value = '';
+        apiKeyInput.placeholder = `Enter your ${providerData.name} API key`;
         this.apiKey = null;
         
         this.saveSettings();
@@ -625,9 +636,16 @@ You can also create and update pipelines using the available tools. Always provi
     }
 
     async fetchAvailableModels() {
-        if (!this.currentProvider || !this.apiKey) return;
-        
         const modelSelect = document.getElementById('ai-model');
+        if (!modelSelect) return;
+        
+        // Clear models if no provider or API key
+        if (!this.currentProvider || !this.apiKey) {
+            modelSelect.innerHTML = '<option value="">Enter API key to see available models</option>';
+            modelSelect.disabled = true;
+            return;
+        }
+        
         const provider = this.providers[this.currentProvider];
         
         // Show loading state
@@ -636,31 +654,6 @@ You can also create and update pipelines using the available tools. Always provi
         
         try {
             let models = [];
-            
-            // Check if we're running with CSP restrictions
-            const isCSPRestricted = window.location.protocol !== 'file:' && 
-                                   !window.location.hostname.includes('localhost');
-            
-            if (isCSPRestricted) {
-                // Running in a CSP-restricted environment
-                console.warn('CSP restrictions detected. Using default models.');
-                models = provider.defaultModels;
-                provider.models = models;
-                
-                // Populate model dropdown
-                modelSelect.innerHTML = '<option value="">Select a model</option>' + 
-                    models.map(model => `<option value="${model}">${model}</option>`).join('');
-                modelSelect.disabled = false;
-                
-                // If a model was previously selected and is still available, select it
-                if (this.selectedModel && models.includes(this.selectedModel)) {
-                    modelSelect.value = this.selectedModel;
-                }
-                
-                // Show notification about CSP
-                this.showNotification('Using default models due to security restrictions. API calls will be made when sending messages.', 'info');
-                return;
-            }
             
             if (this.currentProvider === 'chatgpt') {
                 // Fetch models from OpenAI
@@ -679,8 +672,14 @@ You can also create and update pipelines using the available tools. Always provi
                     
                     // Store fetched models
                     provider.models = models;
+                } else if (response.status === 401) {
+                    throw new Error('Invalid OpenAI API key. Please check your API key.');
+                } else if (response.status === 403) {
+                    throw new Error('Access forbidden. Your API key may not have the required permissions.');
+                } else if (response.status === 429) {
+                    throw new Error('Rate limit exceeded. Please try again later.');
                 } else {
-                    throw new Error('Invalid API key or unable to fetch models');
+                    throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
                 }
             } else if (this.currentProvider === 'claude') {
                 // Anthropic doesn't have a models endpoint, use defaults
@@ -702,17 +701,23 @@ You can also create and update pipelines using the available tools. Always provi
                     
                     // If we get a 401, the API key is invalid
                     if (response.status === 401) {
-                        throw new Error('Invalid API key');
+                        throw new Error('Invalid Claude API key. Please check your API key.');
+                    } else if (response.status === 403) {
+                        throw new Error('Access forbidden. Your API key may not have the required permissions.');
+                    } else if (response.status === 429) {
+                        throw new Error('Rate limit exceeded. Please try again later.');
                     }
                     
-                    // Use default models for Claude
+                    // API key is valid, use available models
                     models = provider.defaultModels;
                     provider.models = models;
                 } catch (error) {
-                    if (error.message === 'Invalid API key') {
+                    // Re-throw authentication errors
+                    if (error.message && (error.message.includes('Invalid') || error.message.includes('forbidden') || error.message.includes('Rate limit'))) {
                         throw error;
                     }
-                    // If it's a different error (like CORS), assume key might be valid
+                    // For network/CORS errors, we can't validate but we'll allow usage
+                    console.warn('Could not validate API key due to network restrictions:', error);
                     models = provider.defaultModels;
                     provider.models = models;
                 }
@@ -734,28 +739,23 @@ You can also create and update pipelines using the available tools. Always provi
         } catch (error) {
             console.error('Error fetching models:', error);
             
-            // Check if it's a CSP error
-            const isCSPError = error.message && error.message.includes('Content Security Policy');
+            // Clear the model dropdown and keep it disabled
+            modelSelect.innerHTML = '<option value="">No models available</option>';
+            modelSelect.disabled = true;
             
-            // Use default models as fallback
-            const models = provider.defaultModels;
-            provider.models = models;
+            // Clear stored models
+            provider.models = [];
             
-            modelSelect.innerHTML = '<option value="">Select a model</option>' + 
-                models.map(model => `<option value="${model}">${model}</option>`).join('');
-            modelSelect.disabled = false;
+            // Show specific error message
+            let errorMessage = error.message || 'Failed to validate API key';
             
-            // Show appropriate error notification
-            if (isCSPError) {
-                this.showNotification('Using default models due to security restrictions. Your API key will be used when sending messages.', 'info');
-            } else {
-                this.showNotification('Unable to validate API key: ' + error.message, 'warning');
+            // Don't show error notification for network issues during initial load
+            if (!error.message || !error.message.includes('network')) {
+                this.showError(errorMessage);
             }
             
-            // If a model was previously selected and is still available, select it
-            if (this.selectedModel && models.includes(this.selectedModel)) {
-                modelSelect.value = this.selectedModel;
-            }
+            // Clear selected model
+            this.selectedModel = null;
         }
     }
 
@@ -860,8 +860,22 @@ The application is currently restricted to only connect to 'self' and 'api.build
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'Claude API error');
+            let errorMessage = 'Claude API error';
+            try {
+                const error = await response.json();
+                if (response.status === 401) {
+                    errorMessage = 'Invalid API key. Please check your Claude API key.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden. Your API key may not have the required permissions.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (error.error?.message) {
+                    errorMessage = error.error.message;
+                }
+            } catch (e) {
+                errorMessage = `API error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -889,8 +903,22 @@ The application is currently restricted to only connect to 'self' and 'api.build
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'OpenAI API error');
+            let errorMessage = 'OpenAI API error';
+            try {
+                const error = await response.json();
+                if (response.status === 401) {
+                    errorMessage = 'Invalid API key. Please check your OpenAI API key.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden. Your API key may not have the required permissions.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (error.error?.message) {
+                    errorMessage = error.error.message;
+                }
+            } catch (e) {
+                errorMessage = `API error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -1280,8 +1308,22 @@ The application is currently restricted to only connect to 'self' and 'api.build
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'Claude API error');
+            let errorMessage = 'Claude API error';
+            try {
+                const error = await response.json();
+                if (response.status === 401) {
+                    errorMessage = 'Invalid API key. Please check your Claude API key.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden. Your API key may not have the required permissions.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (error.error?.message) {
+                    errorMessage = error.error.message;
+                }
+            } catch (e) {
+                errorMessage = `API error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -1309,8 +1351,22 @@ The application is currently restricted to only connect to 'self' and 'api.build
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'OpenAI API error');
+            let errorMessage = 'OpenAI API error';
+            try {
+                const error = await response.json();
+                if (response.status === 401) {
+                    errorMessage = 'Invalid API key. Please check your OpenAI API key.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden. Your API key may not have the required permissions.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (error.error?.message) {
+                    errorMessage = error.error.message;
+                }
+            } catch (e) {
+                errorMessage = `API error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
