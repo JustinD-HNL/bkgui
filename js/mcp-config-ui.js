@@ -56,6 +56,10 @@ class MCPConfigUI {
                                 <i class="fas fa-info-circle"></i>
                                 The MCP server allows the AI assistant to interact with your Buildkite organization without CORS restrictions.
                             </div>
+                            <div id="internal-server-notice" class="alert alert-success hidden">
+                                <i class="fas fa-check-circle"></i>
+                                <strong>Internal MCP server detected!</strong> This deployment includes a built-in MCP server. You only need to provide your Buildkite API token.
+                            </div>
                         </div>
                         
                         <div class="mcp-server-options">
@@ -178,6 +182,12 @@ class MCPConfigUI {
                 .alert-info {
                     background: rgba(59, 130, 246, 0.1);
                     border-color: rgba(59, 130, 246, 0.3);
+                    color: var(--text-primary);
+                }
+                
+                .alert-success {
+                    background: rgba(34, 197, 94, 0.1);
+                    border-color: rgba(34, 197, 94, 0.3);
                     color: var(--text-primary);
                 }
                 
@@ -528,8 +538,34 @@ class MCPConfigUI {
         }, 1500);
     }
     
-    show() {
+    async show() {
         this.modal.classList.remove('hidden');
+        
+        // Check for internal server
+        await this.mcpClient.checkInternalServer();
+        
+        if (this.mcpClient.isInternal) {
+            // Show internal server notice
+            document.getElementById('internal-server-notice').classList.remove('hidden');
+            
+            // Hide server setup options
+            this.modal.querySelector('.mcp-server-options').style.display = 'none';
+            this.modal.querySelector('#mcp-setup-instructions').style.display = 'none';
+            
+            // Pre-fill server URL with internal proxy
+            document.getElementById('mcp-server-url').value = '/api/mcp';
+            document.getElementById('mcp-server-url').readOnly = true;
+        } else {
+            // Hide internal server notice
+            document.getElementById('internal-server-notice').classList.add('hidden');
+            
+            // Show server setup options
+            this.modal.querySelector('.mcp-server-options').style.display = 'block';
+            this.modal.querySelector('#mcp-setup-instructions').style.display = 'block';
+            
+            // Make server URL editable
+            document.getElementById('mcp-server-url').readOnly = false;
+        }
         
         // Load existing config if any
         if (this.mcpClient.serverUrl) {

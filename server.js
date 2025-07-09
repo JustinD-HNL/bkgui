@@ -33,7 +33,9 @@ app.use(helmet({
             ],
             connectSrc: [
                 "'self'",
-                "https://api.buildkite.com"
+                "https://api.buildkite.com",
+                "http://localhost:3001",
+                "ws://localhost:3001"
             ],
             imgSrc: [
                 "'self'", 
@@ -83,6 +85,43 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname)));
+
+// Internal MCP Server Proxy (only when running with bundled MCP server)
+if (process.env.MCP_INTERNAL === 'true') {
+    const http = require('http');
+    const MCP_SERVER_URL = process.env.MCP_SERVER_URL || 'http://localhost:3001';
+    
+    // Proxy MCP server requests
+    app.all('/api/mcp/*', (req, res) => {
+        const mcpPath = req.path.replace('/api/mcp', '');
+        const mcpUrl = new URL(mcpPath, MCP_SERVER_URL);
+        
+        const options = {
+            hostname: mcpUrl.hostname,
+            port: mcpUrl.port,
+            path: mcpUrl.pathname + mcpUrl.search,
+            method: req.method,
+            headers: {
+                ...req.headers,
+                host: mcpUrl.host
+            }
+        };
+        
+        const proxyReq = http.request(options, (proxyRes) => {
+            res.writeHead(proxyRes.statusCode, proxyRes.headers);
+            proxyRes.pipe(res, { end: true });
+        });
+        
+        proxyReq.on('error', (err) => {
+            console.error('MCP proxy error:', err);
+            res.status(500).json({ error: 'Internal MCP server error' });
+        });
+        
+        req.pipe(proxyReq, { end: true });
+    });
+    
+    console.log('🔒 Internal MCP server proxy enabled at /api/mcp/*');
+}
 
 // Buildkite API Proxy Endpoints
 // Generic proxy handler for Buildkite API

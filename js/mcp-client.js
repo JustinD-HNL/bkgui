@@ -11,9 +11,13 @@ class MCPClient {
         this.isConnected = false;
         this.capabilities = null;
         this.websocket = null;
+        this.isInternal = false;
         
         // MCP protocol version
         this.protocolVersion = '1.0';
+        
+        // Check if running with internal MCP server
+        this.checkInternalServer();
         
         // Available MCP tools based on Buildkite MCP server
         this.availableTools = {
@@ -131,12 +135,30 @@ class MCPClient {
         this.loadConfig();
     }
     
+    async checkInternalServer() {
+        // Check if we're running with an internal MCP server
+        try {
+            const response = await fetch('/api/mcp/health');
+            if (response.ok) {
+                this.isInternal = true;
+                console.log('🔒 Internal MCP server detected');
+            }
+        } catch (e) {
+            // Internal server not available
+        }
+    }
+    
     loadConfig() {
         const config = localStorage.getItem('mcp-config');
         if (config) {
             const parsed = JSON.parse(config);
             this.serverUrl = parsed.serverUrl;
             this.apiToken = parsed.apiToken;
+        }
+        
+        // If internal server is available, use it by default
+        if (this.isInternal && !this.serverUrl) {
+            this.serverUrl = '/api/mcp';
         }
     }
     
@@ -148,12 +170,19 @@ class MCPClient {
     }
     
     async connect(serverUrl, apiToken) {
-        this.serverUrl = serverUrl;
-        this.apiToken = apiToken;
+        // If using internal server through proxy
+        if (serverUrl === '/api/mcp' || this.isInternal) {
+            this.serverUrl = '/api/mcp';
+            this.apiToken = apiToken;
+            this.isInternal = true;
+        } else {
+            this.serverUrl = serverUrl;
+            this.apiToken = apiToken;
+        }
         
         try {
-            // For WebSocket connection
-            if (serverUrl.startsWith('ws://') || serverUrl.startsWith('wss://')) {
+            // For WebSocket connection (not supported for internal proxy)
+            if (!this.isInternal && (serverUrl.startsWith('ws://') || serverUrl.startsWith('wss://'))) {
                 await this.connectWebSocket();
             } else {
                 // For HTTP-based connection
@@ -193,10 +222,18 @@ class MCPClient {
     }
     
     async testConnection() {
-        // Test connection by listing pipelines
-        const result = await this.callTool('list_pipelines', { per_page: 1 });
-        if (!result.success) {
-            throw new Error('Connection test failed');
+        // Test connection by checking health endpoint
+        try {
+            const response = await fetch(`${this.serverUrl}/health`);
+            if (!response.ok) {
+                throw new Error('Health check failed');
+            }
+            const data = await response.json();
+            if (data.status !== 'ok') {
+                throw new Error('MCP server not healthy');
+            }
+        } catch (error) {
+            throw new Error(`Connection test failed: ${error.message}`);
         }
     }
     
@@ -223,23 +260,30 @@ class MCPClient {
         }
         
         try {
+            // Add API token to parameters if not already present
+            const requestBody = {
+                tool: toolName,
+                parameters: {
+                    ...parameters,
+                    api_token: this.apiToken
+                }
+            };
+            
             // Make HTTP request to MCP server
-            const response = await fetch(`${this.serverUrl}/tools/${toolName}`, {
+            const response = await fetch(`${this.serverUrl}/invoke`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiToken}`,
-                    'X-MCP-Version': this.protocolVersion
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(parameters)
+                body: JSON.stringify(requestBody)
             });
             
             if (!response.ok) {
                 throw new Error(`MCP server error: ${response.statusText}`);
             }
             
-            const data = await response.json();
-            return { success: true, data };
+            const result = await response.json();
+            return result;
         } catch (error) {
             console.error('MCP tool call error:', error);
             return { success: false, error: error.message };

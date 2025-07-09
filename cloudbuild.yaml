@@ -24,7 +24,7 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/buildkite-pipeline-builder:latest'
 
-  # Deploy container image to Cloud Run
+  # Deploy container image to Cloud Run with MCP server support
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -39,9 +39,9 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--memory'
-      - '512Mi'
+      - '1Gi'
       - '--cpu'
-      - '1'
+      - '2'
       - '--concurrency'
       - '100'
       - '--max-instances'
@@ -49,7 +49,7 @@ steps:
       - '--port'
       - '8080'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'NODE_ENV=production,MCP_INTERNAL=true,MCP_SERVER_URL=http://localhost:3001'
 
 # Store images in Google Container Registry
 images:

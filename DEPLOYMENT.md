@@ -9,6 +9,15 @@ Complete guide for deploying the Buildkite Pipeline Builder to Google Cloud Run.
 - Google Cloud project with billing enabled
 - Basic familiarity with command line tools
 
+## New: Integrated MCP Server
+
+This deployment now includes a built-in MCP (Model Context Protocol) server that runs alongside the application. This provides:
+
+- **No external dependencies**: MCP server is bundled and deployed with the app
+- **Enhanced security**: MCP server is only accessible internally by the application
+- **Automatic configuration**: MCP server is pre-configured to work with the app
+- **API token management**: Configure your Buildkite API token through the app interface
+
 ## Quick Deployment
 
 The fastest way to deploy is using the included script:
@@ -93,15 +102,40 @@ echo "Application deployed to: $SERVICE_URL"
 curl $SERVICE_URL/health
 ```
 
+## MCP Server Configuration
+
+### Setting up the Buildkite API Token
+
+After deployment, configure the MCP server with your Buildkite API token:
+
+1. **Access your deployed application**
+2. **Click the "MCP Server" button** in the header
+3. **Enter your Buildkite API token**
+4. **Click "Test Connection"** to verify
+
+The internal MCP server will automatically:
+- Use the built-in server at `/api/mcp`
+- Store your API token securely in the browser
+- Enable AI assistant features with Buildkite integration
+
+### Environment Variables (Optional)
+
+You can also set the Buildkite API token via environment variable:
+
+```bash
+gcloud run deploy buildkite-pipeline-builder \
+  --update-env-vars BUILDKITE_API_TOKEN=your-token-here
+```
+
 ## Advanced Configuration
 
 ### Resource Limits
 
-Adjust resource limits based on your needs:
+Adjust resource limits based on your needs (note: MCP server requires additional resources):
 
 ```bash
 gcloud run deploy buildkite-pipeline-builder \
-  --memory 1Gi \
+  --memory 2Gi \
   --cpu 2 \
   --concurrency 50 \
   --max-instances 20

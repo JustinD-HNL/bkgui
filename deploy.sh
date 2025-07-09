@@ -62,19 +62,22 @@ docker build -t $IMAGE_NAME .
 echo -e "${BLUE}📤 Pushing image to Google Container Registry...${NC}"
 docker push $IMAGE_NAME
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run with MCP server support
 echo -e "${BLUE}🚀 Deploying to Cloud Run...${NC}"
+echo -e "${YELLOW}⚠️  Note: The MCP server requires a Buildkite API token to function${NC}"
+echo -e "${YELLOW}   You can set it later via environment variables in Cloud Run${NC}"
+
 gcloud run deploy $SERVICE_NAME \
     --image $IMAGE_NAME \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
-    --memory 512Mi \
-    --cpu 1 \
+    --memory 1Gi \
+    --cpu 2 \
     --concurrency 100 \
     --max-instances 10 \
     --port 8080 \
-    --set-env-vars "NODE_ENV=production"
+    --set-env-vars "NODE_ENV=production,MCP_INTERNAL=true,MCP_SERVER_URL=http://localhost:3001"
 
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
