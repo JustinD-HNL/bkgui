@@ -191,9 +191,21 @@ class MCPClient {
             
             this.isConnected = true;
             this.saveConfig();
+            
+            // Notify AI Assistant of connection state change
+            if (window.aiAssistant) {
+                window.aiAssistant.updateMCPStatus();
+            }
+            
             return { success: true };
         } catch (error) {
             this.isConnected = false;
+            
+            // Notify AI Assistant of connection state change
+            if (window.aiAssistant) {
+                window.aiAssistant.updateMCPStatus();
+            }
+            
             return { success: false, error: error.message };
         }
     }
@@ -213,6 +225,15 @@ class MCPClient {
             
             this.websocket.onerror = (error) => {
                 reject(new Error('WebSocket connection failed'));
+            };
+            
+            this.websocket.onclose = () => {
+                this.isConnected = false;
+                
+                // Notify AI Assistant of connection state change
+                if (window.aiAssistant) {
+                    window.aiAssistant.updateMCPStatus();
+                }
             };
             
             this.websocket.onmessage = (event) => {
@@ -304,6 +325,11 @@ class MCPClient {
             this.websocket = null;
         }
         this.isConnected = false;
+        
+        // Notify AI Assistant of connection state change
+        if (window.aiAssistant) {
+            window.aiAssistant.updateMCPStatus();
+        }
     }
     
     // Helper methods for common operations

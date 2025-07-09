@@ -32,7 +32,7 @@ class AIAssistant {
         this.apiKey = null;
         this.selectedModel = null;
         this.conversationHistory = [];
-        this.mcpClient = window.mcpClient || null;
+        // Don't store mcpClient reference during construction - access it dynamically
         this.useMCP = false;
         
         this.systemPrompt = `You are a Buildkite pipeline expert assistant. Your role is to help users create, modify, and optimize Buildkite pipelines.
@@ -83,8 +83,17 @@ You can also create and update pipelines using the available tools. Always provi
 
     init() {
         this.loadSettings();
-        this.createUI();
-        this.updateMCPStatus();
+        
+        // Ensure DOM is ready before creating UI
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.createUI();
+                this.updateMCPStatus();
+            });
+        } else {
+            this.createUI();
+            this.updateMCPStatus();
+        }
     }
 
     loadSettings() {
@@ -115,6 +124,10 @@ You can also create and update pipelines using the available tools. Always provi
             aiBtn.onclick = () => this.showAssistant();
             
             actionsContainer.appendChild(aiBtn);
+        } else if (!actionsContainer) {
+            // If header-actions doesn't exist yet, retry after a short delay
+            setTimeout(() => this.createUI(), 100);
+            return;
         }
 
         // Create AI Assistant modal
@@ -769,6 +782,9 @@ You can also create and update pipelines using the available tools. Always provi
         const modal = document.getElementById('ai-assistant-modal');
         modal.classList.remove('hidden');
         
+        // Update MCP status when showing the assistant
+        this.updateMCPStatus();
+        
         // Restore previous selection if any
         if (this.currentProvider) {
             this.selectProvider(this.currentProvider);
@@ -1059,20 +1075,21 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
     
     updateMCPStatus() {
-        if (!this.mcpClient) return;
+        // Get fresh reference to mcpClient
+        const mcpClient = window.mcpClient;
         
         const statusDot = document.querySelector('.status-dot');
         const statusText = document.querySelector('.status-text');
         
         if (statusDot && statusText) {
-            if (this.mcpClient.isConnected) {
+            if (mcpClient && mcpClient.isConnected) {
                 statusDot.classList.add('connected');
                 statusText.textContent = 'Connected';
                 this.useMCP = true;
                 
                 // Update system prompt with available tools
-                if (this.mcpClient.availableTools) {
-                    const toolsList = this.mcpClient.getToolsForAI()
+                if (mcpClient.availableTools) {
+                    const toolsList = mcpClient.getToolsForAI()
                         .map(tool => `- ${tool.name}: ${tool.description}`)
                         .join('\n');
                     
@@ -1088,11 +1105,17 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
     
     async handleMCPToolCall(toolName, parameters) {
+        // Get fresh reference to mcpClient
+        const mcpClient = window.mcpClient;
+        if (!mcpClient || !mcpClient.isConnected) {
+            throw new Error('MCP client is not connected');
+        }
+        
         // Show thinking indicator
         const thinkingId = this.addThinkingIndicator();
         
         try {
-            const result = await this.mcpClient.callTool(toolName, parameters);
+            const result = await mcpClient.callTool(toolName, parameters);
             this.removeThinkingIndicator(thinkingId);
             
             if (result.success) {
