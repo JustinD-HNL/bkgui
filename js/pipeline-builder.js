@@ -4234,16 +4234,24 @@ class PipelineBuilder {
     }
 
     // Template and pattern loading
-    loadTemplate(templateName, index = -1) {
+    async loadTemplate(templateName, index = -1) {
         console.log(`📄 Loading template: ${templateName}`);
         
-        // If loading at the start (not inserting), and pipeline is not empty, ask for confirmation
+        // If loading at the start (not inserting), handle based on current pipeline state
         if (index === -1 && this.steps.length > 0) {
-            if (!confirm('Loading a template will replace your current pipeline. Continue?')) {
+            // Pipeline has steps - show options dialog
+            const choice = await this.showTemplateLoadOptions(templateName);
+            
+            if (choice === 'cancel') {
                 return;
+            } else if (choice === 'overwrite') {
+                this.clearPipeline(true); // Clear silently
+                index = -1; // Load at start
+            } else if (choice === 'append') {
+                index = this.steps.length; // Append at end
             }
-            this.clearPipeline(true); // Clear silently
         }
+        // If pipeline is empty, just load silently
         
         const templates = {
             'ci-cd': [
@@ -4338,14 +4346,7 @@ class PipelineBuilder {
             return;
         }
         
-        if (this.steps.length > 0 && index === -1) {
-            if (!confirm('This will replace your current pipeline. Continue?')) {
-                return;
-            }
-            this.steps = [];
-            this.stepCounter = 0;
-        }
-        
+        // Load template steps
         template.forEach(stepConfig => {
             const step = this.addStep(stepConfig.type, index);
             if (step && stepConfig.properties) {
@@ -4490,6 +4491,94 @@ class PipelineBuilder {
         this.selectStep(testStep);
         
         console.log('📋 Loaded example pipeline');
+    }
+
+    showTemplateLoadOptions(templateName) {
+        // Create a custom dialog for template loading options
+        const dialog = document.createElement('div');
+        dialog.className = 'template-options-dialog';
+        dialog.innerHTML = `
+            <div class="dialog-backdrop">
+                <div class="dialog-content">
+                    <h3>Load Template: ${templateName}</h3>
+                    <p>You have existing steps in your pipeline. What would you like to do?</p>
+                    <div class="dialog-buttons">
+                        <button class="btn btn-secondary" data-choice="cancel">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button class="btn btn-warning" data-choice="overwrite">
+                            <i class="fas fa-sync-alt"></i> Replace Current Pipeline
+                        </button>
+                        <button class="btn btn-primary" data-choice="append">
+                            <i class="fas fa-plus"></i> Add to Current Pipeline
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .template-options-dialog {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 10000;
+            }
+            .dialog-backdrop {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .dialog-content {
+                background: var(--modal-bg, white);
+                padding: 2rem;
+                border-radius: 8px;
+                max-width: 500px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            }
+            .dialog-content h3 {
+                margin-top: 0;
+                margin-bottom: 1rem;
+            }
+            .dialog-content p {
+                margin-bottom: 1.5rem;
+            }
+            .dialog-buttons {
+                display: flex;
+                gap: 1rem;
+                justify-content: flex-end;
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(dialog);
+        
+        // Return a promise that resolves with the user's choice
+        return new Promise((resolve) => {
+            dialog.addEventListener('click', (e) => {
+                const button = e.target.closest('[data-choice]');
+                if (button) {
+                    const choice = button.dataset.choice;
+                    dialog.remove();
+                    style.remove();
+                    resolve(choice);
+                } else if (e.target === dialog.querySelector('.dialog-backdrop')) {
+                    // Click outside to cancel
+                    dialog.remove();
+                    style.remove();
+                    resolve('cancel');
+                }
+            });
+        });
     }
 
     clearPipeline(silent = false) {

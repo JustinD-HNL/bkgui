@@ -940,7 +940,7 @@ class EnhancedPipelineTemplates {
     }
 
     // Override the loadTemplate method to handle matrix setup
-    loadTemplate(templateKey) {
+    async loadTemplate(templateKey) {
         const template = this.templates[templateKey];
         if (!template || !window.pipelineBuilder) {
             console.error(`Template ${templateKey} not found or pipeline builder not available`);
@@ -949,7 +949,7 @@ class EnhancedPipelineTemplates {
 
         // Use pipeline builder's loadTemplate method if available
         if (window.pipelineBuilder.loadTemplate) {
-            window.pipelineBuilder.loadTemplate(templateKey);
+            await window.pipelineBuilder.loadTemplate(templateKey);
             return;
         }
 
