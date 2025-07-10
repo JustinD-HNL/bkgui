@@ -676,6 +676,12 @@ You can also create and update pipelines using the available tools. Always provi
         modelSelect.innerHTML = '<option value="">Loading models...</option>';
         modelSelect.disabled = true;
         
+        // Add visual feedback that we're validating the API key
+        const apiKeyInput = document.getElementById('ai-api-key');
+        const originalPlaceholder = apiKeyInput.placeholder;
+        apiKeyInput.placeholder = 'Validating API key...';
+        apiKeyInput.style.borderColor = 'var(--primary)';
+        
         try {
             let models = [];
             
@@ -758,10 +764,24 @@ You can also create and update pipelines using the available tools. Always provi
             // If a model was previously selected and is still available, select it
             if (this.selectedModel && models.includes(this.selectedModel)) {
                 modelSelect.value = this.selectedModel;
+            } else if (models.length > 0) {
+                // Auto-select the first model if none was previously selected
+                modelSelect.value = models[0];
+                this.selectedModel = models[0];
             }
+            
+            // Check if we're ready to chat after setting the model
+            this.checkReadyToChat();
             
             // Show success notification
             this.showNotification('API key validated successfully', 'success');
+            
+            // Restore API key input state
+            apiKeyInput.placeholder = originalPlaceholder;
+            apiKeyInput.style.borderColor = 'var(--success)';
+            setTimeout(() => {
+                apiKeyInput.style.borderColor = '';
+            }, 2000);
             
         } catch (error) {
             console.error('Error fetching models:', error);
@@ -782,10 +802,24 @@ You can also create and update pipelines using the available tools. Always provi
                 // If a model was previously selected and is still available, select it
                 if (this.selectedModel && models.includes(this.selectedModel)) {
                     modelSelect.value = this.selectedModel;
+                } else if (models.length > 0) {
+                    // Auto-select the first model if none was previously selected
+                    modelSelect.value = models[0];
+                    this.selectedModel = models[0];
                 }
+                
+                // Check if we're ready to chat after setting the model
+                this.checkReadyToChat();
                 
                 // Don't show error for CSP issues, just a warning
                 console.warn('Using default models due to network restrictions');
+                
+                // Restore API key input state
+                apiKeyInput.placeholder = originalPlaceholder;
+                apiKeyInput.style.borderColor = 'var(--warning)';
+                setTimeout(() => {
+                    apiKeyInput.style.borderColor = '';
+                }, 2000);
             } else {
                 // For actual API errors, show error message
                 modelSelect.innerHTML = '<option value="">No models available</option>';
@@ -793,10 +827,17 @@ You can also create and update pipelines using the available tools. Always provi
                 provider.models = [];
                 
                 // Show specific error message
-                this.showError(error.message || 'Failed to validate API key');
+                this.showNotification(error.message || 'Failed to validate API key', 'error');
                 
                 // Clear selected model
                 this.selectedModel = null;
+                
+                // Restore API key input state with error indication
+                apiKeyInput.placeholder = originalPlaceholder;
+                apiKeyInput.style.borderColor = 'var(--error)';
+                setTimeout(() => {
+                    apiKeyInput.style.borderColor = '';
+                }, 3000);
             }
         }
     }
