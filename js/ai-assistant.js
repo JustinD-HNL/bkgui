@@ -232,35 +232,40 @@ You can also create and update pipelines using the available tools. Always provi
                 }
                 
                 #ai-assistant-modal .modal-content {
-                    height: 90vh;
-                    max-height: 90vh;
+                    height: 85vh;
+                    max-height: 600px;
                     display: flex;
                     flex-direction: column;
+                    position: relative;
+                }
+                
+                #ai-assistant-modal .modal-header {
+                    flex-shrink: 0;
                 }
                 
                 #ai-assistant-modal .modal-body {
                     flex: 1;
-                    overflow-y: auto;
+                    overflow-y: scroll !important;
                     overflow-x: hidden;
-                    display: flex;
-                    flex-direction: column;
                     padding: 0;
-                    min-height: 0;
-                    scrollbar-width: thin;
-                    scrollbar-color: var(--primary) var(--bg-secondary);
+                    position: relative;
+                    -webkit-overflow-scrolling: touch;
+                    border: 2px solid red; /* Debug border - remove after testing */
                 }
                 
+                /* Custom scrollbar */
                 #ai-assistant-modal .modal-body::-webkit-scrollbar {
-                    width: 8px;
+                    width: 10px;
                 }
                 
                 #ai-assistant-modal .modal-body::-webkit-scrollbar-track {
                     background: var(--bg-secondary);
+                    border-radius: 5px;
                 }
                 
                 #ai-assistant-modal .modal-body::-webkit-scrollbar-thumb {
                     background: var(--primary);
-                    border-radius: 4px;
+                    border-radius: 5px;
                 }
                 
                 #ai-assistant-modal .modal-body::-webkit-scrollbar-thumb:hover {
@@ -268,9 +273,8 @@ You can also create and update pipelines using the available tools. Always provi
                 }
                 
                 .ai-assistant-container {
-                    display: flex;
-                    flex-direction: column;
                     min-height: 100%;
+                    padding-bottom: 2rem;
                 }
 
                 .ai-settings {
@@ -347,12 +351,9 @@ You can also create and update pipelines using the available tools. Always provi
                 }
 
                 .ai-chat-section {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                    min-height: 0; /* Important for flex children */
+                    display: block;
                     padding: 1rem;
+                    margin-top: 1rem;
                 }
 
                 .ai-examples {
@@ -390,20 +391,18 @@ You can also create and update pipelines using the available tools. Always provi
                 }
 
                 .ai-conversation {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
+                    margin-top: 1rem;
                 }
 
                 .ai-messages {
-                    flex: 1;
+                    min-height: 300px;
+                    max-height: 400px;
                     overflow-y: auto;
                     overflow-x: hidden;
                     padding: 1rem;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
-                    min-height: 0;
+                    background: var(--bg-tertiary);
+                    border-radius: 8px;
+                    margin-bottom: 1rem;
                 }
 
                 .ai-message {
