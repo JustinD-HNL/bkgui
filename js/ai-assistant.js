@@ -250,7 +250,6 @@ You can also create and update pipelines using the available tools. Always provi
                     padding: 0;
                     position: relative;
                     -webkit-overflow-scrolling: touch;
-                    border: 2px solid red; /* Debug border - remove after testing */
                 }
                 
                 /* Custom scrollbar */
@@ -757,7 +756,10 @@ You can also create and update pipelines using the available tools. Always provi
                 // Anthropic doesn't have a models endpoint, use defaults
                 // But we can validate the API key with a test request
                 try {
-                    const response = await fetch(`${provider.baseUrl}/messages`, {
+                    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const apiUrl = isLocalhost ? `${provider.baseUrl}/messages` : '/api/proxy/anthropic';
+                    
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
                             'x-api-key': this.apiKey,
@@ -1468,7 +1470,11 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
     
     async callClaudeWithPrompt(message, systemPrompt) {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // Use proxy if not on localhost
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const apiUrl = isLocalhost ? 'https://api.anthropic.com/v1/messages' : '/api/proxy/anthropic';
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1514,7 +1520,11 @@ The application is currently restricted to only connect to 'self' and 'api.build
             { role: 'user', content: message }
         ];
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Use proxy if not on localhost
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const apiUrl = isLocalhost ? 'https://api.openai.com/v1/chat/completions' : '/api/proxy/openai/chat/completions';
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

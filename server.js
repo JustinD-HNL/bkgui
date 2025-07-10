@@ -194,6 +194,47 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Proxy endpoint for AI APIs to handle CORS
+app.post('/api/proxy/anthropic', async (req, res) => {
+    try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': req.headers['x-api-key'],
+                'anthropic-version': req.headers['anthropic-version'] || '2023-06-01',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(req.body)
+        });
+        
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        console.error('Anthropic proxy error:', error);
+        res.status(500).json({ error: 'Proxy request failed' });
+    }
+});
+
+app.post('/api/proxy/openai/*', async (req, res) => {
+    try {
+        const endpoint = req.params[0];
+        const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
+            method: req.method,
+            headers: {
+                'Authorization': req.headers['authorization'],
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(req.body)
+        });
+        
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        console.error('OpenAI proxy error:', error);
+        res.status(500).json({ error: 'Proxy request failed' });
+    }
+});
+
 // Catch-all route to serve index.html for client-side routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
