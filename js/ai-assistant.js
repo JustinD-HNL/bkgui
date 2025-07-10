@@ -244,13 +244,15 @@ You can also create and update pipelines using the available tools. Always provi
                     display: flex;
                     flex-direction: column;
                     padding: 0;
+                    min-height: 0;
                 }
                 
                 .ai-assistant-container {
                     display: flex;
                     flex-direction: column;
                     height: 100%;
-                    overflow: hidden;
+                    overflow-y: auto;
+                    overflow-x: hidden;
                 }
 
                 .ai-settings {
@@ -880,7 +882,14 @@ You can also create and update pipelines using the available tools. Always provi
                 chatSection.style.display = 'block';
                 setTimeout(() => {
                     chatSection.style.display = '';
-                }, 10);
+                    // Scroll the chat section into view
+                    const container = document.querySelector('.ai-assistant-container');
+                    if (container) {
+                        container.scrollTop = container.scrollHeight;
+                    }
+                    // Or try scrolling to the chat section directly
+                    chatSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
             this.enableSendButton();
         } else {
