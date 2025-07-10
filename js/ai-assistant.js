@@ -37,7 +37,7 @@ class AIAssistant {
         
         this.systemPrompt = `You are a Buildkite pipeline expert assistant. Your role is to help users create, modify, and optimize Buildkite pipelines.
 
-When users ask you to create pipelines, respond with a JSON object that represents the pipeline steps. The format should be:
+When users ask you to create pipeline steps or build a pipeline, respond with a JSON object that will directly add steps to their pipeline builder in the middle window. The format should be:
 
 {
     "action": "create_pipeline",
@@ -47,7 +47,8 @@ When users ask you to create pipelines, respond with a JSON object that represen
             "properties": {
                 "label": "Step label",
                 "command": "command to run",
-                "key": "unique-key"
+                "key": "unique-key",
+                "agents": { "queue": "default" }
             }
         }
     ]
@@ -57,6 +58,8 @@ Available step types: command, wait, block, input, trigger, group
 
 For command steps, you can include properties like:
 - label, command, key, depends_on, env, agents, artifact_paths, timeout_in_minutes, retry, soft_fail, parallelism, matrix, plugins
+
+IMPORTANT: When you create pipeline steps, they will be immediately added to the user's pipeline in the middle window. The user can then click on each step to configure its properties in the right panel.
 
 For other requests that don't involve creating a pipeline, respond normally with helpful information about Buildkite.`;
         
@@ -75,6 +78,23 @@ For tool usage, respond with:
         // tool parameters
     }
 }
+
+When creating pipeline steps, use this format to add them directly to the pipeline builder:
+{
+    "action": "create_pipeline",
+    "steps": [
+        {
+            "type": "command",
+            "properties": {
+                "label": "Step label",
+                "command": "command to run",
+                "key": "unique-key"
+            }
+        }
+    ]
+}
+
+IMPORTANT: Pipeline steps you create will be immediately added to the user's pipeline in the middle window. The user can then click on each step to configure its properties.
 
 You can also create and update pipelines using the available tools. Always provide helpful context with the data you retrieve.`;
 
@@ -717,7 +737,7 @@ You can also create and update pipelines using the available tools. Always provi
             }
         });
         
-        // Provider selection
+        // Provider selection and other delegated events
         document.addEventListener('click', (e) => {
             if (e.target.closest('.provider-btn')) {
                 const btn = e.target.closest('.provider-btn');
@@ -737,6 +757,32 @@ You can also create and update pipelines using the available tools. Always provi
                 const modal = e.target.closest('.modal');
                 if (modal && modal.id === 'ai-assistant-modal') {
                     this.hideAssistant();
+                }
+            }
+            
+            // Handle message action buttons (clear pipeline, undo)
+            if (e.target.closest('[data-action="clear-pipeline"]')) {
+                e.preventDefault();
+                if (window.pipelineBuilder) {
+                    window.pipelineBuilder.clearPipeline();
+                    this.showNotification('Pipeline cleared', 'info');
+                }
+            }
+            
+            if (e.target.closest('[data-action="undo-steps"]')) {
+                e.preventDefault();
+                const btn = e.target.closest('[data-action="undo-steps"]');
+                const stepsCount = parseInt(btn.dataset.stepsCount || '1');
+                
+                if (window.pipelineBuilder && window.pipelineBuilder.steps.length >= stepsCount) {
+                    // Remove the last N steps that were just added
+                    for (let i = 0; i < stepsCount; i++) {
+                        const lastStep = window.pipelineBuilder.steps[window.pipelineBuilder.steps.length - 1];
+                        if (lastStep) {
+                            window.pipelineBuilder.deleteStep(lastStep.id);
+                        }
+                    }
+                    this.showNotification('Removed last added steps', 'info');
                 }
             }
         });
@@ -1312,68 +1358,42 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
 
     handlePipelineCreation(steps, message, additionalText = '') {
-        const messageEl = this.addMessage('assistant', message);
+        // Directly apply the pipeline steps to the middle window
+        this.applyPipeline(steps, false); // Don't clear existing by default
+        
+        // Add a simple confirmation message
+        const messageEl = this.addMessage('assistant', message || `I've added ${steps.length} steps to your pipeline.`);
         const content = messageEl.querySelector('.message-content');
         
-        // Add pipeline preview with steps summary
-        const preview = document.createElement('div');
-        preview.className = 'message-pipeline';
-        
-        // Create a nice summary of the pipeline
-        let summaryHtml = '<div class="pipeline-summary">';
-        summaryHtml += `<h4>Pipeline with ${steps.length} steps:</h4>`;
-        summaryHtml += '<ol class="pipeline-steps-list">';
-        
-        steps.forEach((step, index) => {
-            const label = step.properties?.label || `Step ${index + 1}`;
-            const type = step.type || 'command';
-            const icon = this.getStepIcon(type);
-            summaryHtml += `<li><span class="step-icon">${icon}</span> ${label} <span class="step-type">(${type})</span></li>`;
-        });
-        
-        summaryHtml += '</ol>';
-        summaryHtml += '</div>';
-        
-        preview.innerHTML = summaryHtml;
-        content.appendChild(preview);
-        
-        // Add collapsible JSON view
-        const jsonToggle = document.createElement('details');
-        jsonToggle.className = 'json-details';
-        jsonToggle.innerHTML = `
-            <summary>View JSON Configuration</summary>
-            <pre><code>${this.escapeHtml(JSON.stringify({ steps }, null, 2))}</code></pre>
+        // Add a brief summary of what was added
+        const summary = document.createElement('div');
+        summary.className = 'pipeline-summary';
+        summary.innerHTML = `
+            <p>Added steps:</p>
+            <ul class="steps-added">
+                ${steps.map((step, index) => {
+                    const label = step.properties?.label || `Step ${index + 1}`;
+                    const type = step.type || 'command';
+                    return `<li>${this.getStepIcon(type)} ${label}</li>`;
+                }).join('')}
+            </ul>
         `;
-        content.appendChild(jsonToggle);
+        content.appendChild(summary);
         
-        // Add action buttons
+        // Add action buttons for additional control
         const actions = document.createElement('div');
         actions.className = 'message-actions';
         
-        // Store steps data in a data attribute to avoid inline JSON
-        const actionsId = 'actions-' + Date.now();
-        actions.id = actionsId;
-        actions.dataset.steps = JSON.stringify(steps);
-        
         actions.innerHTML = `
-            <button class="btn btn-primary btn-sm apply-pipeline-btn">
-                <i class="fas fa-check"></i> Apply Pipeline
+            <button class="btn btn-secondary btn-sm" data-action="clear-pipeline">
+                <i class="fas fa-trash"></i> Clear Pipeline
             </button>
-            <button class="btn btn-secondary btn-sm append-pipeline-btn">
-                <i class="fas fa-plus"></i> Append to Current
+            <button class="btn btn-secondary btn-sm" data-action="undo-steps" data-steps-count="${steps.length}">
+                <i class="fas fa-undo"></i> Undo Last
             </button>
         `;
         
-        // Add event listeners
-        actions.querySelector('.apply-pipeline-btn').addEventListener('click', () => {
-            const stepsData = JSON.parse(document.getElementById(actionsId).dataset.steps);
-            this.applyPipeline(stepsData);
-        });
-        
-        actions.querySelector('.append-pipeline-btn').addEventListener('click', () => {
-            const stepsData = JSON.parse(document.getElementById(actionsId).dataset.steps);
-            this.appendPipeline(stepsData);
-        });
+        // Event listeners are handled by event delegation in setupEventListeners()
         
         content.appendChild(actions);
         
@@ -1403,19 +1423,22 @@ The application is currently restricted to only connect to 'self' and 'api.build
         return div.innerHTML;
     }
 
-    applyPipeline(steps) {
+    applyPipeline(steps, clearExisting = true) {
         if (!window.pipelineBuilder) {
             this.showNotification('Pipeline builder not available', 'error');
             return;
         }
 
-        // Clear existing pipeline
-        window.pipelineBuilder.clearPipeline();
+        // Clear existing pipeline if requested
+        if (clearExisting) {
+            window.pipelineBuilder.clearPipeline();
+        }
         
-        // Add new steps
-        steps.forEach(step => {
-            const newStep = window.pipelineBuilder.addStep(step.type);
+        // Add new steps directly to the pipeline
+        steps.forEach((step, index) => {
+            const newStep = window.pipelineBuilder.addStep(step.type || 'command');
             if (newStep && step.properties) {
+                // Merge properties into the new step
                 Object.assign(newStep.properties, step.properties);
             }
         });
@@ -1426,10 +1449,10 @@ The application is currently restricted to only connect to 'self' and 'api.build
             window.pipelineBuilder.selectStep(window.pipelineBuilder.steps[0]);
         }
         
-        this.showNotification('Pipeline applied successfully!', 'success');
+        // Save to localStorage
+        window.pipelineBuilder.saveToLocalStorage();
         
-        // Close modal
-        document.getElementById('ai-assistant-modal').classList.add('hidden');
+        this.showNotification(`${steps.length} steps added to pipeline!`, 'success');
     }
 
     appendPipeline(steps) {

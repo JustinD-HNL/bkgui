@@ -169,15 +169,17 @@ class MCPClient {
         }));
     }
     
-    async connect(serverUrl, apiToken) {
+    async connect(serverUrl, apiToken, orgSlug) {
         // If using internal server through proxy
         if (serverUrl === '/api/mcp' || this.isInternal) {
             this.serverUrl = '/api/mcp';
             this.apiToken = apiToken;
+            this.orgSlug = orgSlug;
             this.isInternal = true;
         } else {
             this.serverUrl = serverUrl;
             this.apiToken = apiToken;
+            this.orgSlug = orgSlug;
         }
         
         try {
@@ -281,12 +283,13 @@ class MCPClient {
         }
         
         try {
-            // Add API token to parameters if not already present
+            // Add API token and org slug to parameters if not already present
             const requestBody = {
                 tool: toolName,
                 parameters: {
                     ...parameters,
-                    api_token: this.apiToken
+                    api_token: this.apiToken,
+                    org: this.orgSlug
                 }
             };
             

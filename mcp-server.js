@@ -11,6 +11,7 @@ const url = require('url');
 
 const PORT = process.env.PORT || 3001;
 const BUILDKITE_API_TOKEN = process.env.BUILDKITE_API_TOKEN;
+const BUILDKITE_ORG_SLUG = process.env.BUILDKITE_ORG_SLUG;
 
 // MCP protocol handlers
 const handlers = {
@@ -57,9 +58,21 @@ const handlers = {
 
 // Tool implementations
 async function invokeTool(toolName, parameters) {
-    const token = BUILDKITE_API_TOKEN || parameters.api_token;
+    // Allow token and org to be passed in parameters or from environment
+    const token = parameters.api_token || BUILDKITE_API_TOKEN;
+    const org = parameters.org || BUILDKITE_ORG_SLUG;
+    
     if (!token) {
-        throw new Error('Buildkite API token not provided');
+        throw new Error('Buildkite API token not provided. Pass it as api_token parameter.');
+    }
+    
+    if (!org && toolName !== 'get_user') {
+        throw new Error('Buildkite organization slug not provided. Pass it as org parameter.');
+    }
+    
+    // Inject org into parameters if not present
+    if (org && !parameters.org) {
+        parameters.org = org;
     }
     
     // Map tool names to Buildkite API endpoints

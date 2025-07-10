@@ -21,7 +21,8 @@
       "Bash(osascript:*)",
       "Bash(node test-yaml-cli.js)",
       "WebFetch(domain:github.com)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

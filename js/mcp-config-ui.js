@@ -112,6 +112,15 @@ class MCPConfigUI {
                             </div>
                             
                             <div class="form-group">
+                                <label for="mcp-org-slug">Organization Slug</label>
+                                <input type="text" 
+                                       id="mcp-org-slug" 
+                                       placeholder="my-organization"
+                                       class="form-control" />
+                                <small>Your Buildkite organization slug (from your Buildkite URL)</small>
+                            </div>
+                            
+                            <div class="form-group">
                                 <label>Required API Token Scopes</label>
                                 <div class="scopes-list">
                                     <div class="scope-item">
@@ -379,43 +388,61 @@ class MCPConfigUI {
     }
     
     setupEventListeners() {
-        // MCP Config button
-        const mcpBtn = document.getElementById('mcp-config-btn');
-        if (mcpBtn) {
-            mcpBtn.addEventListener('click', () => this.show());
-        }
+        // MCP Config button - use event delegation to avoid issues
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'mcp-config-btn' || e.target.closest('#mcp-config-btn')) {
+                e.preventDefault();
+                this.show();
+            }
+        });
         
-        // Close modal
-        this.modal.querySelector('.close-modal').addEventListener('click', () => this.hide());
+        // Use event delegation for modal interactions
+        this.modal.addEventListener('click', (e) => {
+            // Close modal button
+            if (e.target.classList.contains('close-modal') || e.target.closest('.close-modal')) {
+                e.preventDefault();
+                this.hide();
+            }
+            
+            // Test connection button
+            if (e.target.id === 'test-mcp-connection' || e.target.closest('#test-mcp-connection')) {
+                e.preventDefault();
+                this.testConnection();
+            }
+            
+            // Save configuration button
+            if (e.target.id === 'save-mcp-config' || e.target.closest('#save-mcp-config')) {
+                e.preventDefault();
+                this.saveConfiguration();
+            }
+        });
         
-        // Setup option changes
-        this.modal.querySelectorAll('input[name="mcp-setup"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
+        // Setup option changes with event delegation
+        this.modal.addEventListener('change', (e) => {
+            if (e.target.name === 'mcp-setup') {
                 this.updateSetupInstructions(e.target.value);
-            });
+            }
         });
         
-        // Test connection
-        document.getElementById('test-mcp-connection').addEventListener('click', () => {
-            this.testConnection();
+        // Enable save button when fields are filled - use event delegation
+        this.modal.addEventListener('input', (e) => {
+            if (e.target.id === 'mcp-server-url' || 
+                e.target.id === 'mcp-api-token' || 
+                e.target.id === 'mcp-org-slug') {
+                this.checkFields();
+            }
         });
-        
-        // Save configuration
-        document.getElementById('save-mcp-config').addEventListener('click', () => {
-            this.saveConfiguration();
-        });
-        
-        // Enable save button when fields are filled
+    }
+    
+    checkFields() {
         const urlInput = document.getElementById('mcp-server-url');
         const tokenInput = document.getElementById('mcp-api-token');
+        const orgInput = document.getElementById('mcp-org-slug');
+        const saveBtn = document.getElementById('save-mcp-config');
         
-        const checkFields = () => {
-            const saveBtn = document.getElementById('save-mcp-config');
-            saveBtn.disabled = !urlInput.value || !tokenInput.value;
-        };
-        
-        urlInput.addEventListener('input', checkFields);
-        tokenInput.addEventListener('input', checkFields);
+        if (saveBtn && urlInput && tokenInput && orgInput) {
+            saveBtn.disabled = !urlInput.value || !tokenInput.value || !orgInput.value;
+        }
     }
     
     updateSetupInstructions(setupType) {
@@ -465,13 +492,15 @@ class MCPConfigUI {
     async testConnection() {
         const urlInput = document.getElementById('mcp-server-url');
         const tokenInput = document.getElementById('mcp-api-token');
+        const orgInput = document.getElementById('mcp-org-slug');
         const statusDiv = document.getElementById('mcp-connection-status');
         
         const url = urlInput.value.trim();
         const token = tokenInput.value.trim();
+        const org = orgInput.value.trim();
         
-        if (!url || !token) {
-            this.showStatus('Please enter both server URL and API token', 'error');
+        if (!url || !token || !org) {
+            this.showStatus('Please enter server URL, API token, and organization slug', 'error');
             return;
         }
         
@@ -480,7 +509,7 @@ class MCPConfigUI {
         statusDiv.classList.remove('hidden');
         
         try {
-            const result = await this.mcpClient.connect(url, token);
+            const result = await this.mcpClient.connect(url, token, org);
             
             if (result.success) {
                 this.showStatus('<i class="fas fa-check-circle"></i> Connection successful!', 'success');
@@ -582,6 +611,12 @@ class MCPConfigUI {
         if (this.mcpClient.apiToken) {
             document.getElementById('mcp-api-token').value = this.mcpClient.apiToken;
         }
+        if (this.mcpClient.orgSlug) {
+            document.getElementById('mcp-org-slug').value = this.mcpClient.orgSlug;
+        }
+        
+        // Check if we have all required fields to enable save button
+        this.checkFields();
     }
     
     hide() {

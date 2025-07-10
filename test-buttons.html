@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Button Test - Buildkite Pipeline Builder</title>
+    <title>Button and Modal Test - Buildkite GUI</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,136 +17,189 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        h2 {
+        .test-section h2 {
+            margin-top: 0;
             color: #333;
-            margin-bottom: 15px;
         }
-        .test-instructions {
-            background: #e9ecef;
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .fix-summary {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
             padding: 15px;
             border-radius: 4px;
             margin-bottom: 20px;
         }
-        .test-instructions h3 {
-            margin-top: 0;
-            color: #495057;
-        }
-        .troubleshooting {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 20px;
-        }
-        .fix-list {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 20px;
-        }
-        code {
-            background: #f8f9fa;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: monospace;
-        }
     </style>
 </head>
 <body>
-    <h1>Buildkite Pipeline Builder - Button Test</h1>
+    <h1>Button and Modal Test Suite</h1>
     
     <div class="test-section">
-        <h2>Button Display Issues Fixed</h2>
-        <div class="fix-list">
-            <h3>✅ Fixes Applied:</h3>
+        <h2>Summary of Fixes Applied</h2>
+        <div class="fix-summary">
+            <h3>✅ Event Handler Improvements:</h3>
             <ul>
-                <li><strong>Button Styling:</strong> Made buttons larger (32x32px) with visible borders and backgrounds</li>
-                <li><strong>Button Container:</strong> Added background, padding, and shadow to step-actions container</li>
-                <li><strong>Z-Index:</strong> Added z-index: 10 to ensure buttons appear above other content</li>
-                <li><strong>Overflow:</strong> Changed step-card overflow from hidden to visible</li>
-                <li><strong>Hover Effects:</strong> Added color-coded hover states for each button type</li>
+                <li><strong>AI Assistant:</strong> Converted dynamic button handlers to event delegation</li>
+                <li><strong>MCP Config:</strong> Refactored to use event delegation for all interactions</li>
+                <li><strong>Plugin Marketplace:</strong> Removed direct modal.remove() calls, now uses hide/show</li>
+                <li><strong>Global Modal Handler:</strong> Centralized modal close handling in main-init.js</li>
             </ul>
         </div>
     </div>
     
     <div class="test-section">
-        <h2>Manual Test Instructions</h2>
-        
-        <div class="test-instructions">
-            <h3>Test 1: Button Visibility</h3>
-            <ol>
-                <li>Open the main application (index.html)</li>
-                <li>Add a few command steps to the pipeline</li>
-                <li>Hover over any step card</li>
-                <li>✅ Expected: You should see 4 buttons appear in the top-right:
-                    <ul>
-                        <li>↑ Move Up (disabled if first step)</li>
-                        <li>↓ Move Down (disabled if last step)</li>
-                        <li>📋 Duplicate</li>
-                        <li>🗑️ Delete</li>
-                    </ul>
-                </li>
-                <li>✅ Expected: Buttons should have visible borders and backgrounds</li>
-            </ol>
-        </div>
-        
-        <div class="test-instructions">
-            <h3>Test 2: Button Functionality</h3>
-            <ol>
-                <li>Click the ↑ button on a step (not the first one)</li>
-                <li>✅ Expected: Step moves up in the list</li>
-                <li>✅ Expected: Console shows "Move up clicked for step: [stepId]"</li>
-                <li>Click the ↓ button on a step (not the last one)</li>
-                <li>✅ Expected: Step moves down in the list</li>
-                <li>Click the duplicate button</li>
-                <li>✅ Expected: A copy of the step appears below it</li>
-                <li>Click the delete button</li>
-                <li>✅ Expected: Confirmation dialog appears, then step is removed</li>
-            </ol>
-        </div>
-        
-        <div class="test-instructions">
-            <h3>Test 3: Button Hover States</h3>
-            <ol>
-                <li>Hover over each button type</li>
-                <li>✅ Expected hover colors:
-                    <ul>
-                        <li>Move Up/Down: Blue background</li>
-                        <li>Duplicate: Teal background</li>
-                        <li>Delete: Red background</li>
-                    </ul>
-                </li>
-                <li>✅ Expected: Buttons lift slightly on hover (translateY)</li>
-            </ol>
-        </div>
+        <h2>Test Instructions</h2>
+        <p>Open this page alongside your main Buildkite GUI app to test button functionality.</p>
+        <p>Each test will verify that buttons continue to work after modals are opened and closed.</p>
     </div>
-    
+
     <div class="test-section">
-        <h2>Troubleshooting</h2>
-        <div class="troubleshooting">
-            <h3>⚠️ If buttons still don't work:</h3>
-            <ol>
-                <li>Check browser console for errors</li>
-                <li>Look for console logs when clicking buttons:
-                    <ul>
-                        <li><code>Move up clicked for step: [id]</code></li>
-                        <li><code>Move down clicked for step: [id]</code></li>
-                        <li><code>Delete clicked for step: [id]</code></li>
-                        <li><code>Duplicate clicked for step: [id]</code></li>
-                    </ul>
-                </li>
-                <li>Verify the step has a valid <code>data-step-id</code> attribute</li>
-                <li>Check if JavaScript errors are preventing event handlers from registering</li>
-            </ol>
-            
-            <h3>Common Issues:</h3>
-            <ul>
-                <li><strong>Buttons not visible:</strong> Clear browser cache and reload</li>
-                <li><strong>Clicks not working:</strong> Check if another element is blocking the buttons</li>
-                <li><strong>Wrong button clicked:</strong> Event bubbling issue - fixed with stopPropagation</li>
-            </ul>
-        </div>
+        <h2>1. AI Assistant Modal Test</h2>
+        <ol>
+            <li>Click "AI Assistant" button in the header</li>
+            <li>Verify modal opens</li>
+            <li>Click the X button to close</li>
+            <li>Click "AI Assistant" again to reopen</li>
+            <li>Click outside the modal to close</li>
+            <li>Click "AI Assistant" again to verify it still works</li>
+            <li>Type a message and verify buttons inside work:
+                <ul>
+                    <li>Provider selection buttons</li>
+                    <li>Example chips</li>
+                    <li>Send button</li>
+                    <li>Clear/Undo buttons after creating pipeline</li>
+                </ul>
+            </li>
+        </ol>
+        <div id="ai-test-result" class="test-result">Test not started</div>
     </div>
+
+    <div class="test-section">
+        <h2>2. MCP Configuration Modal Test</h2>
+        <ol>
+            <li>Click "MCP Server" button in the header</li>
+            <li>Verify modal opens</li>
+            <li>Test all buttons:
+                <ul>
+                    <li>Radio buttons for server setup options</li>
+                    <li>Test Connection button</li>
+                    <li>Save Configuration button</li>
+                </ul>
+            </li>
+            <li>Close and reopen multiple times</li>
+            <li>Verify all buttons still work</li>
+        </ol>
+        <div id="mcp-test-result" class="test-result">Test not started</div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Dynamic Button Test</h2>
+        <p>Test AI-created pipeline step buttons:</p>
+        <ol>
+            <li>Open AI Assistant</li>
+            <li>Ask: "Create a Node.js test pipeline with 3 steps"</li>
+            <li>Verify pipeline steps appear in middle window</li>
+            <li>Test "Clear Pipeline" button</li>
+            <li>Ask AI to create more steps</li>
+            <li>Test "Undo Last" button</li>
+            <li>Close and reopen AI Assistant</li>
+            <li>Create more steps and verify buttons still work</li>
+        </ol>
+        <div id="dynamic-test-result" class="test-result">Test not started</div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Plugin Marketplace Modal Test</h2>
+        <ol>
+            <li>Click "Plugin Marketplace" button (if available)</li>
+            <li>Open a plugin details modal</li>
+            <li>Close it using X button</li>
+            <li>Open another plugin</li>
+            <li>Test configuration form buttons</li>
+            <li>Close and verify main modal buttons still work</li>
+        </ol>
+        <div id="plugin-test-result" class="test-result">Test not started</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Check</h2>
+        <p>Open browser console (F12) and check for:</p>
+        <ul>
+            <li>No duplicate event listener warnings</li>
+            <li>No errors when clicking buttons</li>
+            <li>No "Cannot read property of null" errors</li>
+        </ul>
+        <pre>
+// Run this in console to check event listeners:
+console.log('=== Event Listener Check ===');
+console.log('AI Button:', document.getElementById('ai-assistant-button'));
+console.log('MCP Button:', document.getElementById('mcp-config-btn'));
+console.log('Modal count:', document.querySelectorAll('.modal').length);
+console.log('Close buttons:', document.querySelectorAll('.close-modal').length);
+
+// Check for duplicate listeners warning:
+if (window.mainInitializer) {
+    console.log('Attached listeners:', window.mainInitializer.attachedListeners);
+}
+        </pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Test Checklist</h2>
+        <button class="test-button" onclick="markTest('ai-test-result', true)">✓ AI Assistant Works</button>
+        <button class="test-button" onclick="markTest('ai-test-result', false)">✗ AI Assistant Broken</button>
+        <br>
+        <button class="test-button" onclick="markTest('mcp-test-result', true)">✓ MCP Config Works</button>
+        <button class="test-button" onclick="markTest('mcp-test-result', false)">✗ MCP Config Broken</button>
+        <br>
+        <button class="test-button" onclick="markTest('dynamic-test-result', true)">✓ Dynamic Buttons Work</button>
+        <button class="test-button" onclick="markTest('dynamic-test-result', false)">✗ Dynamic Buttons Broken</button>
+        <br>
+        <button class="test-button" onclick="markTest('plugin-test-result', true)">✓ Plugin Modal Works</button>
+        <button class="test-button" onclick="markTest('plugin-test-result', false)">✗ Plugin Modal Broken</button>
+    </div>
+
+    <script>
+        function markTest(elementId, passed) {
+            const element = document.getElementById(elementId);
+            if (passed) {
+                element.className = 'test-result pass';
+                element.textContent = '✓ Test passed';
+            } else {
+                element.className = 'test-result fail';
+                element.textContent = '✗ Test failed';
+            }
+        }
+    </script>
 </body>
 </html>

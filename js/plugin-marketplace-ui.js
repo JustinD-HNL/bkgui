@@ -70,8 +70,7 @@ class PluginMarketplaceUI {
         modal.id = 'plugin-marketplace-modal';
         modal.className = 'modal hidden';
         modal.innerHTML = `
-            <div class="modal-backdrop" onclick="event.stopPropagation()">
-                <div class="modal-content large" onclick="event.stopPropagation()">
+            <div class="modal-content large">
                 <div class="modal-header">
                     <h2><i class="fas fa-store"></i> Buildkite Plugin Marketplace</h2>
                     <button class="close-modal">&times;</button>
@@ -728,8 +727,9 @@ class PluginMarketplaceUI {
 
         document.body.appendChild(modal);
         
-        // Setup close button
-        modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+        // Close button handled by global modal management
+        // Just ensure the modal has proper class
+        modal.classList.add('modal');
 
         // Setup tab handlers
         modal.querySelectorAll('.plugin-tab').forEach(tab => {
@@ -877,7 +877,10 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                 if (cancelBtn) {
                     cancelBtn.addEventListener('click', () => {
                         const modal = document.querySelector('.plugin-details-modal');
-                        if (modal) modal.remove();
+                        if (modal) {
+                            modal.classList.add('hidden');
+                            modal.style.display = 'none';
+                        }
                     });
                 }
                 
@@ -892,7 +895,10 @@ ${example ? this.formatYAML(example, 2) : `  - ${pluginKey}#latest:\n      # Add
                     
                     if (this.addPluginWithConfig(pluginKey, config)) {
                         const modal = document.querySelector('.plugin-details-modal');
-                        if (modal) modal.remove();
+                        if (modal) {
+                            modal.classList.add('hidden');
+                            modal.style.display = 'none';
+                        }
                         this.showNotification('Plugin added successfully', 'success');
                     }
                 });
