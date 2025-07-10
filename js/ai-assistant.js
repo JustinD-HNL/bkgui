@@ -240,25 +240,44 @@ You can also create and update pipelines using the available tools. Always provi
                 
                 #ai-assistant-modal .modal-body {
                     flex: 1;
-                    overflow: hidden;
+                    overflow-y: auto;
+                    overflow-x: hidden;
                     display: flex;
                     flex-direction: column;
                     padding: 0;
                     min-height: 0;
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--primary) var(--bg-secondary);
+                }
+                
+                #ai-assistant-modal .modal-body::-webkit-scrollbar {
+                    width: 8px;
+                }
+                
+                #ai-assistant-modal .modal-body::-webkit-scrollbar-track {
+                    background: var(--bg-secondary);
+                }
+                
+                #ai-assistant-modal .modal-body::-webkit-scrollbar-thumb {
+                    background: var(--primary);
+                    border-radius: 4px;
+                }
+                
+                #ai-assistant-modal .modal-body::-webkit-scrollbar-thumb:hover {
+                    background: var(--primary-hover);
                 }
                 
                 .ai-assistant-container {
                     display: flex;
                     flex-direction: column;
-                    height: 100%;
-                    overflow-y: auto;
-                    overflow-x: hidden;
+                    min-height: 100%;
                 }
 
                 .ai-settings {
                     padding: 1rem;
                     background: var(--bg-secondary);
                     border-bottom: 1px solid var(--border-color);
+                    flex-shrink: 0;
                 }
 
                 .ai-provider-selection {
@@ -333,6 +352,7 @@ You can also create and update pipelines using the available tools. Always provi
                     flex-direction: column;
                     overflow: hidden;
                     min-height: 0; /* Important for flex children */
+                    padding: 1rem;
                 }
 
                 .ai-examples {
