@@ -3376,6 +3376,123 @@ body {
     gap: 0.5rem;
 }
 
+/* Unified Validator Styles */
+.validation-results .validation-summary {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.validation-results .validation-summary.valid {
+    background: rgba(0, 255, 147, 0.1);
+    border: 1px solid var(--success);
+    color: var(--success);
+}
+
+.validation-results .validation-summary.invalid {
+    background: rgba(255, 71, 87, 0.1);
+    border: 1px solid var(--error);
+    color: var(--error);
+}
+
+.validation-results .validation-summary h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.validation-results .validation-summary p {
+    margin: 0.5rem 0 0;
+    opacity: 0.8;
+}
+
+.validation-results .validation-section {
+    margin-bottom: 1.5rem;
+}
+
+.validation-results .validation-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+}
+
+.validation-results .validation-section.errors h4 {
+    color: var(--error);
+}
+
+.validation-results .validation-section.warnings h4 {
+    color: var(--warning);
+}
+
+.validation-results .validation-section.info h4 {
+    color: var(--info);
+}
+
+.validation-results .validation-issue {
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    border: 1px solid transparent;
+}
+
+.validation-results .validation-issue.error {
+    background: rgba(255, 71, 87, 0.05);
+    border-color: rgba(255, 71, 87, 0.2);
+}
+
+.validation-results .validation-issue.warning {
+    background: rgba(255, 165, 0, 0.05);
+    border-color: rgba(255, 165, 0, 0.2);
+}
+
+.validation-results .validation-issue.info {
+    background: rgba(112, 161, 255, 0.05);
+    border-color: rgba(112, 161, 255, 0.2);
+}
+
+.validation-results .issue-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.validation-results .issue-message {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.validation-results .issue-suggestion {
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+/* Dark theme support for unified validator */
+[data-theme="dark"] .validation-results .validation-summary.valid {
+    background: rgba(0, 255, 147, 0.05);
+}
+
+[data-theme="dark"] .validation-results .validation-summary.invalid {
+    background: rgba(255, 71, 87, 0.05);
+}
+
+[data-theme="dark"] .validation-results .validation-issue.error {
+    background: rgba(255, 71, 87, 0.03);
+    border-color: rgba(255, 71, 87, 0.3);
+}
+
+[data-theme="dark"] .validation-results .validation-issue.warning {
+    background: rgba(255, 165, 0, 0.03);
+    border-color: rgba(255, 165, 0, 0.3);
+}
+
+[data-theme="dark"] .validation-results .validation-issue.info {
+    background: rgba(112, 161, 255, 0.03);
+    border-color: rgba(112, 161, 255, 0.3);
+}
+
 .yaml-export-content {
     flex: 1;
     overflow: auto;

@@ -1940,119 +1940,109 @@ class BuildkiteApp {
         console.log('✅ SDK tools configured');
     }
     
-    validatePipeline() {
+    async validatePipeline() {
+        // Use unified validator
+        if (!window.unifiedValidator) {
+            console.error('Unified validator not available');
+            this.showNotification('Validation system not available', 'error');
+            return;
+        }
+        
         if (!this.pipelineBuilder?.steps || this.pipelineBuilder.steps.length === 0) {
             this.showNotification('Pipeline is empty', 'warning');
             return;
         }
         
-        const errors = [];
-        const warnings = [];
-        
-        // Check for duplicate step labels
-        const labels = this.pipelineBuilder.steps
-            .filter(s => s.properties?.label)
-            .map(s => s.properties.label);
-        const duplicates = labels.filter((label, index) => labels.indexOf(label) !== index);
-        if (duplicates.length > 0) {
-            errors.push(`Duplicate step labels: ${[...new Set(duplicates)].join(', ')}`);
-        }
-        
-        // Check for duplicate keys
-        const keys = this.pipelineBuilder.steps
-            .filter(s => s.properties?.key)
-            .map(s => s.properties.key);
-        const duplicateKeys = keys.filter((key, index) => keys.indexOf(key) !== index);
-        if (duplicateKeys.length > 0) {
-            errors.push(`Duplicate step keys: ${[...new Set(duplicateKeys)].join(', ')}`);
-        }
-        
-        // Check dependencies
-        this.pipelineBuilder.steps.forEach(step => {
-            if (step.properties?.depends_on) {
-                const deps = Array.isArray(step.properties.depends_on) ? 
-                    step.properties.depends_on : [step.properties.depends_on];
-                
-                deps.forEach(dep => {
-                    if (dep !== 'wait' && !keys.includes(dep)) {
-                        warnings.push(`Step "${step.properties.label || step.id}" depends on unknown step "${dep}"`);
-                    }
-                });
+        // Convert steps to proper format for validator
+        const steps = this.pipelineBuilder.steps.map(step => {
+            if (step === 'wait' || step.type === 'wait') {
+                return { type: 'wait', properties: {} };
             }
+            return {
+                type: step.type || 'command',
+                properties: step.properties || {}
+            };
         });
         
-        // Check matrix limits
-        this.pipelineBuilder.steps.forEach(step => {
-            if (step.properties?.matrix) {
-                const combinations = this.calculateMatrixCombinations(
-                    step.properties.matrix.reduce((acc, m) => ({...acc, ...m}), {})
-                );
-                if (combinations.length > this.pipelineBuilder.limits.maxMatrixJobs) {
-                    errors.push(`Step "${step.properties.label}" matrix exceeds limit (${combinations.length} > ${this.pipelineBuilder.limits.maxMatrixJobs})`);
-                }
-            }
-        });
+        // Run unified validation
+        const results = await window.unifiedValidator.validatePipeline(steps);
         
-        // Run SDK validation if available
-        if (window.buildkiteSDK) {
-            const sdkValidation = window.buildkiteSDK.validatePipeline(this.pipelineBuilder.steps);
-            errors.push(...sdkValidation.errors);
-            warnings.push(...sdkValidation.warnings);
-        }
+        // Show results in modal
+        const modal = document.getElementById('validation-modal');
+        const content = document.getElementById('validation-content');
         
-        // Show results
-        if (errors.length === 0 && warnings.length === 0) {
-            this.showNotification('Pipeline validation passed!', 'success');
+        if (modal && content) {
+            content.innerHTML = window.unifiedValidator.formatResults(results);
+            window.showModal('validation-modal');
         } else {
-            const modal = document.getElementById('validation-modal');
-            const content = document.getElementById('validation-content');
-            
-            if (modal && content) {
-                content.innerHTML = `
-                    ${errors.length > 0 ? `
-                        <h4 class="error">Errors (${errors.length})</h4>
-                        <ul class="error-list">
-                            ${errors.map(e => `<li>${e}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                    ${warnings.length > 0 ? `
-                        <h4 class="warning">Warnings (${warnings.length})</h4>
-                        <ul class="warning-list">
-                            ${warnings.map(w => `<li>${w}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                `;
-                window.showModal('validation-modal');
+            // Fallback notification
+            if (results.valid) {
+                this.showNotification('Pipeline validation passed!', 'success');
             } else {
                 this.showNotification(
-                    `Validation found ${errors.length} error(s) and ${warnings.length} warning(s)`, 
-                    errors.length > 0 ? 'error' : 'warning',
+                    `Validation found ${results.errors.length} error(s) and ${results.warnings.length} warning(s)`, 
+                    results.errors.length > 0 ? 'error' : 'warning',
                     5000
                 );
             }
         }
     }
 
-    validateYAML() {
+    async validateYAML() {
+        // Use unified validator
+        if (!window.unifiedValidator) {
+            console.error('Unified validator not available');
+            this.showNotification('Validation system not available', 'error');
+            return;
+        }
+        
         const yamlContent = document.getElementById('yaml-content')?.textContent ||
                            document.getElementById('yaml-output')?.textContent;
         
-        if (!yamlContent || !this.yamlGenerator) return;
+        if (!yamlContent) {
+            this.showNotification('No YAML content to validate', 'warning');
+            return;
+        }
         
-        const result = this.yamlGenerator.validate(yamlContent);
-        const validationContent = document.getElementById('validation-content') ||
-                                 document.getElementById('validation-result');
+        // Get current pipeline steps for comprehensive validation
+        const steps = this.pipelineBuilder?.steps?.map(step => {
+            if (step === 'wait' || step.type === 'wait') {
+                return { type: 'wait', properties: {} };
+            }
+            return {
+                type: step.type || 'command',
+                properties: step.properties || {}
+            };
+        }) || [];
         
-        if (validationContent) {
-            if (result.valid) {
-                validationContent.innerHTML = '<p style="color: green;"><i class="fas fa-check"></i> YAML is valid!</p>';
-                this.showNotification('YAML validation passed', 'success');
+        // Run unified validation with YAML
+        const results = await window.unifiedValidator.validatePipeline(steps, yamlContent);
+        
+        // Show results in modal or inline
+        const validationResult = document.getElementById('validation-result');
+        const yamlValidation = document.getElementById('yaml-validation');
+        const validationContent = document.getElementById('validation-content');
+        
+        // Try to show in YAML modal first
+        if (validationResult) {
+            validationResult.innerHTML = window.unifiedValidator.formatResults(results);
+            validationResult.style.display = 'block';
+        } 
+        // Try inline validation area
+        else if (yamlValidation && validationContent) {
+            validationContent.innerHTML = window.unifiedValidator.formatResults(results);
+            yamlValidation.classList.remove('hidden');
+        }
+        // Fallback to notification
+        else {
+            if (results.valid) {
+                this.showNotification('YAML validation passed!', 'success');
             } else {
-                validationContent.innerHTML = `
-                    <p style="color: red;"><i class="fas fa-times"></i> YAML validation failed:</p>
-                    <ul>${(result.errors || result.issues || []).map(e => `<li>${e}</li>`).join('')}</ul>
-                `;
-                this.showNotification('YAML validation failed', 'error');
+                this.showNotification(
+                    `Validation found ${results.errors.length} error(s) and ${results.warnings.length} warning(s)`, 
+                    results.errors.length > 0 ? 'error' : 'warning',
+                    5000
+                );
             }
         }
     }
