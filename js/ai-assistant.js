@@ -15,7 +15,7 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.anthropic.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-2.1', 'claude-2.0', 'claude-instant-1.2']
+                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
             },
             chatgpt: {
                 name: 'ChatGPT',
@@ -546,6 +546,17 @@ You can also create and update pipelines using the available tools. Always provi
     }
 
     setupEventListeners() {
+        // Handle modal backdrop clicks
+        const modal = document.getElementById('ai-assistant-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                // Only close if clicking directly on the modal backdrop, not its contents
+                if (e.target === modal) {
+                    this.hideAssistant();
+                }
+            });
+        }
+        
         // Use event delegation for the MCP Configure button
         document.addEventListener('click', (e) => {
             if (e.target.id === 'mcp-configure-btn' || e.target.closest('#mcp-configure-btn')) {
@@ -578,7 +589,7 @@ You can also create and update pipelines using the available tools. Always provi
             if (e.target.classList.contains('close-modal')) {
                 const modal = e.target.closest('.modal');
                 if (modal && modal.id === 'ai-assistant-modal') {
-                    modal.classList.add('hidden');
+                    this.hideAssistant();
                 }
             }
         });
@@ -628,6 +639,16 @@ You can also create and update pipelines using the available tools. Always provi
                 this.sendMessage();
             });
         }
+
+        // Handle ESC key to close modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('ai-assistant-modal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    this.hideAssistant();
+                }
+            }
+        });
     }
 
     selectProvider(provider) {
@@ -770,6 +791,9 @@ You can also create and update pipelines using the available tools. Always provi
                 this.selectedModel = models[0];
             }
             
+            // Save settings after model selection
+            this.saveSettings();
+            
             // Check if we're ready to chat after setting the model
             this.checkReadyToChat();
             
@@ -807,6 +831,9 @@ You can also create and update pipelines using the available tools. Always provi
                     modelSelect.value = models[0];
                     this.selectedModel = models[0];
                 }
+                
+                // Save settings after model selection
+                this.saveSettings();
                 
                 // Check if we're ready to chat after setting the model
                 this.checkReadyToChat();
@@ -847,11 +874,22 @@ You can also create and update pipelines using the available tools. Always provi
         const sendBtn = document.getElementById('ai-send');
         
         if (this.currentProvider && this.apiKey && this.selectedModel) {
-            chatSection.classList.remove('hidden');
+            if (chatSection) {
+                chatSection.classList.remove('hidden');
+                // Force a style recalculation in case there's a rendering issue
+                chatSection.style.display = 'block';
+                setTimeout(() => {
+                    chatSection.style.display = '';
+                }, 10);
+            }
             this.enableSendButton();
         } else {
-            chatSection.classList.add('hidden');
-            sendBtn.disabled = true;
+            if (chatSection) {
+                chatSection.classList.add('hidden');
+            }
+            if (sendBtn) {
+                sendBtn.disabled = true;
+            }
         }
     }
 
@@ -870,6 +908,7 @@ You can also create and update pipelines using the available tools. Always provi
         
         // Ensure modal is visible
         modal.classList.remove('hidden');
+        modal.style.display = 'flex';
         
         // Ensure modal is on top by setting a high z-index
         modal.style.zIndex = '10000';
@@ -891,6 +930,16 @@ You can also create and update pipelines using the available tools. Always provi
             if (this.selectedModel) {
                 document.getElementById('ai-model').value = this.selectedModel;
             }
+        }
+    }
+
+    hideAssistant() {
+        const modal = document.getElementById('ai-assistant-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            // Reset z-index
+            modal.style.zIndex = '';
         }
     }
 
