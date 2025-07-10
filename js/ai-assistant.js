@@ -533,6 +533,68 @@ You can also create and update pipelines using the available tools. Always provi
                     padding: 0.25rem 0.75rem;
                     font-size: 0.875rem;
                 }
+                
+                .message-pipeline {
+                    background: var(--bg-tertiary);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    padding: 1rem;
+                    margin: 1rem 0;
+                }
+                
+                .pipeline-summary h4 {
+                    margin: 0 0 0.75rem 0;
+                    color: var(--primary);
+                    font-size: 1rem;
+                }
+                
+                .pipeline-steps-list {
+                    margin: 0;
+                    padding-left: 1.5rem;
+                }
+                
+                .pipeline-steps-list li {
+                    margin: 0.5rem 0;
+                    color: var(--text-primary);
+                }
+                
+                .step-icon {
+                    margin-right: 0.5rem;
+                    font-size: 1.1em;
+                }
+                
+                .step-type {
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                    margin-left: 0.5rem;
+                }
+                
+                .json-details {
+                    margin: 1rem 0;
+                    background: var(--bg-primary);
+                    border: 1px solid var(--border-color);
+                    border-radius: 4px;
+                    padding: 0.5rem;
+                }
+                
+                .json-details summary {
+                    cursor: pointer;
+                    padding: 0.5rem;
+                    color: var(--primary);
+                    font-weight: 500;
+                }
+                
+                .json-details pre {
+                    margin: 0.5rem 0 0 0;
+                    max-height: 300px;
+                    overflow: auto;
+                }
+                
+                .additional-info {
+                    margin-top: 1rem;
+                    padding-top: 1rem;
+                    border-top: 1px solid var(--border-color);
+                }
 
                 .ai-input-container {
                     padding: 1rem;
@@ -1187,7 +1249,7 @@ The application is currently restricted to only connect to 'self' and 'api.build
             const parsed = JSON.parse(response);
             
             if (parsed.action === 'create_pipeline' && parsed.steps) {
-                this.handlePipelineCreation(parsed.steps, response);
+                this.handlePipelineCreation(parsed.steps, 'Here\'s the pipeline I created for you:');
             } else if (parsed.action === 'mcp_tool' && parsed.tool) {
                 this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
             } else {
@@ -1196,60 +1258,149 @@ The application is currently restricted to only connect to 'self' and 'api.build
             }
         } catch (e) {
             // Not JSON, treat as regular text
-            // But check if it contains a JSON block
-            const jsonMatch = response.match(/```json\n?([\s\S]+?)\n?```/);
-            if (jsonMatch) {
-                try {
-                    const parsed = JSON.parse(jsonMatch[1]);
-                    if (parsed.action === 'create_pipeline' && parsed.steps) {
-                        const textBefore = response.substring(0, jsonMatch.index);
-                        const textAfter = response.substring(jsonMatch.index + jsonMatch[0].length);
+            // Check for JSON blocks with or without language identifier
+            const jsonMatches = [
+                response.match(/```json\n?([\s\S]+?)\n?```/),
+                response.match(/```\n?([\s\S]+?)\n?```/),
+                response.match(/\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\}(?=\s*\n|$)/),
+                response.match(/\{\s*"action"\s*:\s*"mcp_tool"[\s\S]+?\}(?=\s*\n|$)/)
+            ];
+            
+            let jsonFound = false;
+            for (const match of jsonMatches) {
+                if (match) {
+                    try {
+                        const jsonStr = match[1] || match[0];
+                        const parsed = JSON.parse(jsonStr);
                         
-                        let fullMessage = '';
-                        if (textBefore.trim()) fullMessage += textBefore.trim() + '\n\n';
-                        fullMessage += 'Here\'s the pipeline I created for you:';
-                        
-                        this.handlePipelineCreation(parsed.steps, fullMessage, textAfter.trim());
-                        return;
+                        if (parsed.action === 'create_pipeline' && parsed.steps) {
+                            const jsonStartIndex = response.indexOf(match[0]);
+                            const textBefore = response.substring(0, jsonStartIndex);
+                            const textAfter = response.substring(jsonStartIndex + match[0].length);
+                            
+                            // Process the text before JSON
+                            if (textBefore.trim()) {
+                                this.addMessage('assistant', textBefore.trim());
+                            }
+                            
+                            // Handle the pipeline creation
+                            this.handlePipelineCreation(parsed.steps, 'Here\'s the pipeline configuration:');
+                            
+                            // Process the text after JSON
+                            if (textAfter.trim()) {
+                                this.addMessage('assistant', textAfter.trim());
+                            }
+                            
+                            jsonFound = true;
+                            break;
+                        } else if (parsed.action === 'mcp_tool' && parsed.tool) {
+                            this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
+                            jsonFound = true;
+                            break;
+                        }
+                    } catch (e2) {
+                        console.debug('Failed to parse potential JSON:', e2);
                     }
-                } catch (e2) {
-                    // Failed to parse embedded JSON
                 }
             }
             
-            // Regular message
-            this.addMessage('assistant', response);
+            // If no JSON action found, treat as regular message
+            if (!jsonFound) {
+                this.addMessage('assistant', response);
+            }
         }
     }
 
     handlePipelineCreation(steps, message, additionalText = '') {
         const messageEl = this.addMessage('assistant', message);
+        const content = messageEl.querySelector('.message-content');
         
-        // Add pipeline preview
+        // Add pipeline preview with steps summary
         const preview = document.createElement('div');
         preview.className = 'message-pipeline';
-        preview.textContent = JSON.stringify({ steps }, null, 2);
-        messageEl.querySelector('.message-content').appendChild(preview);
+        
+        // Create a nice summary of the pipeline
+        let summaryHtml = '<div class="pipeline-summary">';
+        summaryHtml += `<h4>Pipeline with ${steps.length} steps:</h4>`;
+        summaryHtml += '<ol class="pipeline-steps-list">';
+        
+        steps.forEach((step, index) => {
+            const label = step.properties?.label || `Step ${index + 1}`;
+            const type = step.type || 'command';
+            const icon = this.getStepIcon(type);
+            summaryHtml += `<li><span class="step-icon">${icon}</span> ${label} <span class="step-type">(${type})</span></li>`;
+        });
+        
+        summaryHtml += '</ol>';
+        summaryHtml += '</div>';
+        
+        preview.innerHTML = summaryHtml;
+        content.appendChild(preview);
+        
+        // Add collapsible JSON view
+        const jsonToggle = document.createElement('details');
+        jsonToggle.className = 'json-details';
+        jsonToggle.innerHTML = `
+            <summary>View JSON Configuration</summary>
+            <pre><code>${this.escapeHtml(JSON.stringify({ steps }, null, 2))}</code></pre>
+        `;
+        content.appendChild(jsonToggle);
         
         // Add action buttons
         const actions = document.createElement('div');
         actions.className = 'message-actions';
+        
+        // Store steps data in a data attribute to avoid inline JSON
+        const actionsId = 'actions-' + Date.now();
+        actions.id = actionsId;
+        actions.dataset.steps = JSON.stringify(steps);
+        
         actions.innerHTML = `
-            <button class="btn btn-primary btn-sm" onclick="window.aiAssistant.applyPipeline(${JSON.stringify(steps).replace(/"/g, '&quot;')})">
-                <i class="fas fa-plus"></i> Apply Pipeline
+            <button class="btn btn-primary btn-sm apply-pipeline-btn">
+                <i class="fas fa-check"></i> Apply Pipeline
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="window.aiAssistant.appendPipeline(${JSON.stringify(steps).replace(/"/g, '&quot;')})">
-                <i class="fas fa-plus-circle"></i> Append to Current
+            <button class="btn btn-secondary btn-sm append-pipeline-btn">
+                <i class="fas fa-plus"></i> Append to Current
             </button>
         `;
-        messageEl.querySelector('.message-content').appendChild(actions);
+        
+        // Add event listeners
+        actions.querySelector('.apply-pipeline-btn').addEventListener('click', () => {
+            const stepsData = JSON.parse(document.getElementById(actionsId).dataset.steps);
+            this.applyPipeline(stepsData);
+        });
+        
+        actions.querySelector('.append-pipeline-btn').addEventListener('click', () => {
+            const stepsData = JSON.parse(document.getElementById(actionsId).dataset.steps);
+            this.appendPipeline(stepsData);
+        });
+        
+        content.appendChild(actions);
         
         if (additionalText) {
-            const additional = document.createElement('p');
-            additional.style.marginTop = '1rem';
-            additional.textContent = additionalText;
-            messageEl.querySelector('.message-content').appendChild(additional);
+            const additional = document.createElement('div');
+            additional.className = 'additional-info';
+            additional.innerHTML = this.formatMessage(additionalText);
+            content.appendChild(additional);
         }
+    }
+    
+    getStepIcon(type) {
+        const icons = {
+            'command': '⚡',
+            'wait': '⏸️',
+            'block': '🔲',
+            'input': '✏️',
+            'trigger': '🔗',
+            'group': '📁'
+        };
+        return icons[type] || '📄';
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     applyPipeline(steps) {
