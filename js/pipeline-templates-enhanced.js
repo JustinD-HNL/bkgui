@@ -947,16 +947,21 @@ class EnhancedPipelineTemplates {
             return;
         }
 
-        // Use pipeline builder's loadTemplate method if available
-        if (window.pipelineBuilder.loadTemplate) {
-            await window.pipelineBuilder.loadTemplate(templateKey);
-            return;
+        console.log(`Loading enhanced template: ${templateKey}`);
+        
+        // Handle based on current pipeline state
+        if (window.pipelineBuilder.steps.length > 0) {
+            // Show options dialog
+            const choice = await window.pipelineBuilder.showTemplateLoadOptions(templateKey);
+            
+            if (choice === 'cancel') {
+                return;
+            } else if (choice === 'overwrite') {
+                window.pipelineBuilder.clearPipeline(true);
+            }
+            // For 'append', we just continue adding steps
         }
-
-        // Otherwise, clear pipeline silently
-        if (window.pipelineBuilder.clearPipeline) {
-            window.pipelineBuilder.clearPipeline(true);
-        }
+        // If pipeline is empty, just load silently
         
         // Load template steps with enhanced handling
         template.pipeline.steps.forEach(stepConfig => {

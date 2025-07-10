@@ -1099,7 +1099,7 @@ class BuildkiteApp {
             item.parentNode.replaceChild(oldItem, item);
             
             // Add new click handler
-            oldItem.addEventListener('click', (e) => {
+            oldItem.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
@@ -1148,7 +1148,7 @@ class BuildkiteApp {
                 const mappedTemplate = templateMapping[templateName] || templateName;
                 
                 if (window.pipelineTemplates && window.pipelineTemplates.templates[mappedTemplate]) {
-                    window.pipelineTemplates.loadTemplate(mappedTemplate);
+                    await window.pipelineTemplates.loadTemplate(mappedTemplate);
                     window.closeModal('step-templates-modal');
                     this.updateYAML();
                     this.updateStepCount();
@@ -1156,7 +1156,7 @@ class BuildkiteApp {
                 } else {
                     // Try the main-init.js handler
                     if (window.buildkiteApp && window.buildkiteApp.handleTemplateClick) {
-                        window.buildkiteApp.handleTemplateClick(templateName);
+                        await window.buildkiteApp.handleTemplateClick(templateName);
                         window.closeModal('step-templates-modal');
                     } else {
                         this.showNotification(`Template "${templateName}" not found`, 'warning');

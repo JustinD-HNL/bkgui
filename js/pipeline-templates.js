@@ -632,21 +632,30 @@ class PipelineTemplates {
             return;
         }
 
-        // Use pipeline builder's loadTemplate method if available
-        if (window.pipelineBuilder.loadTemplate) {
-            await window.pipelineBuilder.loadTemplate(templateKey);
-            return;
+        console.log(`Loading template from pipeline-templates.js: ${templateKey}`);
+        
+        // Handle based on current pipeline state
+        if (window.pipelineBuilder.steps.length > 0) {
+            // Show options dialog
+            const choice = await window.pipelineBuilder.showTemplateLoadOptions(templateKey);
+            
+            if (choice === 'cancel') {
+                return;
+            } else if (choice === 'overwrite') {
+                window.pipelineBuilder.clearPipeline(true);
+            }
+            // For 'append', we just continue adding steps
         }
-
-        // Otherwise, clear pipeline silently
-        if (window.pipelineBuilder.clearPipeline) {
-            window.pipelineBuilder.clearPipeline(true);
-        }
+        // If pipeline is empty, just load silently
         
         // Load template steps
-        template.pipeline.steps.forEach(stepConfig => {
+        console.log(`Loading ${template.pipeline.steps.length} steps from template`);
+        template.pipeline.steps.forEach((stepConfig, idx) => {
+            console.log(`Processing step ${idx}:`, stepConfig);
+            
             if (stepConfig === 'wait') {
-                window.pipelineBuilder.addStep('wait');
+                const step = window.pipelineBuilder.addStep('wait');
+                console.log(`Added wait step:`, step);
             } else if (typeof stepConfig === 'object') {
                 // Determine step type
                 let stepType = 'command';
@@ -655,10 +664,12 @@ class PipelineTemplates {
                 else if (stepConfig.trigger) stepType = 'trigger';
                 else if (stepConfig.group) stepType = 'group';
                 
+                console.log(`Adding ${stepType} step`);
                 const step = window.pipelineBuilder.addStep(stepType);
                 if (step) {
                     // Apply all properties from template
                     Object.assign(step.properties, stepConfig);
+                    console.log(`Applied properties to step:`, step.properties);
                     
                     // Handle group steps recursively
                     if (stepType === 'group' && stepConfig.steps) {
@@ -666,18 +677,25 @@ class PipelineTemplates {
                         // For now, we'll just note that this group has steps
                         step.properties._groupSteps = stepConfig.steps;
                     }
+                } else {
+                    console.error(`Failed to add ${stepType} step`);
                 }
             }
         });
         
         // Re-render and select first step
+        console.log(`Total steps after loading: ${window.pipelineBuilder.steps.length}`);
         window.pipelineBuilder.renderPipeline();
+        window.pipelineBuilder.updateStepCount();
+        window.pipelineBuilder.saveToLocalStorage();
+        
         if (window.pipelineBuilder.steps.length > 0) {
             window.pipelineBuilder.selectStep(window.pipelineBuilder.steps[0]);
         }
         
-        // Show notification
+        // Update YAML
         if (window.buildkiteApp) {
+            window.buildkiteApp.updateYAML();
             window.buildkiteApp.showNotification(`Loaded ${template.name} template`, 'success');
         }
         
