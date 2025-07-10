@@ -4237,6 +4237,14 @@ class PipelineBuilder {
     loadTemplate(templateName, index = -1) {
         console.log(`📄 Loading template: ${templateName}`);
         
+        // If loading at the start (not inserting), and pipeline is not empty, ask for confirmation
+        if (index === -1 && this.steps.length > 0) {
+            if (!confirm('Loading a template will replace your current pipeline. Continue?')) {
+                return;
+            }
+            this.clearPipeline(true); // Clear silently
+        }
+        
         const templates = {
             'ci-cd': [
                 { type: 'command', properties: { label: 'Checkout', command: 'git checkout $BUILDKITE_COMMIT', key: 'checkout' } },
@@ -4484,9 +4492,11 @@ class PipelineBuilder {
         console.log('📋 Loaded example pipeline');
     }
 
-    clearPipeline() {
+    clearPipeline(silent = false) {
         if (this.steps.length === 0) {
-            alert('Pipeline is already empty.');
+            if (!silent) {
+                alert('Pipeline is already empty.');
+            }
             return;
         }
         

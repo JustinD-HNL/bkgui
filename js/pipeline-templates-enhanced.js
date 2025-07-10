@@ -947,8 +947,16 @@ class EnhancedPipelineTemplates {
             return;
         }
 
-        // Clear existing pipeline
-        window.pipelineBuilder.clearPipeline();
+        // Use pipeline builder's loadTemplate method if available
+        if (window.pipelineBuilder.loadTemplate) {
+            window.pipelineBuilder.loadTemplate(templateKey);
+            return;
+        }
+
+        // Otherwise, clear pipeline silently
+        if (window.pipelineBuilder.clearPipeline) {
+            window.pipelineBuilder.clearPipeline(true);
+        }
         
         // Load template steps with enhanced handling
         template.pipeline.steps.forEach(stepConfig => {

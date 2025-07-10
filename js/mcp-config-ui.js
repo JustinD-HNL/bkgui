@@ -9,6 +9,7 @@ class MCPConfigUI {
         this.mcpClient = window.mcpClient;
         this.isVisible = false;
         this.modal = null;
+        this.eventListenersSetup = false;
         
         this.init();
     }
@@ -30,6 +31,13 @@ class MCPConfigUI {
             mcpBtn.className = 'btn btn-secondary';
             mcpBtn.innerHTML = '<i class="fas fa-server"></i> MCP Server';
             mcpBtn.title = 'Configure MCP Server';
+            
+            // Add click handler directly to button as backup
+            mcpBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.show();
+            });
             
             if (apiConfigBtn && apiConfigBtn.nextSibling) {
                 headerActions.insertBefore(mcpBtn, apiConfigBtn.nextSibling);
@@ -388,10 +396,17 @@ class MCPConfigUI {
     }
     
     setupEventListeners() {
+        // Prevent duplicate event listeners
+        if (this.eventListenersSetup) {
+            return;
+        }
+        this.eventListenersSetup = true;
+        
         // MCP Config button - use event delegation to avoid issues
         document.addEventListener('click', (e) => {
             if (e.target.id === 'mcp-config-btn' || e.target.closest('#mcp-config-btn')) {
                 e.preventDefault();
+                e.stopPropagation();
                 this.show();
             }
         });
@@ -576,7 +591,15 @@ class MCPConfigUI {
     }
     
     async show() {
+        console.log('🔧 Showing MCP config modal');
+        
+        if (!this.modal) {
+            console.error('MCP modal not found!');
+            return;
+        }
+        
         this.modal.classList.remove('hidden');
+        this.modal.style.display = 'block';
         
         // Check for internal server
         await this.mcpClient.checkInternalServer();
@@ -620,7 +643,10 @@ class MCPConfigUI {
     }
     
     hide() {
-        this.modal.classList.add('hidden');
+        if (this.modal) {
+            this.modal.classList.add('hidden');
+            this.modal.style.display = 'none';
+        }
     }
 }
 
