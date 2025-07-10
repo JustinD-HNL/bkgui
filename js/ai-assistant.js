@@ -15,7 +15,7 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.anthropic.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307', 'claude-2.1', 'claude-2.0', 'claude-instant-1.2']
             },
             chatgpt: {
                 name: 'ChatGPT',
@@ -24,7 +24,7 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.openai.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo']
+                defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4-turbo-preview', 'gpt-4-1106-preview', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-1106', 'gpt-3.5-turbo-16k']
             }
         };
 
@@ -227,6 +227,10 @@ You can also create and update pipelines using the available tools. Always provi
                 </div>
             </div>
             <style>
+                #ai-assistant-modal {
+                    z-index: 9999 !important;
+                }
+                
                 #ai-assistant-modal .modal-content {
                     height: 90vh;
                     max-height: 90vh;
@@ -818,7 +822,24 @@ You can also create and update pipelines using the available tools. Always provi
 
     showAssistant() {
         const modal = document.getElementById('ai-assistant-modal');
+        if (!modal) {
+            console.error('AI Assistant modal not found');
+            return;
+        }
+        
+        // Ensure modal is visible
         modal.classList.remove('hidden');
+        
+        // Ensure modal is on top by setting a high z-index
+        modal.style.zIndex = '10000';
+        
+        // Force focus on the modal to ensure it's on top
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input, select, textarea');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }, 100);
         
         // Update MCP status when showing the assistant
         this.updateMCPStatus();

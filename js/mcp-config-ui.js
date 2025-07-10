@@ -162,6 +162,14 @@ class MCPConfigUI {
             </div>
             
             <style>
+                #mcp-config-modal {
+                    z-index: 10001 !important;
+                }
+                
+                #mcp-config-modal .modal-content {
+                    z-index: 10002 !important;
+                }
+                
                 .mcp-config-container {
                     max-width: 600px;
                     margin: 0 auto;
