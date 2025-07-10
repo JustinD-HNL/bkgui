@@ -34,6 +34,8 @@ app.use(helmet({
             connectSrc: [
                 "'self'",
                 "https://api.buildkite.com",
+                "https://api.anthropic.com",
+                "https://api.openai.com",
                 "http://localhost:3001",
                 "ws://localhost:3001"
             ],

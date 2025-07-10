@@ -227,11 +227,26 @@ You can also create and update pipelines using the available tools. Always provi
                 </div>
             </div>
             <style>
+                #ai-assistant-modal .modal-content {
+                    height: 90vh;
+                    max-height: 90vh;
+                    display: flex;
+                    flex-direction: column;
+                }
+                
+                #ai-assistant-modal .modal-body {
+                    flex: 1;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    padding: 0;
+                }
+                
                 .ai-assistant-container {
                     display: flex;
                     flex-direction: column;
-                    height: 70vh;
-                    max-height: 600px;
+                    height: 100%;
+                    overflow: hidden;
                 }
 
                 .ai-settings {
@@ -357,10 +372,12 @@ You can also create and update pipelines using the available tools. Always provi
                 .ai-messages {
                     flex: 1;
                     overflow-y: auto;
+                    overflow-x: hidden;
                     padding: 1rem;
                     display: flex;
                     flex-direction: column;
                     gap: 1rem;
+                    min-height: 0;
                 }
 
                 .ai-message {
@@ -525,15 +542,18 @@ You can also create and update pipelines using the available tools. Always provi
     }
 
     setupEventListeners() {
-        // MCP Configure button
-        const mcpConfigBtn = document.getElementById('mcp-configure-btn');
-        if (mcpConfigBtn) {
-            mcpConfigBtn.addEventListener('click', () => {
+        // Use event delegation for the MCP Configure button
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'mcp-configure-btn' || e.target.closest('#mcp-configure-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
                 if (window.mcpConfigUI) {
                     window.mcpConfigUI.show();
+                } else {
+                    console.error('MCP Config UI not available');
                 }
-            });
-        }
+            }
+        });
         
         // Provider selection
         document.addEventListener('click', (e) => {
@@ -712,14 +732,17 @@ You can also create and update pipelines using the available tools. Always provi
                     models = provider.defaultModels;
                     provider.models = models;
                 } catch (error) {
-                    // Re-throw authentication errors
+                    // Re-throw authentication errors only if we got a response
                     if (error.message && (error.message.includes('Invalid') || error.message.includes('forbidden') || error.message.includes('Rate limit'))) {
                         throw error;
                     }
-                    // For network/CORS errors, we can't validate but we'll allow usage
+                    // For network/CORS/CSP errors, we can't validate but we'll allow usage
                     console.warn('Could not validate API key due to network restrictions:', error);
                     models = provider.defaultModels;
                     provider.models = models;
+                    
+                    // Show a warning but allow model selection
+                    this.showNotification('API key validation skipped due to security restrictions. The key will be used when sending messages.', 'warning');
                 }
             }
             
@@ -739,23 +762,38 @@ You can also create and update pipelines using the available tools. Always provi
         } catch (error) {
             console.error('Error fetching models:', error);
             
-            // Clear the model dropdown and keep it disabled
-            modelSelect.innerHTML = '<option value="">No models available</option>';
-            modelSelect.disabled = true;
+            // Check if it's a CSP/network error that we should handle gracefully
+            const isNetworkError = error.name === 'TypeError' && error.message.includes('Failed to fetch');
+            const isCSPError = error.message && error.message.includes('Content Security Policy');
             
-            // Clear stored models
-            provider.models = [];
-            
-            // Show specific error message
-            let errorMessage = error.message || 'Failed to validate API key';
-            
-            // Don't show error notification for network issues during initial load
-            if (!error.message || !error.message.includes('network')) {
-                this.showError(errorMessage);
+            if (isNetworkError || isCSPError) {
+                // For network/CSP errors, show available models anyway
+                models = provider.defaultModels;
+                provider.models = models;
+                
+                modelSelect.innerHTML = '<option value="">Select a model</option>' + 
+                    models.map(model => `<option value="${model}">${model}</option>`).join('');
+                modelSelect.disabled = false;
+                
+                // If a model was previously selected and is still available, select it
+                if (this.selectedModel && models.includes(this.selectedModel)) {
+                    modelSelect.value = this.selectedModel;
+                }
+                
+                // Don't show error for CSP issues, just a warning
+                console.warn('Using default models due to network restrictions');
+            } else {
+                // For actual API errors, show error message
+                modelSelect.innerHTML = '<option value="">No models available</option>';
+                modelSelect.disabled = true;
+                provider.models = [];
+                
+                // Show specific error message
+                this.showError(error.message || 'Failed to validate API key');
+                
+                // Clear selected model
+                this.selectedModel = null;
             }
-            
-            // Clear selected model
-            this.selectedModel = null;
         }
     }
 
