@@ -102,7 +102,15 @@ You can also create and update pipelines using the available tools. Always provi
             const parsed = JSON.parse(settings);
             this.currentProvider = parsed.provider;
             this.selectedModel = parsed.model;
-            // Don't load API key for security
+        }
+        
+        // Load API keys from sessionStorage (cleared when browser closes)
+        const apiKeys = sessionStorage.getItem('ai-assistant-keys');
+        if (apiKeys) {
+            const parsed = JSON.parse(apiKeys);
+            if (this.currentProvider && parsed[this.currentProvider]) {
+                this.apiKey = parsed[this.currentProvider];
+            }
         }
     }
 
@@ -111,6 +119,13 @@ You can also create and update pipelines using the available tools. Always provi
             provider: this.currentProvider,
             model: this.selectedModel
         }));
+        
+        // Save API keys to sessionStorage
+        if (this.apiKey && this.currentProvider) {
+            const apiKeys = JSON.parse(sessionStorage.getItem('ai-assistant-keys') || '{}');
+            apiKeys[this.currentProvider] = this.apiKey;
+            sessionStorage.setItem('ai-assistant-keys', JSON.stringify(apiKeys));
+        }
     }
 
     createUI() {
@@ -442,6 +457,56 @@ You can also create and update pipelines using the available tools. Always provi
                     background: var(--bg-secondary);
                     border-radius: 8px;
                     line-height: 1.5;
+                }
+                
+                .message-content p {
+                    margin: 0 0 0.5rem 0;
+                }
+                
+                .message-content p:last-child {
+                    margin-bottom: 0;
+                }
+                
+                .message-content pre {
+                    background: var(--bg-primary);
+                    border: 1px solid var(--border-color);
+                    border-radius: 4px;
+                    padding: 0.75rem;
+                    margin: 0.5rem 0;
+                    overflow-x: auto;
+                }
+                
+                .message-content code {
+                    background: var(--bg-primary);
+                    padding: 0.1rem 0.3rem;
+                    border-radius: 3px;
+                    font-family: 'Monaco', 'Menlo', monospace;
+                    font-size: 0.9em;
+                }
+                
+                .message-content pre code {
+                    background: none;
+                    padding: 0;
+                    font-size: 0.875rem;
+                }
+                
+                .message-content ul,
+                .message-content ol {
+                    margin: 0.5rem 0;
+                    padding-left: 1.5rem;
+                }
+                
+                .message-content li {
+                    margin: 0.25rem 0;
+                }
+                
+                .message-content strong {
+                    font-weight: 600;
+                    color: var(--text-primary);
+                }
+                
+                .message-content em {
+                    font-style: italic;
                 }
 
                 .ai-message-user .message-content {
@@ -960,6 +1025,18 @@ You can also create and update pipelines using the available tools. Always provi
             if (this.selectedModel) {
                 document.getElementById('ai-model').value = this.selectedModel;
             }
+            
+            // Restore API key from session storage
+            const apiKeys = JSON.parse(sessionStorage.getItem('ai-assistant-keys') || '{}');
+            if (apiKeys[this.currentProvider]) {
+                const apiKeyInput = document.getElementById('ai-api-key');
+                if (apiKeyInput) {
+                    apiKeyInput.value = apiKeys[this.currentProvider];
+                    this.apiKey = apiKeys[this.currentProvider];
+                    // Trigger model loading
+                    this.fetchAvailableModels();
+                }
+            }
         }
     }
 
@@ -1231,10 +1308,13 @@ The application is currently restricted to only connect to 'self' and 'api.build
         
         const icon = type === 'user' ? 'fa-user' : 'fa-magic';
         
+        // Format content if it's from assistant
+        const formattedContent = type === 'assistant' && !isError ? this.formatMessage(content) : content;
+        
         messageEl.innerHTML = `
             <i class="fas ${icon}"></i>
             <div class="message-content">
-                ${isError ? `<div class="ai-error">${content}</div>` : content}
+                ${isError ? `<div class="ai-error">${content}</div>` : formattedContent}
             </div>
         `;
         
@@ -1245,6 +1325,53 @@ The application is currently restricted to only connect to 'self' and 'api.build
         this.conversationHistory.push({ role: type, content });
         
         return messageEl;
+    }
+    
+    formatMessage(content) {
+        // Escape HTML first
+        let formatted = content.replace(/&/g, '&amp;')
+                             .replace(/</g, '&lt;')
+                             .replace(/>/g, '&gt;');
+        
+        // Format code blocks with syntax highlighting
+        formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+            const language = lang || 'plaintext';
+            return `<pre><code class="language-${language}">${code.trim()}</code></pre>`;
+        });
+        
+        // Format inline code
+        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Format bold text
+        formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // Format italic text
+        formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        // Format numbered lists
+        formatted = formatted.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+        formatted = formatted.replace(/(<li>.*<\/li>\n?)+/g, '<ol>$&</ol>');
+        
+        // Format bullet lists
+        formatted = formatted.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+        formatted = formatted.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
+            // Only wrap in <ul> if not already in <ol>
+            if (!match.includes('<ol>')) {
+                return '<ul>' + match + '</ul>';
+            }
+            return match;
+        });
+        
+        // Format paragraphs
+        formatted = formatted.replace(/\n\n/g, '</p><p>');
+        formatted = '<p>' + formatted + '</p>';
+        
+        // Clean up empty paragraphs
+        formatted = formatted.replace(/<p>\s*<\/p>/g, '');
+        formatted = formatted.replace(/<p>(<pre>|<ul>|<ol>)/g, '$1');
+        formatted = formatted.replace(/(<\/pre>|<\/ul>|<\/ol>)<\/p>/g, '$1');
+        
+        return formatted;
     }
 
     addThinkingIndicator() {
