@@ -324,9 +324,7 @@ class YAMLGenerator {
                 yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
             }
             
-            if (step.key) {
-                yaml += this.indent() + `key: ${this.quote(step.key)}\n`;
-            }
+            // Note: key is not valid at step level for block steps - only on fields
             
             if (step.fields && step.fields.length > 0) {
                 yaml += this.indent() + 'fields:\n';
@@ -360,9 +358,7 @@ class YAMLGenerator {
             yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
         }
         
-        if (step.key) {
-            yaml += this.indent() + `key: ${this.quote(step.key)}\n`;
-        }
+        // Note: key is not valid at step level for input steps - only on fields
         
         if (step.fields && step.fields.length > 0) {
             yaml += this.indent() + 'fields:\n';

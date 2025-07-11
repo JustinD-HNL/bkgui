@@ -1054,19 +1054,19 @@ class PipelineBuilder {
                 block: '🚦 Manual Approval',
                 prompt: 'Please review and approve deployment',
                 fields: [],
-                blocked_state: 'passed',
-                key: `block_${this.stepCounter}`
+                blocked_state: 'passed'
+                // Note: key is not valid at step level for block steps - only on fields
             },
             input: {
                 input: 'Deployment Configuration',
                 prompt: 'Please provide input',
                 fields: [{
-                    key: 'release-version',
+                    key: 'release_version',  // Note: field keys should use underscores, not hyphens
                     text: 'Release Version',
                     required: true,
                     default: '1.0.0'
-                }],
-                key: `input_${this.stepCounter}`
+                }]
+                // Note: key is not valid at step level for input steps - only on fields
             },
             trigger: {
                 trigger: 'deploy-pipeline',
@@ -1081,7 +1081,7 @@ class PipelineBuilder {
             },
             group: {
                 group: '📁 Test Suite',
-                key: `group_${this.stepCounter}`,
+                // Note: key is not valid at step level for group steps
                 steps: [],
                 depends_on: null,
                 allow_dependency_failure: false
