@@ -1290,11 +1290,14 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
 
     processAIResponse(response) {
+        console.log('🤖 Processing AI response:', response);
         try {
             // Try to parse as JSON first
             const parsed = JSON.parse(response);
+            console.log('✅ Successfully parsed JSON:', parsed);
             
             if (parsed.action === 'create_pipeline' && parsed.steps) {
+                console.log('🏗️ Detected create_pipeline action with steps:', parsed.steps);
                 this.handlePipelineCreation(parsed.steps, 'Here\'s the pipeline I created for you:');
             } else if (parsed.action === 'mcp_tool' && parsed.tool) {
                 this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
@@ -1303,49 +1306,110 @@ The application is currently restricted to only connect to 'self' and 'api.build
                 this.addMessage('assistant', response);
             }
         } catch (e) {
+            console.log('⚠️ Failed to parse as JSON, checking for JSON blocks in text');
             // Not JSON, treat as regular text
             // Check for JSON blocks with or without language identifier
             const jsonMatches = [
                 response.match(/```json\n?([\s\S]+?)\n?```/),
                 response.match(/```\n?([\s\S]+?)\n?```/),
                 response.match(/\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\}(?=\s*\n|$)/),
-                response.match(/\{\s*"action"\s*:\s*"mcp_tool"[\s\S]+?\}(?=\s*\n|$)/)
+                response.match(/\{\s*"action"\s*:\s*"mcp_tool"[\s\S]+?\}(?=\s*\n|$)/),
+                // Add more flexible pattern to catch multi-line JSON blocks
+                response.match(/(\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\n\})/),
+                // Pattern to catch JSON that might have trailing text
+                response.match(/(\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\]\s*\})/m),
+                // Pattern for compact single-line JSON
+                response.match(/(\{ "action": "create_pipeline", "steps": \[[\s\S]+?\] \})/),
+                // More flexible pattern for any JSON object starting with { and ending with }
+                response.match(/(\{[^{}]*"action"[^{}]*:[^{}]*"create_pipeline"[^{}]*"steps"[^{}]*:\s*\[[^\]]+\][^{}]*\})/s)
             ];
             
             let jsonFound = false;
-            for (const match of jsonMatches) {
-                if (match) {
+            
+            // First, try to find a clean JSON object in the response
+            const jsonStart = response.indexOf('{ "action": "create_pipeline"');
+            if (jsonStart !== -1) {
+                console.log('🔍 Found JSON start at position:', jsonStart);
+                // Find the matching closing brace
+                let braceCount = 0;
+                let jsonEnd = -1;
+                for (let i = jsonStart; i < response.length; i++) {
+                    if (response[i] === '{') braceCount++;
+                    if (response[i] === '}') braceCount--;
+                    if (braceCount === 0) {
+                        jsonEnd = i + 1;
+                        break;
+                    }
+                }
+                
+                if (jsonEnd !== -1) {
+                    const jsonStr = response.substring(jsonStart, jsonEnd);
+                    console.log('🔍 Extracted JSON:', jsonStr);
                     try {
-                        const jsonStr = match[1] || match[0];
                         const parsed = JSON.parse(jsonStr);
-                        
                         if (parsed.action === 'create_pipeline' && parsed.steps) {
-                            const jsonStartIndex = response.indexOf(match[0]);
-                            const textBefore = response.substring(0, jsonStartIndex);
-                            const textAfter = response.substring(jsonStartIndex + match[0].length);
+                            console.log('🎯 Successfully parsed pipeline JSON:', parsed);
                             
-                            // Process the text before JSON
-                            if (textBefore.trim()) {
-                                this.addMessage('assistant', textBefore.trim());
+                            const textBefore = response.substring(0, jsonStart).trim();
+                            const textAfter = response.substring(jsonEnd).trim();
+                            
+                            if (textBefore) {
+                                this.addMessage('assistant', textBefore);
                             }
                             
-                            // Handle the pipeline creation
                             this.handlePipelineCreation(parsed.steps, 'Here\'s the pipeline configuration:');
                             
-                            // Process the text after JSON
-                            if (textAfter.trim()) {
-                                this.addMessage('assistant', textAfter.trim());
+                            if (textAfter) {
+                                this.addMessage('assistant', textAfter);
                             }
                             
                             jsonFound = true;
-                            break;
-                        } else if (parsed.action === 'mcp_tool' && parsed.tool) {
-                            this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
-                            jsonFound = true;
-                            break;
                         }
-                    } catch (e2) {
-                        console.debug('Failed to parse potential JSON:', e2);
+                    } catch (e) {
+                        console.error('❌ Failed to parse extracted JSON:', e);
+                    }
+                }
+            }
+            
+            // If no JSON found with the new method, try the regex patterns
+            if (!jsonFound) {
+                for (const match of jsonMatches) {
+                    if (match) {
+                        console.log('🔍 Found potential JSON match with regex:', match);
+                        try {
+                            const jsonStr = match[1] || match[0];
+                            console.log('🔍 Attempting to parse JSON string:', jsonStr);
+                            const parsed = JSON.parse(jsonStr);
+                        
+                            if (parsed.action === 'create_pipeline' && parsed.steps) {
+                                console.log('🎯 Found create_pipeline JSON in text:', parsed);
+                                const jsonStartIndex = response.indexOf(match[0]);
+                                const textBefore = response.substring(0, jsonStartIndex);
+                                const textAfter = response.substring(jsonStartIndex + match[0].length);
+                                
+                                // Process the text before JSON
+                                if (textBefore.trim()) {
+                                    this.addMessage('assistant', textBefore.trim());
+                                }
+                                
+                                // Handle the pipeline creation
+                                this.handlePipelineCreation(parsed.steps, 'Here\'s the pipeline configuration:');
+                                
+                                // Process the text after JSON
+                                if (textAfter.trim()) {
+                                    this.addMessage('assistant', textAfter.trim());
+                                }
+                                
+                                jsonFound = true;
+                                break;
+                            } else if (parsed.action === 'mcp_tool' && parsed.tool) {
+                                this.handleMCPToolCall(parsed.tool, parsed.parameters || {});
+                                jsonFound = true;
+                                break;
+                            }
+                        } catch (e2) {
+                            console.debug('Failed to parse potential JSON:', e2);
+                        }
                     }
                 }
             }
@@ -1358,6 +1422,7 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
 
     handlePipelineCreation(steps, message, additionalText = '') {
+        console.log('📋 handlePipelineCreation called with:', { steps, message });
         // Directly apply the pipeline steps to the middle window
         this.applyPipeline(steps, false); // Don't clear existing by default
         
@@ -1424,7 +1489,11 @@ The application is currently restricted to only connect to 'self' and 'api.build
     }
 
     applyPipeline(steps, clearExisting = true) {
+        console.log('🔧 applyPipeline called with:', { steps, clearExisting });
+        console.log('🔍 window.pipelineBuilder:', window.pipelineBuilder);
+        
         if (!window.pipelineBuilder) {
+            console.error('❌ Pipeline builder not available!');
             this.showNotification('Pipeline builder not available', 'error');
             return;
         }
@@ -1436,10 +1505,16 @@ The application is currently restricted to only connect to 'self' and 'api.build
         
         // Add new steps directly to the pipeline
         steps.forEach((step, index) => {
-            const newStep = window.pipelineBuilder.addStep(step.type || 'command');
+            console.log(`➕ Adding step ${index + 1}:`, step);
+            const stepType = step.type || 'command';
+            const newStep = window.pipelineBuilder.addStep(stepType);
+            console.log(`✅ Created step:`, newStep);
+            
             if (newStep && step.properties) {
+                console.log('📝 Merging properties:', step.properties);
                 // Merge properties into the new step
                 Object.assign(newStep.properties, step.properties);
+                console.log('📝 Step after merge:', newStep);
             }
         });
         

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test AI Pipeline Creation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-response {
+            background: #f0f0f0;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test AI Pipeline Creation</h1>
+    
+    <div class="test-response">
+I'll help you create a comprehensive CI/CD pipeline for a Node.js application. I'll create a pipeline that includes installing dependencies, running tests, building the application, and deploying it.
+
+{ "action": "create_pipeline", "steps": [ { "type": "command", "properties": { "label": "🔧 Install Dependencies", "command": "npm install", "key": "install" } }, { "type": "command", "properties": { "label": "🧪 Run Tests", "command": "npm test", "key": "test", "depends_on": "install" } }, { "type": "command", "properties": { "label": "📦 Build Application", "command": "npm run build", "key": "build", "depends_on": "test" } }, { "type": "command", "properties": { "label": "🚀 Deploy to Staging", "command": "npm run deploy:staging", "key": "deploy-staging", "depends_on": "build", "branches": "main" } } ] }
+
+I've created a pipeline with four main steps:
+    </div>
+    
+    <button onclick="testJSONParsing()">Test JSON Parsing</button>
+    <button onclick="testPipelineCreation()">Test Pipeline Creation</button>
+    <button onclick="clearConsole()">Clear Console</button>
+    
+    <div class="console-output" id="console"></div>
+    
+    <script>
+        const testResponse = `I'll help you create a comprehensive CI/CD pipeline for a Node.js application. I'll create a pipeline that includes installing dependencies, running tests, building the application, and deploying it.
+
+{ "action": "create_pipeline", "steps": [ { "type": "command", "properties": { "label": "🔧 Install Dependencies", "command": "npm install", "key": "install" } }, { "type": "command", "properties": { "label": "🧪 Run Tests", "command": "npm test", "key": "test", "depends_on": "install" } }, { "type": "command", "properties": { "label": "📦 Build Application", "command": "npm run build", "key": "build", "depends_on": "test" } }, { "type": "command", "properties": { "label": "🚀 Deploy to Staging", "command": "npm run deploy:staging", "key": "deploy-staging", "depends_on": "build", "branches": "main" } } ] }
+
+I've created a pipeline with four main steps:`;
+
+        function log(message, type = 'info') {
+            const consoleEl = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#f00' : type === 'success' ? '#0f0' : '#fff';
+            consoleEl.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+        
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+        
+        function testJSONParsing() {
+            log('Testing JSON parsing with the exact response format...');
+            
+            // Try direct JSON parsing
+            try {
+                const parsed = JSON.parse(testResponse);
+                log('Direct JSON parse succeeded: ' + JSON.stringify(parsed), 'success');
+            } catch (e) {
+                log('Direct JSON parse failed (expected): ' + e.message, 'error');
+            }
+            
+            // Try regex patterns
+            const patterns = [
+                /```json\n?([\s\S]+?)\n?```/,
+                /```\n?([\s\S]+?)\n?```/,
+                /\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\}(?=\s*\n|$)/,
+                /(\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\n\})/,
+                /(\{\s*"action"\s*:\s*"create_pipeline"[\s\S]+?\]\s*\})/m,
+                // New pattern to handle single-line JSON with proper escaping
+                /(\{[^{}]*"action"[^{}]*:[^{}]*"create_pipeline"[^{}]*\})/,
+                // Pattern to handle multi-line compact JSON
+                /(\{\s*"action"\s*:\s*"create_pipeline"[^}]+\}\s*\]\s*\})/s
+            ];
+            
+            patterns.forEach((pattern, index) => {
+                const match = testResponse.match(pattern);
+                if (match) {
+                    log(`Pattern ${index + 1} matched!`, 'success');
+                    try {
+                        const jsonStr = match[1] || match[0];
+                        log('Extracted JSON: ' + jsonStr.substring(0, 100) + '...');
+                        const parsed = JSON.parse(jsonStr);
+                        log('Successfully parsed! Action: ' + parsed.action + ', Steps: ' + parsed.steps.length, 'success');
+                    } catch (e) {
+                        log('Failed to parse extracted JSON: ' + e.message, 'error');
+                    }
+                } else {
+                    log(`Pattern ${index + 1} did not match`);
+                }
+            });
+        }
+        
+        function testPipelineCreation() {
+            log('Testing pipeline creation flow...');
+            
+            // Mock pipeline builder
+            window.pipelineBuilder = {
+                steps: [],
+                addStep: function(type) {
+                    const step = {
+                        id: 'step-' + Date.now() + '-' + Math.random(),
+                        type: type,
+                        properties: {}
+                    };
+                    this.steps.push(step);
+                    log(`Added step: ${type} with ID: ${step.id}`, 'success');
+                    return step;
+                },
+                renderPipeline: function() {
+                    log('renderPipeline called');
+                },
+                selectStep: function(step) {
+                    log('selectStep called with: ' + step.id);
+                },
+                updateStepCount: function() {
+                    log('updateStepCount called');
+                },
+                saveToLocalStorage: function() {
+                    log('saveToLocalStorage called');
+                }
+            };
+            
+            // Test the exact JSON structure
+            const jsonStr = `{ "action": "create_pipeline", "steps": [ { "type": "command", "properties": { "label": "🔧 Install Dependencies", "command": "npm install", "key": "install" } }, { "type": "command", "properties": { "label": "🧪 Run Tests", "command": "npm test", "key": "test", "depends_on": "install" } }, { "type": "command", "properties": { "label": "📦 Build Application", "command": "npm run build", "key": "build", "depends_on": "test" } }, { "type": "command", "properties": { "label": "🚀 Deploy to Staging", "command": "npm run deploy:staging", "key": "deploy-staging", "depends_on": "build", "branches": "main" } } ] }`;
+            
+            try {
+                const parsed = JSON.parse(jsonStr);
+                log('JSON parsed successfully!', 'success');
+                log('Steps to add: ' + parsed.steps.length);
+                
+                parsed.steps.forEach((step, index) => {
+                    log(`Processing step ${index + 1}: ${step.properties.label}`);
+                    const newStep = window.pipelineBuilder.addStep(step.type || 'command');
+                    if (newStep && step.properties) {
+                        Object.assign(newStep.properties, step.properties);
+                        log(`Properties assigned: ${JSON.stringify(step.properties)}`);
+                    }
+                });
+                
+                log('All steps processed successfully!', 'success');
+            } catch (e) {
+                log('Error: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
