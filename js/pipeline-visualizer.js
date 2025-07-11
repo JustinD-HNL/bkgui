@@ -46,6 +46,25 @@ class PipelineVisualizer {
                 this.showPreview();
             }
         });
+
+        // Close modal handlers
+        const modal = document.getElementById('pipeline-preview-modal');
+        if (modal) {
+            // Close button
+            const closeBtn = modal.querySelector('.close-modal');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+            }
+
+            // Click outside modal
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
     }
 
     switchTab(tabName) {
@@ -65,6 +84,14 @@ class PipelineVisualizer {
                          document.getElementById(`${tabName}-preview-tab`);
         if (activeTab) {
             activeTab.style.display = 'block';
+            
+            // Show loading state for YAML tab
+            if (tabName === 'yaml') {
+                const yamlContent = document.getElementById('preview-yaml-content');
+                if (yamlContent) {
+                    yamlContent.textContent = 'Loading YAML...';
+                }
+            }
         }
 
         // Render content based on tab
@@ -84,6 +111,13 @@ class PipelineVisualizer {
         }
 
         this.pipelineBuilder = window.pipelineBuilder;
+        
+        console.log('📊 Opening pipeline preview:', {
+            pipelineBuilder: !!this.pipelineBuilder,
+            yamlGenerator: !!window.yamlGenerator,
+            steps: this.pipelineBuilder?.steps?.length || 0,
+            currentView: this.currentView
+        });
         
         // Show modal
         const modal = document.getElementById('pipeline-preview-modal');
@@ -237,14 +271,48 @@ class PipelineVisualizer {
 
     renderYAMLView() {
         const container = document.getElementById('preview-yaml-content');
-        if (!container || !window.yamlGenerator) return;
+        if (!container) {
+            console.error('YAML preview container not found');
+            return;
+        }
 
-        const yaml = window.yamlGenerator.generate({ steps: this.pipelineBuilder.steps });
-        container.textContent = yaml;
+        if (!window.yamlGenerator) {
+            console.error('YAML generator not available');
+            container.textContent = 'Error: YAML generator not loaded';
+            return;
+        }
 
-        // Apply syntax highlighting if available
-        if (window.Prism) {
-            container.innerHTML = window.Prism.highlight(yaml, window.Prism.languages.yaml, 'yaml');
+        if (!this.pipelineBuilder || !this.pipelineBuilder.steps) {
+            console.error('Pipeline builder or steps not available');
+            container.textContent = 'Error: No pipeline steps to display';
+            return;
+        }
+
+        try {
+            // Try both generate and generateYAML methods for compatibility
+            let yaml;
+            if (typeof window.yamlGenerator.generate === 'function') {
+                yaml = window.yamlGenerator.generate({ steps: this.pipelineBuilder.steps });
+            } else if (typeof window.yamlGenerator.generateYAML === 'function') {
+                yaml = window.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
+            } else {
+                throw new Error('No valid YAML generation method found');
+            }
+
+            if (!yaml) {
+                container.textContent = 'No YAML content generated';
+                return;
+            }
+
+            container.textContent = yaml;
+
+            // Apply syntax highlighting if available
+            if (window.Prism && window.Prism.languages.yaml) {
+                container.innerHTML = window.Prism.highlight(yaml, window.Prism.languages.yaml, 'yaml');
+            }
+        } catch (error) {
+            console.error('Error generating YAML:', error);
+            container.textContent = `Error generating YAML: ${error.message}`;
         }
     }
 
