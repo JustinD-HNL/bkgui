@@ -540,11 +540,31 @@ class PipelineBuilder {
             if (e.target.closest('#properties-content') || e.target.closest('#step-properties')) {
                 this.handlePropertyChange(e);
             }
+            
+            // Custom attribute change handlers
+            if (e.target.matches('.custom-attr-key, .custom-attr-value')) {
+                const index = parseInt(e.target.dataset.index, 10);
+                const field = e.target.dataset.field;
+                if (index !== undefined && field) {
+                    this.updateCustomAttribute(index, field, e.target.value);
+                }
+            }
         });
 
         document.addEventListener('click', (e) => {
             if (e.target.closest('[data-action]')) {
-                this.handlePropertyAction(e);
+                const btn = e.target.closest('[data-action]');
+                const action = btn.dataset.action;
+                
+                // Handle empty state buttons
+                if (action === 'add-command') {
+                    this.addStep('command');
+                } else if (action === 'load-example') {
+                    this.loadExample();
+                } else {
+                    // Handle property actions
+                    this.handlePropertyAction(e);
+                }
             }
         });
 
@@ -969,10 +989,10 @@ class PipelineBuilder {
                 <p>Drag steps here to build your pipeline</p>
                 <p class="hint">Start with a command step or load an example</p>
                 <div class="quick-start-buttons">
-                    <button class="btn btn-primary" onclick="window.pipelineBuilder.addStep('command')">
+                    <button class="btn btn-primary" data-action="add-command">
                         <i class="fas fa-plus"></i> Add Command Step
                     </button>
-                    <button class="btn btn-secondary" onclick="window.pipelineBuilder.loadExample()">
+                    <button class="btn btn-secondary" data-action="load-example">
                         <i class="fas fa-file-import"></i> Load Example
                     </button>
                 </div>
@@ -2003,7 +2023,7 @@ class PipelineBuilder {
                 <div class="property-group">
                     <label>Matrix Build</label>
                     ${this.renderMatrixSummary(step)}
-                    <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.showMatrixBuilder()">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="configure-matrix">
                         <i class="fas fa-th"></i> Configure Matrix
                     </button>
                 </div>
@@ -2036,7 +2056,7 @@ class PipelineBuilder {
                 </div>
                 <div class="property-group">
                     <label>Environment Variables</label>
-                    <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.quickActions?.['variable-manager']?.()">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="manage-variables">
                         <i class="fas fa-dollar-sign"></i> Manage Variables
                     </button>
                 </div>
@@ -2050,7 +2070,7 @@ class PipelineBuilder {
                 <div class="property-group">
                     <label>Conditional Execution</label>
                     <input type="text" id="step-if" value="${step.properties.if || ''}" placeholder="e.g., build.branch == 'main'">
-                    <button type="button" class="btn btn-secondary btn-small" onclick="window.buildkiteApp?.quickActions?.['conditional-logic']?.()">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="build-condition">
                         <i class="fas fa-code-branch"></i> Build Condition
                     </button>
                 </div>
@@ -2059,7 +2079,7 @@ class PipelineBuilder {
                     <div id="custom-attributes-container">
                         ${this.renderCustomAttributes(step)}
                     </div>
-                    <button type="button" class="btn btn-secondary btn-small" onclick="window.pipelineBuilder?.addCustomAttribute()">
+                    <button type="button" class="btn btn-secondary btn-small" data-action="add-custom-attribute">
                         <i class="fas fa-plus"></i> Add Custom Attribute
                     </button>
                     <small>Add any Buildkite step attributes not covered above</small>
@@ -3046,6 +3066,33 @@ class PipelineBuilder {
                 this.saveToLocalStorage();
             }
                 }
+                break;
+                
+            case 'configure-matrix':
+                if (window.buildkiteApp) {
+                    window.buildkiteApp.handleQuickAction('matrix-builder');
+                }
+                break;
+                
+            case 'manage-variables':
+                if (window.buildkiteApp) {
+                    window.buildkiteApp.handleQuickAction('variable-manager');
+                }
+                break;
+                
+            case 'build-condition':
+                if (window.buildkiteApp) {
+                    window.buildkiteApp.handleQuickAction('conditional-logic');
+                }
+                break;
+                
+            case 'add-custom-attribute':
+                this.addCustomAttribute();
+                break;
+                
+            case 'remove-custom-attr':
+                const attrIndex = parseInt(e.target.closest('[data-action="remove-custom-attr"]').dataset.index);
+                this.removeCustomAttribute(attrIndex);
                 break;
         }
     }
@@ -5107,15 +5154,15 @@ class PipelineBuilder {
                            class="custom-attr-key" 
                            value="${this.escapeHtml(key)}" 
                            placeholder="Attribute name"
-                           onchange="window.pipelineBuilder?.updateCustomAttribute(${index}, 'key', this.value)">
+                           data-index="${index}" data-field="key">
                     <input type="text" 
                            class="custom-attr-value" 
                            value="${this.escapeHtml(String(value))}" 
                            placeholder="Attribute value"
-                           onchange="window.pipelineBuilder?.updateCustomAttribute(${index}, 'value', this.value)">
+                           data-index="${index}" data-field="value">
                     <button type="button" 
                             class="btn btn-danger btn-small" 
-                            onclick="window.pipelineBuilder?.removeCustomAttribute(${index})">
+                            data-action="remove-custom-attr" data-index="${index}">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>

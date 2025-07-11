@@ -52,6 +52,36 @@ class MatrixBuilder {
                 this.closeModal();
             }
         });
+        
+        // Event delegation for dynamic buttons
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            
+            const action = btn.dataset.action;
+            const dimension = btn.dataset.dimension;
+            
+            if (action === 'remove-dimension') {
+                this.removeDimension(dimension);
+            } else if (action === 'remove-value') {
+                const index = parseInt(btn.dataset.index, 10);
+                this.removeValue(dimension, index);
+            } else if (action === 'add-value') {
+                this.addValue(dimension);
+            }
+        });
+        
+        // Event delegation for input changes
+        document.addEventListener('change', (e) => {
+            if (e.target.matches('.dimension-name')) {
+                const oldName = e.target.dataset.dimension;
+                this.updateDimensionName(oldName, e.target.value);
+            } else if (e.target.matches('.dimension-value-input')) {
+                const dimension = e.target.dataset.dimension;
+                const index = parseInt(e.target.dataset.index, 10);
+                this.updateValue(dimension, index, e.target.value);
+            }
+        });
     }
 
     openForStep(step) {
@@ -134,9 +164,9 @@ class MatrixBuilder {
                 <div class="dimension-header">
                     <input type="text" class="dimension-name" value="${name}" 
                            placeholder="Dimension name"
-                           onchange="window.matrixBuilder.updateDimensionName('${name}', this.value)">
+                           data-dimension="${name}">
                     <button class="btn btn-small btn-danger" 
-                            onclick="window.matrixBuilder.removeDimension('${name}')">
+                            data-action="remove-dimension" data-dimension="${name}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -145,15 +175,16 @@ class MatrixBuilder {
                         <div class="dimension-value">
                             <input type="text" value="${value}" 
                                    placeholder="Value"
-                                   onchange="window.matrixBuilder.updateValue('${name}', ${index}, this.value)">
+                                   class="dimension-value-input"
+                                   data-dimension="${name}" data-index="${index}">
                             <button class="btn btn-small btn-danger" 
-                                    onclick="window.matrixBuilder.removeValue('${name}', ${index})">
+                                    data-action="remove-value" data-dimension="${name}" data-index="${index}">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                     `).join('')}
                     <button class="btn btn-small btn-secondary" 
-                            onclick="window.matrixBuilder.addValue('${name}')">
+                            data-action="add-value" data-dimension="${name}">
                         <i class="fas fa-plus"></i> Add Value
                     </button>
                 </div>

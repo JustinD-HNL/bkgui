@@ -97,6 +97,23 @@ class ArtifactManager {
         if (applyBtn) {
             applyBtn.addEventListener('click', () => this.applyChanges());
         }
+        
+        // Event delegation for dynamic buttons
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            
+            const action = btn.dataset.action;
+            
+            if (action === 'test-pattern') {
+                const path = btn.dataset.path;
+                this.testPattern(path);
+            } else if (action === 'remove-path') {
+                const type = btn.dataset.type;
+                const index = parseInt(btn.dataset.index, 10);
+                this.removePath(type, index);
+            }
+        });
     }
 
     switchTab(tabName) {
@@ -190,10 +207,10 @@ class ArtifactManager {
                 <span class="path-type">${type === 'upload' ? '↑' : '↓'}</span>
             </div>
             <div class="path-actions">
-                <button class="btn-icon" onclick="artifactManager.testPattern('${path}')">
+                <button class="btn-icon" data-action="test-pattern" data-path="${path}">
                     <i class="fas fa-vial"></i>
                 </button>
-                <button class="btn-icon" onclick="artifactManager.removePath('${type}', ${index})">
+                <button class="btn-icon" data-action="remove-path" data-type="${type}" data-index="${index}">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>

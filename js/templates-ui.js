@@ -49,7 +49,7 @@ class TemplatesUI {
                 Object.keys(this.templates.templates).length : 0;
             
             templatesBtn.innerHTML = `<i class="fas fa-file-code"></i> Templates${templateCount > 0 ? ` (${templateCount})` : ''}`;
-            templatesBtn.onclick = () => this.showTemplatesModal();
+            templatesBtn.addEventListener('click', () => this.showTemplatesModal());
             
             // Insert at the beginning of actions
             actionsContainer.insertBefore(templatesBtn, actionsContainer.firstChild);

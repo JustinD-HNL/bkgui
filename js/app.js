@@ -1742,13 +1742,17 @@ class BuildkiteApp {
     }
 
     exportYAML() {
+        // First ensure YAML is up to date
+        this.updateYAML();
+        
+        // Get the current YAML content
         const yamlContent = document.getElementById('yaml-content')?.textContent || 
                            document.getElementById('yaml-output')?.textContent ||
                            (this.yamlGenerator && this.pipelineBuilder ? 
                             this.yamlGenerator.generate(this.pipelineBuilder.exportConfig()) : '');
         
-        if (!yamlContent) {
-            this.showNotification('No YAML content to export', 'warning');
+        if (!yamlContent || yamlContent.trim() === 'steps: []') {
+            this.showNotification('No pipeline steps to export', 'warning');
             return;
         }
         
@@ -1815,7 +1819,7 @@ class BuildkiteApp {
         // Export SDK Code button
         const exportBtn = document.getElementById('export-sdk-code');
         if (exportBtn) {
-            exportBtn.onclick = () => {
+            exportBtn.addEventListener('click', () => {
                 const language = document.querySelector('input[name="sdk-language"]:checked')?.value || 'javascript';
                 const sdkCode = window.buildkiteSDK.generateSDKCode(this.pipelineBuilder.steps, language);
                 
@@ -1833,13 +1837,13 @@ class BuildkiteApp {
                 }
                 
                 this.showNotification(`Generated ${language} SDK code`, 'success');
-            };
+            });
         }
         
         // Import SDK Code button
         const importBtn = document.getElementById('import-sdk-code');
         if (importBtn) {
-            importBtn.onclick = () => {
+            importBtn.addEventListener('click', () => {
                 const codeInput = document.getElementById('sdk-import-code');
                 if (!codeInput?.value) {
                     this.showNotification('Please paste SDK code to import', 'warning');
@@ -1862,13 +1866,13 @@ class BuildkiteApp {
                     console.error('Failed to parse SDK code:', error);
                     this.showNotification('Failed to parse SDK code', 'error');
                 }
-            };
+            });
         }
         
         // Validate SDK button
         const validateBtn = document.getElementById('validate-sdk');
         if (validateBtn) {
-            validateBtn.onclick = () => {
+            validateBtn.addEventListener('click', () => {
                 const validation = window.buildkiteSDK.validatePipeline(this.pipelineBuilder.steps);
                 const resultsDiv = document.getElementById('sdk-validation-results');
                 
@@ -1904,26 +1908,26 @@ class BuildkiteApp {
                     resultsDiv.innerHTML = html;
                     resultsDiv.style.display = 'block';
                 }
-            };
+            });
         }
         
         // Copy SDK Code button
         const copyBtn = document.getElementById('copy-sdk-code');
         if (copyBtn) {
-            copyBtn.onclick = () => {
+            copyBtn.addEventListener('click', () => {
                 const codeContent = document.getElementById('sdk-code-content');
                 if (codeContent) {
                     navigator.clipboard.writeText(codeContent.textContent)
                         .then(() => this.showNotification('Code copied to clipboard', 'success'))
                         .catch(() => this.showNotification('Failed to copy code', 'error'));
                 }
-            };
+            });
         }
         
         // Download SDK Code button
         const downloadBtn = document.getElementById('download-sdk-code');
         if (downloadBtn) {
-            downloadBtn.onclick = () => {
+            downloadBtn.addEventListener('click', () => {
                 const codeContent = document.getElementById('sdk-code-content');
                 const language = document.querySelector('input[name="sdk-language"]:checked')?.value || 'javascript';
                 const extension = language === 'typescript' ? 'ts' : 'js';
@@ -1941,7 +1945,7 @@ class BuildkiteApp {
                     
                     this.showNotification('SDK code downloaded', 'success');
                 }
-            };
+            });
         }
         
         console.log('✅ SDK tools configured');

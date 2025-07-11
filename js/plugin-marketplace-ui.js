@@ -43,7 +43,7 @@ class PluginMarketplaceUI {
                 Object.keys(this.marketplace.plugins).length : 0;
             
             marketplaceBtn.innerHTML = `<i class="fas fa-store"></i> Plugin Marketplace${pluginCount > 0 ? ` (${pluginCount})` : ''}`;
-            marketplaceBtn.onclick = () => this.showMarketplace();
+            marketplaceBtn.addEventListener('click', () => this.showMarketplace());
             
             // Insert after templates button
             const templatesBtn = document.getElementById('templates-button');
@@ -116,7 +116,7 @@ class PluginMarketplaceUI {
                             <div class="marketplace-header">
                                 <h3 id="marketplace-title">All Plugins</h3>
                                 <div class="marketplace-actions">
-                                    <button class="btn btn-secondary" onclick="window.pluginMarketplaceUI.refreshPlugins()">
+                                    <button class="btn btn-secondary" id="refresh-plugins-btn">
                                         <i class="fas fa-sync"></i> Refresh
                                     </button>
                                     <a href="https://buildkite.com/resources/plugins/" target="_blank" class="btn btn-secondary">
@@ -536,6 +536,12 @@ class PluginMarketplaceUI {
             });
         }
 
+        // Refresh button
+        const refreshBtn = document.getElementById('refresh-plugins-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.refreshPlugins());
+        }
+        
         // Close modal - use event delegation on the modal itself to avoid conflicts
         const modal = document.getElementById('plugin-marketplace-modal');
         if (modal) {

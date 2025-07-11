@@ -1792,13 +1792,21 @@ if (!window.mainInitializer) {
                     
                     // Show user-friendly error message
                     document.body.insertAdjacentHTML('beforeend', `
-                        <div style="position: fixed; top: 20px; right: 20px; background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; border: 1px solid #fc8181; z-index: 10000;">
+                        <div id="init-error-msg" style="position: fixed; top: 20px; right: 20px; background: #fed7d7; color: #c53030; padding: 1rem; border-radius: 8px; border: 1px solid #fc8181; z-index: 10000;">
                             <strong>Initialization Error:</strong><br>
                             Some features may not work properly.<br>
                             Please refresh the page to try again.
-                            <button onclick="this.parentElement.remove()" style="margin-left: 10px; background: none; border: none; color: #c53030; cursor: pointer;">&times;</button>
+                            <button class="error-close-btn" style="margin-left: 10px; background: none; border: none; color: #c53030; cursor: pointer;">&times;</button>
                         </div>
                     `);
+                    
+                    // Add event listener for the close button
+                    const errorMsg = document.getElementById('init-error-msg');
+                    if (errorMsg) {
+                        errorMsg.querySelector('.error-close-btn').addEventListener('click', () => {
+                            errorMsg.remove();
+                        });
+                    }
                 }
             }, { once: true });
         } else {

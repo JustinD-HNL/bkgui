@@ -74,6 +74,22 @@ class EnvVarManager {
         if (applyBtn) {
             applyBtn.addEventListener('click', () => this.applyChanges());
         }
+        
+        // Event delegation for dynamic buttons
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            
+            const action = btn.dataset.action;
+            const key = btn.dataset.key;
+            const type = btn.dataset.type;
+            
+            if (action === 'duplicate') {
+                this.duplicateVariable(key, type);
+            } else if (action === 'remove') {
+                this.removeVariable(key, type);
+            }
+        });
     }
 
     switchTab(tabName) {
@@ -187,10 +203,10 @@ class EnvVarManager {
                        data-key="${key}" data-type="${type}">
             </div>
             <div class="env-var-actions">
-                <button class="btn-icon" onclick="envVarManager.duplicateVariable('${key}', '${type}')">
+                <button class="btn-icon" data-action="duplicate" data-key="${key}" data-type="${type}">
                     <i class="fas fa-copy"></i>
                 </button>
-                <button class="btn-icon" onclick="envVarManager.removeVariable('${key}', '${type}')">
+                <button class="btn-icon" data-action="remove" data-key="${key}" data-type="${type}">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>

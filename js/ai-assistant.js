@@ -156,7 +156,7 @@ You can also create and update pipelines using the available tools. Always provi
             aiBtn.id = 'ai-assistant-button';
             aiBtn.className = 'action-btn';
             aiBtn.innerHTML = '<i class="fas fa-magic"></i> AI Assistant';
-            aiBtn.onclick = () => this.showAssistant();
+            aiBtn.addEventListener('click', () => this.showAssistant());
             
             actionsContainer.appendChild(aiBtn);
         } else if (!actionsContainer) {

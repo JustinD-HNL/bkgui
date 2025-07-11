@@ -95,6 +95,23 @@ class ConditionalLogicBuilder {
                 this.closeModal();
             }
         });
+        
+        // Event delegation for dynamic elements
+        document.addEventListener('change', (e) => {
+            const conditionId = e.target.dataset.conditionId;
+            const field = e.target.dataset.field;
+            if (conditionId && field) {
+                this.updateCondition(conditionId, field, e.target.value);
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="remove-condition"]')) {
+                const btn = e.target.closest('[data-action="remove-condition"]');
+                const conditionId = btn.dataset.conditionId;
+                this.removeCondition(conditionId);
+            }
+        });
     }
 
     openForStep(step) {
@@ -170,7 +187,7 @@ class ConditionalLogicBuilder {
             <div class="condition-group" data-condition-id="${condition.id}">
                 ${index > 0 ? `
                     <select class="logical-operator" 
-                            onchange="window.conditionalLogicBuilder.updateCondition('${condition.id}', 'logicalOperator', this.value)">
+                            data-condition-id="${condition.id}" data-field="logicalOperator">
                         ${this.logicalOperators.map(op => `
                             <option value="${op}" ${condition.logicalOperator === op ? 'selected' : ''}>
                                 ${op === '&&' ? 'AND' : 'OR'}
@@ -185,10 +202,10 @@ class ConditionalLogicBuilder {
                            list="buildkite-variables"
                            value="${condition.variable}" 
                            placeholder="Variable (e.g., build.branch)"
-                           onchange="window.conditionalLogicBuilder.updateCondition('${condition.id}', 'variable', this.value)">
+                           data-condition-id="${condition.id}" data-field="variable">
                     
                     <select class="condition-operator" 
-                            onchange="window.conditionalLogicBuilder.updateCondition('${condition.id}', 'operator', this.value)">
+                            data-condition-id="${condition.id}" data-field="operator">
                         ${Object.entries(this.operators).map(([op, label]) => `
                             <option value="${op}" ${condition.operator === op ? 'selected' : ''}>
                                 ${label}
@@ -200,10 +217,10 @@ class ConditionalLogicBuilder {
                            class="condition-value" 
                            value="${condition.value}" 
                            placeholder="Value"
-                           onchange="window.conditionalLogicBuilder.updateCondition('${condition.id}', 'value', this.value)">
+                           data-condition-id="${condition.id}" data-field="value">
                     
                     <button class="btn btn-small btn-danger" 
-                            onclick="window.conditionalLogicBuilder.removeCondition('${condition.id}')">
+                            data-action="remove-condition" data-condition-id="${condition.id}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
