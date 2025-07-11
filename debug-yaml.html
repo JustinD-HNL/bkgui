@@ -1,0 +1,51 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>Debug YAML Generation</title>
+    <script src="js/yaml-generator.js"></script>
+    <script src="js/pipeline-builder.js"></script>
+</head>
+<body>
+    <h1>Debug YAML Generation</h1>
+    <button onclick="generateSampleYAML()">Generate Sample YAML</button>
+    <button onclick="generateFromBuilder()">Generate from Pipeline Builder</button>
+    <h2>Output:</h2>
+    <pre id="output" style="background: #f5f5f5; padding: 20px; font-family: monospace;"></pre>
+    
+    <script>
+        function generateSampleYAML() {
+            const generator = new YAMLGenerator();
+            
+            // Simulate what exportConfig returns
+            const config = {
+                steps: [
+                    {
+                        label: "Build",
+                        command: "npm run build",
+                        key: "build-1"
+                    }
+                ]
+            };
+            
+            const yaml = generator.generate(config);
+            document.getElementById('output').textContent = 'Sample YAML:\n' + yaml;
+            console.log('Config:', config);
+            console.log('YAML:', yaml);
+        }
+        
+        function generateFromBuilder() {
+            const builder = new PipelineBuilder();
+            builder.addStep('command');
+            const config = builder.exportConfig();
+            
+            const generator = new YAMLGenerator();
+            const yaml = generator.generate(config);
+            
+            document.getElementById('output').textContent = 'Pipeline Builder YAML:\n' + yaml + '\n\nConfig:\n' + JSON.stringify(config, null, 2);
+            console.log('Config:', config);
+            console.log('YAML:', yaml);
+        }
+    </script>
+</body>
+</html>
+EOF < /dev/null

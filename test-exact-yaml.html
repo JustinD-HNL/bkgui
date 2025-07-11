@@ -1,0 +1,96 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>Test Exact YAML</title>
+    <style>
+        pre { background: #f5f5f5; padding: 20px; white-space: pre-wrap; }
+        .controls { margin: 20px 0; }
+        button { margin: 5px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>Test Exact YAML Generation</h1>
+    
+    <div class="controls">
+        <button onclick="testDefaultStep()">Test Default Command Step</button>
+        <button onclick="testSimpleStep()">Test Simple Step</button>
+        <button onclick="testWithoutKey()">Test Without Key</button>
+        <button onclick="testComplexStep()">Test Complex Step</button>
+    </div>
+    
+    <h2>Generated YAML:</h2>
+    <pre id="yaml-output"></pre>
+    
+    <h2>Step Config:</h2>
+    <pre id="config-output"></pre>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        const generator = new YAMLGenerator();
+        
+        function showOutput(config, description) {
+            const yaml = generator.generate(config);
+            document.getElementById('yaml-output').textContent = description + '\n\n' + yaml;
+            document.getElementById('config-output').textContent = JSON.stringify(config, null, 2);
+            console.log(description, '\nConfig:', config, '\nYAML:', yaml);
+        }
+        
+        function testDefaultStep() {
+            // This simulates what the pipeline builder creates by default
+            const config = {
+                steps: [{
+                    label: '📦 Build',
+                    command: 'echo "Building..."',
+                    key: 'build-1',
+                    agents: { queue: 'default' },
+                    env: {},
+                    plugins: {}
+                }]
+            };
+            showOutput(config, 'Default Command Step (as created by pipeline builder):');
+        }
+        
+        function testSimpleStep() {
+            const config = {
+                steps: [{
+                    command: 'echo "Hello World"'
+                }]
+            };
+            showOutput(config, 'Simple Command Step:');
+        }
+        
+        function testWithoutKey() {
+            const config = {
+                steps: [{
+                    label: 'Build',
+                    command: 'npm run build'
+                }]
+            };
+            showOutput(config, 'Step Without Key:');
+        }
+        
+        function testComplexStep() {
+            const config = {
+                steps: [{
+                    label: 'Complex Build',
+                    command: 'npm run build',
+                    key: 'complex-build',
+                    env: {
+                        NODE_ENV: 'production'
+                    },
+                    agents: {
+                        queue: 'deploy'
+                    },
+                    plugins: {
+                        'docker#v3.5.0': {
+                            image: 'node:14'
+                        }
+                    }
+                }]
+            };
+            showOutput(config, 'Complex Step with Plugins:');
+        }
+    </script>
+</body>
+</html>
+EOF < /dev/null

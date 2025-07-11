@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML Generation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .pipeline-config {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            border: 1px solid #dee2e6;
+        }
+        
+        .yaml-output {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .console-log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>YAML Generation Test</h1>
+    
+    <div id="console-output" class="console-log">
+        <strong>Console Output:</strong><br>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 1: Simple Command Step</div>
+        <div id="test1-config" class="pipeline-config"></div>
+        <div id="test1-yaml" class="yaml-output"></div>
+        <div id="test1-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 2: Command Step with Label</div>
+        <div id="test2-config" class="pipeline-config"></div>
+        <div id="test2-yaml" class="yaml-output"></div>
+        <div id="test2-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 3: Command Step with Environment Variables</div>
+        <div id="test3-config" class="pipeline-config"></div>
+        <div id="test3-yaml" class="yaml-output"></div>
+        <div id="test3-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 4: Command Step with Plugins</div>
+        <div id="test4-config" class="pipeline-config"></div>
+        <div id="test4-yaml" class="yaml-output"></div>
+        <div id="test4-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 5: Multiple Steps</div>
+        <div id="test5-config" class="pipeline-config"></div>
+        <div id="test5-yaml" class="yaml-output"></div>
+        <div id="test5-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 6: Empty Pipeline</div>
+        <div id="test6-config" class="pipeline-config"></div>
+        <div id="test6-yaml" class="yaml-output"></div>
+        <div id="test6-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-title">Test 7: Complex Pipeline with All Features</div>
+        <div id="test7-config" class="pipeline-config"></div>
+        <div id="test7-yaml" class="yaml-output"></div>
+        <div id="test7-result"></div>
+    </div>
+    
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="testBuildkiteAPI()">Test Buildkite API</button>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        // Override console.log to capture output
+        const originalLog = console.log;
+        const consoleOutput = document.getElementById('console-output');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            consoleOutput.innerHTML += message + '<br>';
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        };
+        
+        // Test configurations
+        const testConfigs = {
+            test1: {
+                steps: [
+                    {
+                        command: 'echo "Hello World"'
+                    }
+                ]
+            },
+            
+            test2: {
+                steps: [
+                    {
+                        label: 'Build',
+                        command: 'make build'
+                    }
+                ]
+            },
+            
+            test3: {
+                steps: [
+                    {
+                        label: 'Test',
+                        command: 'npm test',
+                        env: {
+                            NODE_ENV: 'test',
+                            DEBUG: 'true'
+                        }
+                    }
+                ]
+            },
+            
+            test4: {
+                steps: [
+                    {
+                        label: 'Docker Build',
+                        command: 'echo "Building..."',
+                        plugins: {
+                            'docker-compose': {
+                                run: 'app',
+                                config: 'docker-compose.yml'
+                            }
+                        }
+                    }
+                ]
+            },
+            
+            test5: {
+                steps: [
+                    {
+                        label: 'Build',
+                        command: 'make build'
+                    },
+                    'wait',
+                    {
+                        label: 'Test',
+                        command: 'make test',
+                        depends_on: 'build'
+                    }
+                ]
+            },
+            
+            test6: {
+                steps: []
+            },
+            
+            test7: {
+                steps: [
+                    {
+                        label: 'Lint & Format',
+                        command: 'npm run lint\nnpm run format:check',
+                        env: {
+                            CI: 'true'
+                        },
+                        agents: {
+                            queue: 'default'
+                        }
+                    },
+                    {
+                        label: 'Build',
+                        command: 'npm run build',
+                        artifact_paths: ['dist/**/*', 'coverage/**/*'],
+                        timeout_in_minutes: 30,
+                        retry: {
+                            automatic: {
+                                exit_status: '*',
+                                limit: 2
+                            }
+                        }
+                    },
+                    'wait',
+                    {
+                        block: 'Deploy to Production',
+                        fields: [
+                            {
+                                key: 'release-notes',
+                                text: 'Release Notes',
+                                type: 'text',
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        label: 'Deploy',
+                        command: 'npm run deploy',
+                        if: 'build.branch == "main"',
+                        soft_fail: [1, 2],
+                        cancel_on_build_failing: true
+                    }
+                ]
+            }
+        };
+        
+        function runTest(testId) {
+            console.log(`\n=== Running ${testId} ===`);
+            
+            const config = testConfigs[testId];
+            const configEl = document.getElementById(`${testId}-config`);
+            const yamlEl = document.getElementById(`${testId}-yaml`);
+            const resultEl = document.getElementById(`${testId}-result`);
+            
+            // Display config
+            configEl.textContent = JSON.stringify(config, null, 2);
+            
+            try {
+                // Generate YAML
+                const generator = new YAMLGenerator();
+                const yaml = generator.generate(config);
+                
+                console.log(`Generated YAML for ${testId}:`);
+                console.log(yaml);
+                
+                // Display YAML
+                yamlEl.textContent = yaml;
+                
+                // Validate YAML
+                const validation = generator.validate(yaml);
+                
+                if (validation.valid) {
+                    resultEl.innerHTML = '<div class="success">✓ Valid YAML generated</div>';
+                } else {
+                    resultEl.innerHTML = `<div class="error">✗ Validation issues: ${validation.issues.join(', ')}</div>`;
+                }
+                
+            } catch (error) {
+                console.error(`Error in ${testId}:`, error);
+                resultEl.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function runAllTests() {
+            consoleOutput.innerHTML = '<strong>Console Output:</strong><br>';
+            Object.keys(testConfigs).forEach(testId => {
+                runTest(testId);
+            });
+        }
+        
+        async function testBuildkiteAPI() {
+            console.log('\n=== Testing Buildkite API ===');
+            
+            // Test each configuration
+            for (const [testId, config] of Object.entries(testConfigs)) {
+                console.log(`\nTesting ${testId} with Buildkite API...`);
+                
+                const generator = new YAMLGenerator();
+                const yaml = generator.generate(config);
+                
+                console.log('Sending to Buildkite API:');
+                console.log(yaml);
+                
+                try {
+                    // This would be the actual API call
+                    // For now, we'll just log what would be sent
+                    const apiPayload = {
+                        yaml: yaml,
+                        description: `Test ${testId}`
+                    };
+                    
+                    console.log('API Payload:', apiPayload);
+                    
+                    // Simulate what the API might validate
+                    if (yaml.trim() === 'steps: []') {
+                        console.log('⚠️  Empty pipeline - may cause issues');
+                    } else if (!yaml.includes('steps:')) {
+                        console.log('❌ Missing steps declaration - will fail');
+                    } else {
+                        console.log('✅ Structure looks valid');
+                    }
+                    
+                } catch (error) {
+                    console.error(`API test failed for ${testId}:`, error);
+                }
+            }
+        }
+        
+        // Run tests on load
+        window.addEventListener('load', () => {
+            console.log('YAML Generation Test Page Loaded');
+            console.log('YAMLGenerator available:', typeof YAMLGenerator !== 'undefined');
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

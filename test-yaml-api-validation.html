@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML API Validation Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .yaml-input {
+            width: 100%;
+            height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .success {
+            color: #155724;
+            background: #d4edda;
+        }
+        
+        .warning {
+            color: #856404;
+            background: #fff3cd;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .payload-display {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>YAML API Validation Debug</h1>
+    
+    <div class="test-section">
+        <div class="test-title">Test YAML Input</div>
+        <textarea id="yaml-input" class="yaml-input">steps:
+  - label: "Build"
+    command: "make build"
+  - wait
+  - label: "Test"
+    command: "make test"</textarea>
+        
+        <button onclick="testDirectAPI()">Test Direct API Call</button>
+        <button onclick="testWrappedAPI()">Test Wrapped API Call</button>
+        <button onclick="testVariousFormats()">Test Various Formats</button>
+        <button onclick="interceptFetch()">Start Fetch Interceptor</button>
+        
+        <div id="results" class="results"></div>
+        <div id="payload-display" class="payload-display" style="display: none;"></div>
+    </div>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        const payloadDiv = document.getElementById('payload-display');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            resultsDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>\n`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function showPayload(payload) {
+            payloadDiv.style.display = 'block';
+            payloadDiv.textContent = JSON.stringify(payload, null, 2);
+        }
+        
+        async function testDirectAPI() {
+            log('=== Testing Direct API Call ===');
+            const yaml = document.getElementById('yaml-input').value;
+            
+            log('Sending raw YAML string to API...');
+            
+            try {
+                // Test 1: Send just the YAML string
+                const response1 = await fetch('/api/buildkite/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: yaml
+                });
+                
+                log(`Response status: ${response1.status}`);
+                const text1 = await response1.text();
+                log(`Response: ${text1}`);
+                
+                // Test 2: Send as JSON with yaml property
+                log('\nSending as JSON with yaml property...');
+                const payload2 = { yaml: yaml };
+                showPayload(payload2);
+                
+                const response2 = await fetch('/api/buildkite/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload2)
+                });
+                
+                log(`Response status: ${response2.status}`);
+                const text2 = await response2.text();
+                log(`Response: ${text2}`);
+                
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testWrappedAPI() {
+            log('=== Testing Wrapped API Call ===');
+            const yaml = document.getElementById('yaml-input').value;
+            
+            // Test different wrapper structures
+            const wrappers = [
+                { configuration: yaml },
+                { pipeline: { configuration: yaml } },
+                { steps: yaml },
+                { content: yaml },
+                { data: yaml }
+            ];
+            
+            for (const wrapper of wrappers) {
+                log(`\nTesting wrapper: ${Object.keys(wrapper).join(', ')}`);
+                showPayload(wrapper);
+                
+                try {
+                    const response = await fetch('/api/buildkite/validate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(wrapper)
+                    });
+                    
+                    log(`Response status: ${response.status}`);
+                    const text = await response.text();
+                    log(`Response: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`);
+                    
+                } catch (error) {
+                    log(`Error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function testVariousFormats() {
+            log('=== Testing Various YAML Formats ===');
+            
+            const yamlFormats = [
+                // Format 1: Simple steps
+                'steps:\n  - command: echo "Hello"',
+                
+                // Format 2: With indentation
+                `steps:
+  - label: "Build"
+    command: "make build"`,
+                
+                // Format 3: Empty steps
+                'steps: []',
+                
+                // Format 4: Just the array
+                '- command: echo "Hello"',
+                
+                // Format 5: With env at top level
+                `env:
+  NODE_ENV: test
+steps:
+  - command: npm test`
+            ];
+            
+            for (let i = 0; i < yamlFormats.length; i++) {
+                log(`\nTesting format ${i + 1}:`);
+                log(yamlFormats[i]);
+                
+                try {
+                    const response = await fetch('/api/buildkite/validate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ yaml: yamlFormats[i] })
+                    });
+                    
+                    log(`Response status: ${response.status}`);
+                    const text = await response.text();
+                    
+                    if (text.includes('key is invalid')) {
+                        log('❌ Got "key is invalid" error', 'error');
+                    } else if (response.ok) {
+                        log('✅ Validation passed', 'success');
+                    } else {
+                        log(`Response: ${text}`, 'warning');
+                    }
+                    
+                } catch (error) {
+                    log(`Error: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        function interceptFetch() {
+            log('=== Starting Fetch Interceptor ===');
+            
+            const originalFetch = window.fetch;
+            window.fetch = async function(...args) {
+                const [url, options] = args;
+                
+                if (url.includes('validate') || url.includes('buildkite')) {
+                    log(`\n🔍 Intercepted: ${options?.method || 'GET'} ${url}`);
+                    
+                    if (options?.headers) {
+                        log(`Headers: ${JSON.stringify(options.headers)}`);
+                    }
+                    
+                    if (options?.body) {
+                        log(`Body type: ${typeof options.body}`);
+                        log(`Body: ${options.body}`);
+                        
+                        try {
+                            const parsed = JSON.parse(options.body);
+                            showPayload(parsed);
+                        } catch (e) {
+                            // Not JSON
+                        }
+                    }
+                }
+                
+                try {
+                    const response = await originalFetch.apply(this, args);
+                    
+                    if (url.includes('validate') || url.includes('buildkite')) {
+                        log(`Response status: ${response.status}`);
+                        
+                        // Clone response to read it
+                        const cloned = response.clone();
+                        const text = await cloned.text();
+                        
+                        if (text.includes('key is invalid')) {
+                            log('❌ Response contains "key is invalid" error', 'error');
+                            log(`Full response: ${text}`);
+                        }
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    log(`Fetch error: ${error.message}`, 'error');
+                    throw error;
+                }
+            };
+            
+            log('✅ Fetch interceptor installed', 'success');
+            log('Now try using the preview/validate buttons in the main app');
+        }
+        
+        // Auto-start interceptor on load
+        window.addEventListener('load', () => {
+            log('Debug page loaded. Click a button to start testing.');
+        });
+    </script>
+</body>
+</html>

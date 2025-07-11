@@ -188,7 +188,7 @@ class BuildkiteAPIClient {
     async validatePipelineYAML(yaml) {
         return this.request('/validate', {
             method: 'POST',
-            body: JSON.stringify({ yaml })
+            body: JSON.stringify({ configuration: yaml })
         });
     }
 

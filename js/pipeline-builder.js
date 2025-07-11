@@ -1033,7 +1033,7 @@ class PipelineBuilder {
             command: {
                 label: '📦 Build',
                 command: 'echo "Building..."',
-                key: `build-${this.stepCounter}`,
+                key: `build_${this.stepCounter}`,
                 agents: { queue: 'default' },
                 env: {},
                 plugins: {},
@@ -1055,7 +1055,7 @@ class PipelineBuilder {
                 prompt: 'Please review and approve deployment',
                 fields: [],
                 blocked_state: 'passed',
-                key: `block-${this.stepCounter}`
+                key: `block_${this.stepCounter}`
             },
             input: {
                 input: 'Deployment Configuration',
@@ -1066,7 +1066,7 @@ class PipelineBuilder {
                     required: true,
                     default: '1.0.0'
                 }],
-                key: `input-${this.stepCounter}`
+                key: `input_${this.stepCounter}`
             },
             trigger: {
                 trigger: 'deploy-pipeline',
@@ -1081,7 +1081,7 @@ class PipelineBuilder {
             },
             group: {
                 group: '📁 Test Suite',
-                key: `group-${this.stepCounter}`,
+                key: `group_${this.stepCounter}`,
                 steps: [],
                 depends_on: null,
                 allow_dependency_failure: false
@@ -1102,7 +1102,7 @@ class PipelineBuilder {
             plugin: {
                 plugins: {},
                 if: null,
-                key: `plugin-${this.stepCounter}`
+                key: `plugin_${this.stepCounter}`
             },
             'pipeline-upload': {
                 pipeline: '.buildkite/pipeline.yml',
