@@ -1674,6 +1674,60 @@ class BuildkiteApp {
         this.showNotification(message, 'error', 5000);
     }
 
+    // Quick Action Handler
+    handleQuickAction(action) {
+        console.log(`🚀 Handling quick action: ${action}`);
+        
+        switch (action) {
+            case 'matrix-builder':
+                if (this.pipelineBuilder?.selectedStep) {
+                    if (this.pipelineBuilder.selectedStep.type === 'command') {
+                        // Open matrix builder modal for the selected step
+                        if (window.matrixBuilder) {
+                            window.matrixBuilder.openForStep(this.pipelineBuilder.selectedStep);
+                        }
+                    } else {
+                        this.showNotification('Matrix configuration is only available for command steps', 'info');
+                    }
+                } else {
+                    this.showNotification('Please select a command step first', 'info');
+                }
+                break;
+                
+            case 'variable-manager':
+                if (window.envVarManager) {
+                    // Open environment variables modal
+                    const modal = document.getElementById('env-vars-modal');
+                    if (modal) {
+                        modal.style.display = 'block';
+                        modal.classList.remove('hidden');
+                        
+                        // If called from step properties, open the step tab with current step
+                        if (this.pipelineBuilder?.selectedStep) {
+                            window.envVarManager.openForStep(this.pipelineBuilder.selectedStep.id);
+                        } else {
+                            // Otherwise show global variables
+                            window.envVarManager.switchTab('global');
+                        }
+                    }
+                }
+                break;
+                
+            case 'conditional-logic':
+                if (this.pipelineBuilder?.selectedStep) {
+                    if (window.conditionalLogicBuilder) {
+                        window.conditionalLogicBuilder.openForStep(this.pipelineBuilder.selectedStep);
+                    }
+                } else {
+                    this.showNotification('Please select a step first', 'info');
+                }
+                break;
+                
+            default:
+                console.warn(`Unknown quick action: ${action}`);
+        }
+    }
+
     // Command Palette Methods
     toggleCommandPalette() {
         const palette = document.getElementById('command-palette');
