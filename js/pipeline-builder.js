@@ -4017,7 +4017,7 @@ class PipelineBuilder {
                     this.showBuildConfigDialog(step);
                     break;
                 case 'configure-matrix':
-                    this.showMatrixConfigDialog(step);
+                    // Handled by handlePropertyAction instead
                     break;
             }
         };
@@ -4224,9 +4224,7 @@ class PipelineBuilder {
         this.saveToLocalStorage();
     }
 
-    showMatrixConfigDialog(step) {
-        alert('Matrix configuration is available in the Matrix Builder. Click the "Matrix Builder" button in the sidebar.');
-    }
+    // Removed showMatrixConfigDialog - matrix configuration is now handled directly by handleQuickAction
 
     showPluginCatalog(step) {
         const modal = document.getElementById('plugin-catalog-modal');

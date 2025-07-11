@@ -2716,6 +2716,7 @@ body {
     padding: 1rem;
     display: grid;
     gap: 1.5rem;
+    min-height: 0; /* Ensure grid doesn't force minimum height */
 }
 
 .matrix-dimensions h3,
@@ -2839,6 +2840,18 @@ body {
     justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 1.5rem;
+    padding-bottom: 1rem; /* Add padding to ensure buttons aren't cut off */
+}
+
+/* Ensure matrix builder modal has proper spacing */
+#matrix-builder-modal .modal-body {
+    padding-bottom: 2rem; /* Extra bottom padding for matrix builder */
+}
+
+/* Ensure buttons in matrix modal are fully visible */
+#matrix-builder-modal .btn {
+    white-space: nowrap; /* Prevent text wrapping */
+    min-width: auto;
 }
 
 /* Plugin Configuration */
