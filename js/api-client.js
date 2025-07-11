@@ -203,23 +203,57 @@ class BuildkiteAPIClient {
         return this.request(`/organizations/${this.organization}/pipelines/${pipelineSlug}/metrics${queryParams ? '?' + queryParams : ''}`);
     }
 
-    // Utility method to check API connection
+    // Utility method to check API connection with detailed error reporting
     async testConnection() {
         if (!this.apiToken || !this.organization) {
-            return false;
+            return { 
+                success: false, 
+                error: 'Missing API token or organization slug' 
+            };
         }
         
         try {
-            // Test with a simple API call
+            // Test with a simple API call to validate both token and org
             const response = await fetch(`${this.baseURL}/organizations/${this.organization}`, {
                 headers: {
                     'X-Buildkite-Token': this.apiToken,
                     'X-Buildkite-Organization': this.organization
                 }
             });
-            return response.ok;
+            
+            if (response.ok) {
+                return { success: true };
+            }
+            
+            // Provide specific error messages based on status code
+            switch (response.status) {
+                case 401:
+                    return { 
+                        success: false, 
+                        error: 'Invalid API token. Please check your token has the required permissions.' 
+                    };
+                case 404:
+                    return { 
+                        success: false, 
+                        error: `Organization "${this.organization}" not found. Please check the organization slug.` 
+                    };
+                case 403:
+                    return { 
+                        success: false, 
+                        error: 'Access denied. Your API token may not have permission to access this organization.' 
+                    };
+                default:
+                    return { 
+                        success: false, 
+                        error: `API request failed with status ${response.status}` 
+                    };
+            }
         } catch (error) {
-            return false;
+            // Network or other errors
+            return { 
+                success: false, 
+                error: `Connection error: ${error.message}. Please check your network connection.` 
+            };
         }
     }
 

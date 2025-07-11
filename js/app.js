@@ -38,6 +38,13 @@ class BuildkiteApp {
         // Track attached event listeners to prevent duplicates
         this.attachedListeners = new Set();
         
+        // Quick actions for easier access
+        this.quickActions = {
+            'variable-manager': () => this.handleQuickAction('variable-manager'),
+            'conditional-logic': () => this.handleQuickAction('conditional-logic'),
+            'matrix-builder': () => this.handleQuickAction('matrix-builder')
+        };
+        
         // Store as singleton
         window.buildkiteApp = this;
         
@@ -2391,14 +2398,14 @@ class BuildkiteApp {
             await this.apiClient.setConfiguration(token, organization);
             
             // Test the connection
-            const success = await this.apiClient.testConnection();
+            const result = await this.apiClient.testConnection();
             
-            if (success) {
+            if (result.success) {
                 statusDiv.className = 'api-test-status success';
                 statusDiv.textContent = 'Connection successful! You can now save the configuration.';
             } else {
                 statusDiv.className = 'api-test-status error';
-                statusDiv.textContent = 'Connection failed. Please check your API token and organization slug.';
+                statusDiv.textContent = result.error || 'Connection failed. Please check your API token and organization slug.';
             }
         } catch (error) {
             statusDiv.className = 'api-test-status error';

@@ -3147,6 +3147,28 @@ class PipelineBuilder {
             }
             });
         }
+        
+        // Handle marketplace button click for command steps
+        const marketplaceBtn = container.querySelector('#open-marketplace-btn');
+        if (marketplaceBtn) {
+            marketplaceBtn.addEventListener('click', () => {
+                // Open the plugin marketplace modal
+                if (window.pluginMarketplaceUI) {
+                    window.pluginMarketplaceUI.showMarketplace();
+                    
+                    // Set up a callback to add selected plugin to this step
+                    window.pluginMarketplaceUI.onPluginSelect = (pluginKey) => {
+                        this.addPluginToStep(pluginKey);
+                        // Close the marketplace modal
+                        const modal = document.getElementById('plugin-marketplace-modal');
+                        if (modal) {
+                            modal.classList.add('hidden');
+                            modal.style.display = 'none';
+                        }
+                    };
+                }
+            });
+        }
 
         const timeoutInput = container.querySelector('#step-timeout');
         if (timeoutInput) {
