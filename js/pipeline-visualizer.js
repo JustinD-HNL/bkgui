@@ -82,6 +82,9 @@ class PipelineVisualizer {
 
         const activeTab = document.getElementById(`${tabName}-preview`) || 
                          document.getElementById(`${tabName}-preview-tab`);
+        
+        console.log(`🔍 Switching to tab: ${tabName}, found element:`, activeTab ? activeTab.id : 'not found');
+        
         if (activeTab) {
             activeTab.style.display = 'block';
             
@@ -90,15 +93,21 @@ class PipelineVisualizer {
                 const yamlContent = document.getElementById('preview-yaml-content');
                 if (yamlContent) {
                     yamlContent.textContent = 'Loading YAML...';
+                    console.log('📝 Set YAML loading state');
                 }
             }
+        } else {
+            console.error(`❌ Tab content not found for: ${tabName}`);
         }
 
         // Render content based on tab
         if (tabName === 'visual') {
             this.renderVisualView();
         } else if (tabName === 'yaml') {
-            this.renderYAMLView();
+            // Small delay to ensure tab is visible before rendering
+            setTimeout(() => {
+                this.renderYAMLView();
+            }, 50);
         } else if (tabName === 'timeline') {
             this.renderTimelineView();
         }
@@ -276,6 +285,19 @@ class PipelineVisualizer {
             return;
         }
 
+        console.log('🔍 Debug YAML rendering:', {
+            yamlGenerator: !!window.yamlGenerator,
+            YAMLGeneratorClass: !!window.YAMLGenerator,
+            pipelineBuilder: !!this.pipelineBuilder,
+            steps: this.pipelineBuilder?.steps?.length || 0
+        });
+
+        // Check if we need to instantiate YAMLGenerator
+        if (!window.yamlGenerator && window.YAMLGenerator) {
+            console.log('📝 Creating YAMLGenerator instance...');
+            window.yamlGenerator = new window.YAMLGenerator();
+        }
+
         if (!window.yamlGenerator) {
             console.error('YAML generator not available');
             container.textContent = 'Error: YAML generator not loaded';
@@ -289,15 +311,30 @@ class PipelineVisualizer {
         }
 
         try {
-            // Try both generate and generateYAML methods for compatibility
+            console.log('🎯 Attempting to generate YAML with steps:', this.pipelineBuilder.steps);
+            
             let yaml;
-            if (typeof window.yamlGenerator.generate === 'function') {
+            
+            // Check if we have the full YAMLGenerator class or the minimal version
+            if (window.yamlGenerator.constructor && window.yamlGenerator.constructor.name === 'YAMLGenerator') {
+                // Using the full YAMLGenerator class
+                console.log('Using YAMLGenerator class with generate() method');
                 yaml = window.yamlGenerator.generate({ steps: this.pipelineBuilder.steps });
             } else if (typeof window.yamlGenerator.generateYAML === 'function') {
+                // Using the minimal yamlGenerator from main-init.js
+                console.log('Using minimal yamlGenerator with generateYAML() method');
                 yaml = window.yamlGenerator.generateYAML(this.pipelineBuilder.steps);
+            } else if (typeof window.yamlGenerator.generate === 'function') {
+                // Fallback to generate method
+                console.log('Using generate() method');
+                yaml = window.yamlGenerator.generate({ steps: this.pipelineBuilder.steps });
             } else {
+                console.error('Available methods:', Object.getOwnPropertyNames(window.yamlGenerator));
+                console.error('Constructor:', window.yamlGenerator.constructor?.name);
                 throw new Error('No valid YAML generation method found');
             }
+
+            console.log('📄 Generated YAML:', yaml ? `${yaml.substring(0, 100)}...` : 'null/empty');
 
             if (!yaml) {
                 container.textContent = 'No YAML content generated';
