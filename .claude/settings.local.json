@@ -22,7 +22,8 @@
       "Bash(node test-yaml-cli.js)",
       "WebFetch(domain:github.com)",
       "Bash(node:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "WebFetch(domain:buildkite-pipeline-builder-431509168104.us-west1.run.app)"
     ],
     "deny": []
   }

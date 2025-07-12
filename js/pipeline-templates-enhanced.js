@@ -986,10 +986,10 @@ if (typeof window !== 'undefined') {
     window.EnhancedPipelineTemplates = EnhancedPipelineTemplates;
     window.enhancedTemplates = new EnhancedPipelineTemplates();
     
-    // Override the global pipelineTemplates if it exists
-    if (window.pipelineTemplates) {
-        window.pipelineTemplates = window.enhancedTemplates;
-    }
+    // Don't override pipelineTemplates anymore - we want to keep our 16 templates
+    // if (window.pipelineTemplates) {
+    //     window.pipelineTemplates = window.enhancedTemplates;
+    // }
 }
 
 // Export for Node.js/testing

@@ -763,8 +763,14 @@ class BuildkiteApp {
                         }
                         break;
                     case 'step-templates':
-                        window.showModal('step-templates-modal');
-                        this.populateTemplates();
+                        // Use the TemplatesUI instance if available
+                        if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                            window.templatesUI.showTemplatesModal();
+                        } else {
+                            // Fallback to old modal
+                            window.showModal('step-templates-modal');
+                            this.populateTemplates();
+                        }
                         break;
                     case 'pipeline-validator':
                         this.validatePipeline();
@@ -1304,8 +1310,14 @@ class BuildkiteApp {
                 }
             },
             'step-templates': () => {
-                window.showModal('step-templates-modal');
-                this.populateTemplates();
+                // Use the TemplatesUI instance if available
+                if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                    window.templatesUI.showTemplatesModal();
+                } else {
+                    // Fallback to old modal
+                    window.showModal('step-templates-modal');
+                    this.populateTemplates();
+                }
             },
             'validate-pipeline': () => this.validatePipeline(),
             'share-pipeline': () => this.pipelineSharing?.sharePipeline(),

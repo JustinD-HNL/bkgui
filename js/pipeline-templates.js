@@ -311,12 +311,7 @@ class PipelineTemplates {
                             `,
                             artifact_paths: 'tfplan',
                             depends_on: ['fmt_check', 'validate'],
-                            agents: { terraform: 'latest' },
-                            plugins: {
-                                'artifacts': {
-                                    upload: 'tfplan'
-                                }
-                            }
+                            agents: { terraform: 'latest' }
                         },
                         'wait',
                         {
@@ -411,55 +406,612 @@ class PipelineTemplates {
                 }
             },
             
-            'approval-workflow': {
-                name: 'Approval Workflow',
-                icon: 'fa-check-circle',
-                description: 'Multi-stage deployment with approval gates',
+            'security-scan': {
+                name: 'Security Pipeline',
+                icon: 'fa-shield-alt',
+                description: 'Comprehensive security scanning with SAST, dependency checks, and container scanning',
                 pipeline: {
                     steps: [
                         {
-                            label: '🏗️ Build Application',
-                            key: 'build',
-                            command: 'make build',
-                            artifact_paths: 'dist/**/*',
-                            agents: { queue: 'default' }
+                            label: '🔍 Static Code Analysis',
+                            key: 'sast',
+                            command: `
+                                # Run multiple security scanners
+                                semgrep --config=auto .
+                                bandit -r src/
+                                eslint . --ext .js,.jsx,.ts,.tsx --format json > eslint-security.json
+                            `,
+                            artifact_paths: ['*-security.json', 'security-reports/**/*'],
+                            soft_fail: [{ exit_status: 1 }],
+                            agents: { queue: 'security' }
                         },
                         {
-                            label: '🧪 Run Tests',
-                            key: 'test',
-                            command: 'make test',
-                            depends_on: ['build'],
+                            label: '📦 Dependency Check',
+                            key: 'deps',
+                            command: `
+                                # Check for vulnerable dependencies
+                                npm audit --json > npm-audit.json
+                                snyk test --json > snyk-report.json
+                            `,
+                            artifact_paths: ['*-audit.json', '*-report.json'],
+                            soft_fail: true,
+                            agents: { queue: 'security' }
+                        },
+                        {
+                            label: '🐳 Container Scan',
+                            key: 'container',
+                            command: 'trivy image --format json --output trivy-report.json myapp:latest',
+                            artifact_paths: 'trivy-report.json',
+                            soft_fail: true,
+                            agents: { docker: 'true' }
+                        },
+                        'wait',
+                        {
+                            label: '📊 Generate Security Report',
+                            key: 'report',
+                            command: `
+                                # Aggregate all security findings
+                                python scripts/aggregate_security_reports.py
+                            `,
+                            artifact_paths: 'security-summary.html',
+                            depends_on: ['sast', 'deps', 'container'],
+                            agents: { python: '3.9' }
+                        },
+                        {
+                            block: '🔒 Security Review',
+                            key: 'review',
+                            prompt: 'Review security findings before proceeding',
+                            fields: [
+                                {
+                                    key: 'risk_accepted',
+                                    text: 'I accept the security risks',
+                                    type: 'select',
+                                    options: [
+                                        { label: 'Yes', value: 'yes' },
+                                        { label: 'No', value: 'no' }
+                                    ],
+                                    required: true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            
+            'k8s-deploy': {
+                name: 'Kubernetes Deploy',
+                icon: 'fa-dharmachakra',
+                description: 'Deploy applications to Kubernetes with Helm charts and health checks',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '📋 Validate Manifests',
+                            key: 'validate',
+                            command: `
+                                # Validate Kubernetes manifests
+                                kubectl apply --dry-run=client -f k8s/
+                                helm lint ./charts/myapp
+                            `,
+                            agents: { kubernetes: 'true' }
+                        },
+                        {
+                            label: '🔨 Build & Push Image',
+                            key: 'build',
+                            plugins: {
+                                'docker-buildkite-plugin#v3.0.0': {
+                                    image: 'myapp:${BUILDKITE_BUILD_NUMBER}',
+                                    dockerfile: 'Dockerfile',
+                                    push: 'registry.company.com/myapp:${BUILDKITE_BUILD_NUMBER}'
+                                }
+                            },
+                            agents: { docker: 'true' }
+                        },
+                        {
+                            label: '🚀 Deploy to Staging',
+                            key: 'deploy_staging',
+                            command: `
+                                helm upgrade --install myapp-staging ./charts/myapp \
+                                  --namespace staging \
+                                  --set image.tag=${BUILDKITE_BUILD_NUMBER} \
+                                  --wait --timeout 5m
+                            `,
+                            depends_on: ['validate', 'build'],
+                            agents: { kubernetes: 'true' }
+                        },
+                        {
+                            label: '🧪 Run Smoke Tests',
+                            key: 'smoke_tests',
+                            command: 'npm run test:smoke -- --env=staging',
+                            depends_on: ['deploy_staging'],
+                            retry: {
+                                automatic: [
+                                    { exit_status: '*', limit: 2 }
+                                ]
+                            },
                             agents: { queue: 'default' }
                         },
                         'wait',
                         {
-                            input: '🔐 Deployment Configuration',
-                            key: 'deploy_config',
-                            prompt: 'Configure deployment settings',
+                            block: '🚀 Deploy to Production?',
+                            key: 'prod_gate',
+                            branches: 'main'
+                        },
+                        {
+                            label: '🚀 Deploy to Production',
+                            key: 'deploy_prod',
+                            command: `
+                                helm upgrade --install myapp ./charts/myapp \
+                                  --namespace production \
+                                  --set image.tag=${BUILDKITE_BUILD_NUMBER} \
+                                  --wait --timeout 10m
+                            `,
+                            depends_on: ['smoke_tests', 'prod_gate'],
+                            branches: 'main',
+                            agents: { kubernetes: 'true' },
+                            concurrency: 1,
+                            concurrency_group: 'prod-deploy'
+                        }
+                    ]
+                }
+            },
+            
+            'serverless': {
+                name: 'Serverless Deploy',
+                icon: 'fa-bolt',
+                description: 'Deploy serverless functions with testing and staged rollouts',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '📦 Install Dependencies',
+                            key: 'install',
+                            command: 'npm ci',
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '🧪 Unit Tests',
+                            key: 'test',
+                            command: 'npm test',
+                            depends_on: ['install'],
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '📦 Package Functions',
+                            key: 'package',
+                            command: 'serverless package',
+                            artifact_paths: '.serverless/**/*',
+                            depends_on: ['test'],
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '🚀 Deploy to Dev',
+                            key: 'deploy_dev',
+                            command: 'serverless deploy --stage dev',
+                            depends_on: ['package'],
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '🧪 Integration Tests',
+                            key: 'integration_tests',
+                            command: 'npm run test:integration -- --stage=dev',
+                            depends_on: ['deploy_dev'],
+                            agents: { node: '16' }
+                        },
+                        'wait',
+                        {
+                            label: '🚀 Deploy to Prod',
+                            key: 'deploy_prod',
+                            command: 'serverless deploy --stage prod',
+                            branches: 'main',
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '🔄 Canary Rollout',
+                            key: 'canary',
+                            command: `
+                                # Deploy canary version
+                                serverless deploy function -f main --stage prod --alias canary
+                                # Monitor metrics
+                                npm run monitor:canary
+                            `,
+                            depends_on: ['deploy_prod'],
+                            branches: 'main',
+                            agents: { node: '16' }
+                        }
+                    ]
+                }
+            },
+            
+            'data-pipeline': {
+                name: 'Data Pipeline',
+                icon: 'fa-database',
+                description: 'ETL pipeline with data validation, transformation, and quality checks',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '📊 Validate Source Data',
+                            key: 'validate_source',
+                            command: `
+                                python scripts/validate_schema.py --source=raw
+                                python scripts/check_data_quality.py --source=raw
+                            `,
+                            agents: { python: '3.9', memory: '8GB' }
+                        },
+                        {
+                            label: '🔄 Transform Data',
+                            key: 'transform',
+                            command: `
+                                spark-submit \
+                                  --master yarn \
+                                  --deploy-mode cluster \
+                                  scripts/transform_data.py
+                            `,
+                            depends_on: ['validate_source'],
+                            agents: { spark: '3.0', memory: '16GB' },
+                            timeout_in_minutes: 120
+                        },
+                        {
+                            label: '✅ Data Quality Checks',
+                            key: 'quality_check',
+                            command: `
+                                great_expectations checkpoint run daily_quality
+                                dbt test
+                            `,
+                            depends_on: ['transform'],
+                            artifact_paths: 'data_quality_reports/**/*',
+                            agents: { python: '3.9' }
+                        },
+                        {
+                            label: '📤 Load to Warehouse',
+                            key: 'load',
+                            command: `
+                                python scripts/load_to_warehouse.py \
+                                  --source=transformed \
+                                  --target=warehouse
+                            `,
+                            depends_on: ['quality_check'],
+                            agents: { python: '3.9' },
+                            retry: {
+                                automatic: [
+                                    { exit_status: -1, limit: 2 }
+                                ]
+                            }
+                        },
+                        'wait',
+                        {
+                            label: '📊 Update Dashboards',
+                            key: 'dashboards',
+                            command: `
+                                # Refresh materialized views
+                                psql -f scripts/refresh_views.sql
+                                # Update Tableau extracts
+                                tabcmd refreshextracts --project "Analytics"
+                            `,
+                            agents: { queue: 'analytics' }
+                        }
+                    ]
+                }
+            },
+            
+            'multi-platform': {
+                name: 'Multi-Platform Build',
+                icon: 'fa-layer-group',
+                description: 'Build and test across multiple platforms and architectures',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '🏗️ Build Matrix',
+                            key: 'build',
+                            command: 'make build-${PLATFORM}-${ARCH}',
+                            artifact_paths: 'build/${PLATFORM}/${ARCH}/**/*',
+                            matrix: {
+                                setup: [
+                                    { PLATFORM: 'linux', ARCH: 'amd64' },
+                                    { PLATFORM: 'linux', ARCH: 'arm64' },
+                                    { PLATFORM: 'darwin', ARCH: 'amd64' },
+                                    { PLATFORM: 'darwin', ARCH: 'arm64' },
+                                    { PLATFORM: 'windows', ARCH: 'amd64' }
+                                ]
+                            },
+                            agents: {
+                                queue: '${PLATFORM}-${ARCH}'
+                            }
+                        },
+                        {
+                            label: '🧪 Test ${PLATFORM}/${ARCH}',
+                            key: 'test',
+                            command: 'make test-${PLATFORM}-${ARCH}',
+                            depends_on: ['build'],
+                            matrix: {
+                                setup: [
+                                    { PLATFORM: 'linux', ARCH: 'amd64' },
+                                    { PLATFORM: 'linux', ARCH: 'arm64' },
+                                    { PLATFORM: 'darwin', ARCH: 'amd64' },
+                                    { PLATFORM: 'darwin', ARCH: 'arm64' },
+                                    { PLATFORM: 'windows', ARCH: 'amd64' }
+                                ]
+                            },
+                            agents: {
+                                queue: '${PLATFORM}-${ARCH}'
+                            }
+                        },
+                        'wait',
+                        {
+                            label: '📦 Create Release',
+                            key: 'release',
+                            command: `
+                                # Download all artifacts
+                                buildkite-agent artifact download 'build/**/*' .
+                                # Create release packages
+                                ./scripts/create-release.sh
+                            `,
+                            artifact_paths: 'release/**/*',
+                            branches: 'main release/*',
+                            agents: { queue: 'release' }
+                        }
+                    ]
+                }
+            },
+            
+            'compliance': {
+                name: 'Compliance Pipeline',
+                icon: 'fa-certificate',
+                description: 'Automated compliance checks, audit trails, and certification',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '📋 License Check',
+                            key: 'license',
+                            command: `
+                                # Check all dependencies for license compliance
+                                license-checker --json > licenses.json
+                                python scripts/check_licenses.py
+                            `,
+                            artifact_paths: 'licenses.json',
+                            agents: { queue: 'compliance' }
+                        },
+                        {
+                            label: '🔒 Security Compliance',
+                            key: 'security',
+                            command: `
+                                # Run CIS benchmark tests
+                                inspec exec compliance/cis-benchmark
+                                # OWASP dependency check
+                                dependency-check.sh --project "MyApp" --out reports
+                            `,
+                            artifact_paths: 'reports/**/*',
+                            agents: { queue: 'compliance' }
+                        },
+                        {
+                            label: '📊 Code Coverage',
+                            key: 'coverage',
+                            command: `
+                                # Ensure minimum coverage requirements
+                                npm test -- --coverage
+                                python scripts/check_coverage.py --min=80
+                            `,
+                            artifact_paths: 'coverage/**/*',
+                            agents: { queue: 'default' }
+                        },
+                        {
+                            label: '📝 Generate Audit Report',
+                            key: 'audit',
+                            command: `
+                                python scripts/generate_audit_report.py \
+                                  --license-report=licenses.json \
+                                  --security-report=reports/dependency-check-report.json \
+                                  --coverage-report=coverage/lcov.info
+                            `,
+                            artifact_paths: 'audit-report-*.pdf',
+                            depends_on: ['license', 'security', 'coverage'],
+                            agents: { python: '3.9' }
+                        },
+                        'wait',
+                        {
+                            block: '✅ Compliance Approval',
+                            key: 'approval',
+                            prompt: 'Review and approve compliance report',
                             fields: [
                                 {
-                                    key: 'environment',
-                                    type: 'select',
-                                    text: 'Environment',
-                                    options: [
-                                        { label: 'Staging', value: 'staging' },
-                                        { label: 'Production', value: 'production' }
-                                    ],
+                                    key: 'approver',
+                                    text: 'Approver Name',
                                     required: true
                                 },
                                 {
-                                    key: 'version',
-                                    type: 'select',
-                                    text: 'Version Tag',
-                                    required: true,
-                                    hint: 'e.g., v1.2.3',
-                                    options: [
-                                        { label: 'Approved', value: 'approved' },
-                                        { label: 'Rejected', value: 'rejected' },
-                                        { label: 'Conditional', value: 'conditional' }
-                                    ]
+                                    key: 'comments',
+                                    text: 'Comments',
+                                    required: false
                                 }
                             ]
+                        },
+                        {
+                            label: '📤 Submit to Registry',
+                            key: 'submit',
+                            command: `
+                                # Submit compliance artifacts to corporate registry
+                                compliance-cli submit \
+                                  --report=audit-report-*.pdf \
+                                  --approver="${BUILDKITE_BLOCK_STEP_approval_approver}"
+                            `,
+                            depends_on: ['audit', 'approval'],
+                            branches: 'main',
+                            agents: { queue: 'compliance' }
+                        }
+                    ]
+                }
+            },
+            
+            'performance': {
+                name: 'Performance Testing',
+                icon: 'fa-tachometer-alt',
+                description: 'Load testing, performance benchmarks, and regression detection',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '🏗️ Build Test Image',
+                            key: 'build',
+                            command: 'docker build -t perftest:${BUILDKITE_BUILD_NUMBER} .',
+                            agents: { docker: 'true' }
+                        },
+                        {
+                            label: '⚡ Performance Baseline',
+                            key: 'baseline',
+                            command: `
+                                # Run baseline performance tests
+                                k6 run scripts/baseline.js \
+                                  --out influxdb=http://metrics:8086/k6
+                            `,
+                            artifact_paths: 'results/baseline/**/*',
+                            depends_on: ['build'],
+                            agents: { performance: 'true' }
+                        },
+                        {
+                            label: '🔥 Load Test',
+                            key: 'load',
+                            command: `
+                                # Run load test with increasing users
+                                k6 run scripts/load-test.js \
+                                  --stage 5m:100,10m:500,5m:100 \
+                                  --out json=results/load-test.json
+                            `,
+                            artifact_paths: 'results/load-test.json',
+                            depends_on: ['build'],
+                            agents: { performance: 'true' },
+                            timeout_in_minutes: 30
+                        },
+                        {
+                            label: '💥 Stress Test',
+                            key: 'stress',
+                            command: `
+                                # Find breaking point
+                                k6 run scripts/stress-test.js \
+                                  --stage 5m:100,5m:200,5m:300,5m:400,5m:500
+                            `,
+                            artifact_paths: 'results/stress/**/*',
+                            depends_on: ['build'],
+                            soft_fail: true,
+                            agents: { performance: 'true' },
+                            timeout_in_minutes: 30
+                        },
+                        'wait',
+                        {
+                            label: '📊 Analyze Results',
+                            key: 'analyze',
+                            command: `
+                                # Compare with previous runs
+                                python scripts/analyze_performance.py \
+                                  --baseline=results/baseline \
+                                  --current=results/load-test.json \
+                                  --threshold=10
+                            `,
+                            artifact_paths: 'performance-report.html',
+                            depends_on: ['baseline', 'load', 'stress'],
+                            agents: { python: '3.9' }
+                        },
+                        {
+                            block: '⚠️ Performance Regression?',
+                            key: 'regression_review',
+                            prompt: 'Performance regression detected. Continue?',
+                            depends_on: ['analyze'],
+                            if: 'build.env("PERFORMANCE_REGRESSION") == "true"'
+                        }
+                    ]
+                }
+            },
+            
+            'release': {
+                name: 'Release Pipeline',
+                icon: 'fa-tag',
+                description: 'Automated release process with versioning, changelog, and distribution',
+                pipeline: {
+                    steps: [
+                        {
+                            label: '🏷️ Determine Version',
+                            key: 'version',
+                            command: `
+                                # Semantic versioning based on commits
+                                npx semantic-release --dry-run --no-ci \
+                                  | grep "next release version" \
+                                  | sed 's/.*next release version is //' \
+                                  > .version
+                                echo "Next version: $(cat .version)"
+                            `,
+                            artifact_paths: '.version',
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '📝 Generate Changelog',
+                            key: 'changelog',
+                            command: `
+                                # Generate changelog from commits
+                                conventional-changelog -p angular -i CHANGELOG.md -s
+                                git add CHANGELOG.md
+                            `,
+                            depends_on: ['version'],
+                            agents: { node: '16' }
+                        },
+                        {
+                            label: '🏗️ Build Release',
+                            key: 'build',
+                            command: `
+                                VERSION=$(cat .version)
+                                make release VERSION=$VERSION
+                            `,
+                            artifact_paths: [
+                                'dist/**/*',
+                                'release/**/*'
+                            ],
+                            depends_on: ['version'],
+                            agents: { queue: 'release' }
+                        },
+                        {
+                            label: '🧪 Release Tests',
+                            key: 'test',
+                            command: 'npm run test:release',
+                            depends_on: ['build'],
+                            agents: { queue: 'release' }
+                        },
+                        'wait',
+                        {
+                            block: '🚀 Create Release?',
+                            key: 'release_gate',
+                            prompt: 'Create and publish release?',
+                            fields: [
+                                {
+                                    key: 'release_notes',
+                                    text: 'Additional Release Notes',
+                                    required: false
+                                }
+                            ]
+                        },
+                        {
+                            label: '🏷️ Tag Release',
+                            key: 'tag',
+                            command: `
+                                VERSION=$(cat .version)
+                                git tag -a "v$VERSION" -m "Release v$VERSION"
+                                git push origin "v$VERSION"
+                            `,
+                            depends_on: ['changelog', 'test', 'release_gate'],
+                            branches: 'main',
+                            agents: { queue: 'release' }
+                        },
+                        {
+                            label: '📦 Publish Packages',
+                            key: 'publish',
+                            command: `
+                                VERSION=$(cat .version)
+                                # Publish to package registries
+                                npm publish
+                                docker push myapp:$VERSION
+                                # Upload to GitHub releases
+                                gh release create "v$VERSION" \
+                                  --title "Release v$VERSION" \
+                                  --notes-file RELEASE_NOTES.md \
+                                  dist/*
+                            `,
+                            depends_on: ['tag'],
+                            branches: 'main',
+                            agents: { queue: 'release' }
                         }
                     ]
                 }

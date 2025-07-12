@@ -6,7 +6,8 @@
 
 class TemplatesUI {
     constructor() {
-        this.templates = window.enhancedTemplates || window.pipelineTemplates;
+        // Prefer pipelineTemplates over enhancedTemplates since we restored all 16 templates there
+        this.templates = window.pipelineTemplates || window.enhancedTemplates;
         this.selectedCategory = 'all';
         this.searchQuery = '';
         
@@ -454,6 +455,24 @@ class TemplatesUI {
     }
 
     setupEventListeners() {
+        // Also handle the sidebar templates button
+        const templatesBtn = document.getElementById('templates-btn');
+        if (templatesBtn) {
+            console.log('TemplatesUI: Found templates-btn, attaching handler');
+            // Remove any existing listeners to prevent duplicates
+            const newBtn = templatesBtn.cloneNode(true);
+            templatesBtn.parentNode.replaceChild(newBtn, templatesBtn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('TemplatesUI: Templates button clicked');
+                this.showTemplatesModal();
+            });
+        } else {
+            console.warn('TemplatesUI: templates-btn not found in DOM');
+        }
+        
         // Search functionality
         const searchInput = document.getElementById('template-search');
         if (searchInput) {
@@ -851,24 +870,28 @@ if (typeof window !== 'undefined') {
     
     // Function to initialize when templates are ready
     const initializeTemplatesUI = () => {
-        // Check if templates are loaded
-        if (window.enhancedTemplates && window.enhancedTemplates.templates) {
-            console.log('TemplatesUI: Initializing with enhanced templates');
-            window.templatesUI = new TemplatesUI();
-            
-            // Set up periodic update for template count
-            setTimeout(() => {
-                if (window.templatesUI && window.templatesUI.updateTemplateCount) {
-                    window.templatesUI.updateTemplateCount();
-                }
-            }, 500);
-        } else if (window.pipelineTemplates && window.pipelineTemplates.templates) {
-            console.log('TemplatesUI: Initializing with pipeline templates');
-            window.templatesUI = new TemplatesUI();
-        } else {
-            console.log('TemplatesUI: Templates not ready yet, waiting...');
-            // Try again in a moment
-            setTimeout(initializeTemplatesUI, 100);
+        try {
+            // Check if templates are loaded - prefer pipelineTemplates with our 16 templates
+            if (window.pipelineTemplates && window.pipelineTemplates.templates) {
+                console.log('TemplatesUI: Initializing with pipeline templates');
+                window.templatesUI = new TemplatesUI();
+                
+                // Set up periodic update for template count
+                setTimeout(() => {
+                    if (window.templatesUI && window.templatesUI.updateTemplateCount) {
+                        window.templatesUI.updateTemplateCount();
+                    }
+                }, 500);
+            } else if (window.enhancedTemplates && window.enhancedTemplates.templates) {
+                console.log('TemplatesUI: Initializing with enhanced templates');
+                window.templatesUI = new TemplatesUI();
+            } else {
+                console.log('TemplatesUI: Templates not ready yet, waiting...');
+                // Try again in a moment
+                setTimeout(initializeTemplatesUI, 100);
+            }
+        } catch (error) {
+            console.error('TemplatesUI: Error during initialization:', error);
         }
     };
     
@@ -878,4 +901,28 @@ if (typeof window !== 'undefined') {
     } else {
         initializeTemplatesUI();
     }
+    
+    // Also expose a global function for showing templates
+    window.showTemplatesModal = () => {
+        if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+            window.templatesUI.showTemplatesModal();
+        } else {
+            console.warn('TemplatesUI not initialized yet, attempting to initialize now...');
+            initializeTemplatesUI();
+            // Try again after initialization
+            setTimeout(() => {
+                if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                    window.templatesUI.showTemplatesModal();
+                }
+            }, 100);
+        }
+    };
+    
+    // Ensure initialization happens even if scripts load out of order
+    window.addEventListener('load', () => {
+        if (!window.templatesUI) {
+            console.log('TemplatesUI: Running failsafe initialization on window load');
+            initializeTemplatesUI();
+        }
+    });
 }

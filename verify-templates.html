@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Templates</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Templates Verification</h1>
+    <div id="status"></div>
+    <button onclick="checkTemplates()">Check Templates</button>
+    <button onclick="testButton()">Test Templates Button</button>
+    
+    <script src="js/pipeline-templates.js"></script>
+    <script src="js/pipeline-templates-enhanced.js"></script>
+    <script src="js/templates-ui.js"></script>
+    
+    <script>
+        function addStatus(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            document.getElementById('status').appendChild(div);
+        }
+        
+        function checkTemplates() {
+            addStatus('Checking templates...', 'info');
+            
+            // Check pipeline templates
+            if (window.pipelineTemplates) {
+                const count = Object.keys(window.pipelineTemplates.templates).length;
+                addStatus(`Pipeline Templates loaded: ${count} templates`, count === 16 ? 'success' : 'error');
+                
+                // List template names
+                Object.entries(window.pipelineTemplates.templates).forEach(([key, template]) => {
+                    addStatus(`  - ${template.name} (${key})`, 'info');
+                });
+            } else {
+                addStatus('Pipeline Templates NOT loaded', 'error');
+            }
+            
+            // Check enhanced templates
+            if (window.enhancedTemplates) {
+                const count = Object.keys(window.enhancedTemplates.templates).length;
+                addStatus(`Enhanced Templates loaded: ${count} templates`, 'info');
+            }
+            
+            // Check TemplatesUI
+            if (window.templatesUI) {
+                addStatus('TemplatesUI is initialized', 'success');
+                const templateCount = window.templatesUI.templates ? 
+                    Object.keys(window.templatesUI.templates.templates).length : 0;
+                addStatus(`TemplatesUI is using: ${templateCount} templates`, 
+                    templateCount === 16 ? 'success' : 'error');
+            } else {
+                addStatus('TemplatesUI NOT initialized', 'error');
+            }
+        }
+        
+        function testButton() {
+            const btn = document.getElementById('templates-btn');
+            if (btn) {
+                addStatus('Templates button found in DOM', 'success');
+                btn.click();
+            } else {
+                addStatus('Templates button NOT found', 'error');
+                
+                // Try to trigger the modal directly
+                if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                    addStatus('Showing modal directly...', 'info');
+                    window.templatesUI.showTemplatesModal();
+                } else if (window.showTemplatesModal) {
+                    addStatus('Using global showTemplatesModal...', 'info');
+                    window.showTemplatesModal();
+                }
+            }
+        }
+        
+        // Auto-check after load
+        window.addEventListener('load', () => {
+            setTimeout(checkTemplates, 500);
+        });
+    </script>
+</body>
+</html>

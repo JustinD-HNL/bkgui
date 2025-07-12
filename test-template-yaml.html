@@ -30,8 +30,12 @@
     <p>Testing templates to ensure they generate valid Buildkite YAML</p>
     
     <div class="controls">
-        <button onclick="loadFullStackTemplate()">Load Full Stack CI/CD Template</button>
+        <button onclick="testAllTemplates()">Test All Templates</button>
         <button onclick="validateYAML()">Validate Generated YAML</button>
+        <br><br>
+        <select id="template-selector" onchange="loadTemplate(this.value)">
+            <option value="">Select a template...</option>
+        </select>
     </div>
     
     <h2>Generated YAML:</h2>
@@ -42,22 +46,36 @@
     
     <script src="js/yaml-generator.js"></script>
     <script src="js/pipeline-builder.js"></script>
-    <script src="js/pipeline-templates-enhanced.js"></script>
+    <script src="js/pipeline-templates.js"></script>
     <script>
         const generator = new YAMLGenerator();
         const builder = new PipelineBuilder();
-        const templates = new PipelineTemplatesEnhanced();
+        const templates = new PipelineTemplates();
         
-        function loadFullStackTemplate() {
+        // Populate template selector
+        const selector = document.getElementById('template-selector');
+        Object.entries(templates.templates).forEach(([key, template]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = `${template.name} - ${template.description}`;
+            selector.appendChild(option);
+        });
+        
+        function loadTemplate(templateKey) {
+            if (!templateKey) return;
+            
             // Clear existing steps
             builder.steps = [];
             
             // Get the template
-            const template = templates.templates['full-stack-cicd'];
+            const template = templates.templates[templateKey];
             if (!template || !template.pipeline) {
                 document.getElementById('yaml-output').textContent = 'Template not found!';
                 return;
             }
+            
+            // Show template info
+            document.getElementById('yaml-output').textContent = `Loading template: ${template.name}\n${template.description}\n\n`;
             
             // Load template steps
             template.pipeline.steps.forEach(stepConfig => {
@@ -75,8 +93,58 @@
             
             // Generate YAML
             const config = builder.exportConfig();
-            const yaml = generator.generate(config);
+            const yaml = generator.generateYAML(config);
             document.getElementById('yaml-output').textContent = yaml;
+            
+            // Auto-validate
+            validateYAML();
+        }
+        
+        function testAllTemplates() {
+            let results = 'Testing all templates...\n\n';
+            let errorCount = 0;
+            
+            Object.entries(templates.templates).forEach(([key, template]) => {
+                try {
+                    // Clear existing steps
+                    builder.steps = [];
+                    
+                    // Load template steps
+                    template.pipeline.steps.forEach(stepConfig => {
+                        if (stepConfig === 'wait') {
+                            builder.steps.push('wait');
+                        } else {
+                            const step = {
+                                id: `step-${Date.now()}-${Math.random()}`,
+                                type: detectStepType(stepConfig),
+                                properties: stepConfig
+                            };
+                            builder.steps.push(step);
+                        }
+                    });
+                    
+                    // Generate YAML
+                    const config = builder.exportConfig();
+                    const yaml = generator.generateYAML(config);
+                    
+                    // Check for common issues
+                    if (yaml.includes('artifacts#v3.0.0:')) {
+                        results += `❌ ${template.name}: Invalid plugin name 'artifacts#v3.0.0'\n`;
+                        errorCount++;
+                    } else {
+                        results += `✅ ${template.name}: Generated ${yaml.split('\n').length} lines of YAML\n`;
+                    }
+                    
+                } catch (error) {
+                    results += `❌ ${template.name}: Error - ${error.message}\n`;
+                    errorCount++;
+                }
+            });
+            
+            results += `\n\nTotal templates: ${Object.keys(templates.templates).length}`;
+            results += `\nErrors: ${errorCount}`;
+            
+            document.getElementById('yaml-output').textContent = results;
         }
         
         function detectStepType(stepConfig) {
