@@ -1095,6 +1095,69 @@ class BuildkiteApp {
     }
 
     setupStepTemplates() {
+        // Map sidebar template names to actual template keys
+        const templateMapping = {
+            'ci-cd': 'node-app',
+            'docker': 'docker-microservice',
+            'node': 'node-app',
+            'python': 'python-ml',
+            'matrix': 'multi-platform',
+            'unit-tests': 'node-app',
+            'integration-tests': 'mobile-app',
+            'parallel-tests': 'multi-platform',
+            'security-scan': 'security-scan',
+            'node-build': 'node-app',
+            'python-build': 'python-ml',
+            'go-build': 'multi-platform',
+            'multi-arch-build': 'multi-platform',
+            'k8s-deploy': 'k8s-deploy',
+            'aws-deploy': 'serverless',
+            'gcp-deploy': 'k8s-deploy',
+            'static-deploy': 'release',
+            'docker-build': 'docker-microservice',
+            'docker-compose': 'docker-microservice',
+            'docker-push': 'docker-microservice',
+            'docker-scan': 'security-scan'
+        };
+        
+        // Set up click handlers for sidebar template items
+        const sidebarTemplates = document.querySelectorAll('.sidebar-templates .template-item');
+        console.log(`🔧 Setting up ${sidebarTemplates.length} sidebar template items`);
+        
+        sidebarTemplates.forEach(item => {
+            // Remove any existing click handlers
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            
+            // Add click handler
+            newItem.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const templateName = newItem.getAttribute('data-template');
+                const actualTemplateKey = templateMapping[templateName] || templateName;
+                console.log(`📋 Sidebar template clicked: ${templateName} -> ${actualTemplateKey}`);
+                
+                if (window.pipelineTemplates && typeof window.pipelineTemplates.loadTemplate === 'function') {
+                    try {
+                        await window.pipelineTemplates.loadTemplate(actualTemplateKey);
+                        this.updateYAML();
+                        this.updateStepCount();
+                        
+                        // Get template name for notification
+                        const template = window.pipelineTemplates.templates[actualTemplateKey];
+                        const displayName = template ? template.name : actualTemplateKey;
+                        this.showNotification(`Loaded "${displayName}" template`, 'success');
+                    } catch (error) {
+                        console.error('Error loading template:', error);
+                        this.showNotification(`Failed to load ${templateName} template`, 'error');
+                    }
+                } else {
+                    console.warn('Pipeline templates not available');
+                    this.showNotification('Templates not available yet', 'warning');
+                }
+            });
+        });
+        
         console.log('✅ Step templates setup complete');
     }
 

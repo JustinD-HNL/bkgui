@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Templates</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app-container" class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <h1>Template Debugging</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="test-button" class="btn btn-primary">Test Button</button>
+                </div>
+            </div>
+        </header>
+        
+        <main class="main-content" style="padding: 20px;">
+            <h2>Debug Information</h2>
+            <div id="debug-output" style="background: #f0f0f0; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre-wrap;"></div>
+            
+            <h3 style="margin-top: 30px;">Template Test</h3>
+            <button id="templates-btn" class="btn btn-secondary">
+                <i class="fas fa-clipboard-list"></i> Step Templates
+            </button>
+            
+            <h3 style="margin-top: 30px;">Sidebar Template Items</h3>
+            <div class="template-list">
+                <div class="template-item" data-template="ci-cd">
+                    <i class="fas fa-sync"></i> CI/CD Pipeline
+                </div>
+                <div class="template-item" data-template="docker">
+                    <i class="fab fa-docker"></i> Docker Build
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Step Templates Modal -->
+    <div id="step-templates-modal" class="modal" style="display: none;">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-list"></i> Step Templates</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="template-list" class="template-list">
+                    <div class="template-item" data-template="unit-tests">
+                        <i class="fas fa-flask"></i>
+                        <h5>Unit Tests</h5>
+                        <p>Run unit tests with coverage reporting</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const debugOutput = document.getElementById('debug-output');
+        
+        function log(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            let output = `[${timestamp}] ${message}`;
+            if (data) {
+                output += '\n' + JSON.stringify(data, null, 2);
+            }
+            debugOutput.textContent += output + '\n\n';
+            console.log(message, data);
+        }
+        
+        // Check DOM elements
+        log('Checking DOM elements...');
+        log('header-actions exists:', document.querySelector('.header-actions') !== null);
+        log('templates-btn exists:', document.getElementById('templates-btn') !== null);
+        log('step-templates-modal exists:', document.getElementById('step-templates-modal') !== null);
+        log('template-list exists:', document.getElementById('template-list') !== null);
+        
+        // Check template items
+        const templateItems = document.querySelectorAll('.template-item');
+        log('Template items found:', templateItems.length);
+        
+        // Test button click
+        document.getElementById('templates-btn').addEventListener('click', () => {
+            log('Templates button clicked!');
+            const modal = document.getElementById('step-templates-modal');
+            if (modal) {
+                modal.style.display = 'block';
+                log('Modal displayed');
+            } else {
+                log('ERROR: Modal not found!');
+            }
+        });
+        
+        // Test template item clicks
+        templateItems.forEach((item, index) => {
+            item.addEventListener('click', () => {
+                const template = item.getAttribute('data-template');
+                log(`Template item clicked: ${template}`);
+            });
+        });
+        
+        // Test close modal
+        document.querySelector('.close-modal')?.addEventListener('click', () => {
+            log('Close modal clicked');
+            document.getElementById('step-templates-modal').style.display = 'none';
+        });
+        
+        // Load scripts and check for errors
+        log('Loading pipeline templates scripts...');
+        
+        // Create mock pipeline builder
+        window.pipelineBuilder = {
+            loadTemplate: function(templateName) {
+                log(`Mock loadTemplate called with: ${templateName}`);
+            }
+        };
+        
+        // Helper functions
+        window.showModal = function(modalId) {
+            log(`showModal called with: ${modalId}`);
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'block';
+            }
+        };
+        
+        window.closeModal = function(modalId) {
+            log(`closeModal called with: ${modalId}`);
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        };
+    </script>
+    
+    <!-- Load the actual scripts -->
+    <script src="js/pipeline-templates.js"></script>
+    <script src="js/pipeline-templates-enhanced.js"></script>
+    <script src="js/templates-ui.js"></script>
+    
+    <script>
+        // Check what's loaded
+        setTimeout(() => {
+            log('Checking loaded modules...');
+            log('window.pipelineTemplates exists:', window.pipelineTemplates !== undefined);
+            log('window.enhancedTemplates exists:', window.enhancedTemplates !== undefined);
+            log('window.templatesUI exists:', window.templatesUI !== undefined);
+            
+            if (window.pipelineTemplates) {
+                log('Pipeline templates loaded:', Object.keys(window.pipelineTemplates.templates || {}).length);
+            }
+            
+            if (window.templatesUI) {
+                log('TemplatesUI initialized');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

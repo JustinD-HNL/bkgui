@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Template Fixes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .test-section {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-result.pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-result.fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        #debug-log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Template System Test</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Templates Button in Header</h2>
+            <div id="test1-result" class="test-result">Running...</div>
+            <p>Check if the templates button appears in the header-actions section.</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Sidebar Template Items Click</h2>
+            <div id="test2-result" class="test-result">Running...</div>
+            <p>Test if clicking sidebar template items triggers the correct actions.</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Modal Template Loading</h2>
+            <div id="test3-result" class="test-result">Running...</div>
+            <p>Test if templates in the modal load properly when clicked.</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Debug Log</h2>
+            <div id="debug-log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Live Test Area</h2>
+            <p>Refresh the main application page and check:</p>
+            <ol>
+                <li>Look for the "Templates" button in the header (should be the first button on the left in header-actions)</li>
+                <li>Click the "Templates" button - the templates modal should open</li>
+                <li>Click any template item in the sidebar under "Templates" section - it should load the template</li>
+                <li>Click any template in the modal - it should load the template and close the modal</li>
+            </ol>
+            <a href="index.html" target="_blank" class="btn btn-primary">Open Main Application</a>
+        </div>
+    </div>
+
+    <script>
+        const debugLog = document.getElementById('debug-log');
+        let logContent = '';
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            debugLog.textContent = logContent;
+            console.log(message);
+        }
+        
+        function updateTestResult(testId, passed, message) {
+            const resultEl = document.getElementById(`${testId}-result`);
+            resultEl.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultEl.textContent = `${passed ? 'PASS' : 'FAIL'}: ${message}`;
+        }
+        
+        // Wait for scripts to load
+        setTimeout(() => {
+            log('Starting tests...');
+            
+            // Test 1: Check if templates button would be created
+            log('Test 1: Checking templates button creation logic');
+            const headerExists = document.querySelector('.header-actions') !== null;
+            if (headerExists) {
+                log('Header actions container would be found');
+                updateTestResult('test1', true, 'Header actions container exists - button would be created');
+            } else {
+                log('Header actions container not found');
+                updateTestResult('test1', false, 'Header actions container missing');
+            }
+            
+            // Test 2: Check if sidebar templates exist
+            log('Test 2: Checking sidebar templates');
+            const sidebarTemplates = document.querySelectorAll('.sidebar-templates .template-item');
+            if (sidebarTemplates.length > 0) {
+                log(`Found ${sidebarTemplates.length} sidebar template items`);
+                updateTestResult('test2', true, `Found ${sidebarTemplates.length} sidebar templates - handlers would be attached`);
+            } else {
+                log('No sidebar templates found');
+                updateTestResult('test2', false, 'No sidebar templates found');
+            }
+            
+            // Test 3: Check template system initialization
+            log('Test 3: Checking template system');
+            setTimeout(() => {
+                const templatesLoaded = window.pipelineTemplates !== undefined;
+                const templatesUILoaded = window.templatesUI !== undefined;
+                
+                if (templatesLoaded && templatesUILoaded) {
+                    const templateCount = window.pipelineTemplates?.templates ? 
+                        Object.keys(window.pipelineTemplates.templates).length : 0;
+                    log(`Templates loaded: ${templateCount} templates available`);
+                    updateTestResult('test3', true, `Template system loaded with ${templateCount} templates`);
+                } else {
+                    log(`Templates loaded: ${templatesLoaded}, UI loaded: ${templatesUILoaded}`);
+                    updateTestResult('test3', false, 'Template system not fully loaded');
+                }
+                
+                // Additional debug info
+                log('\nDebug Information:');
+                log(`window.pipelineTemplates: ${window.pipelineTemplates ? 'exists' : 'missing'}`);
+                log(`window.templatesUI: ${window.templatesUI ? 'exists' : 'missing'}`);
+                log(`window.buildkiteApp: ${window.buildkiteApp ? 'exists' : 'missing'}`);
+                
+                if (window.pipelineTemplates?.templates) {
+                    log(`Available templates: ${Object.keys(window.pipelineTemplates.templates).join(', ')}`);
+                }
+            }, 1000);
+            
+        }, 100);
+    </script>
+</body>
+</html>

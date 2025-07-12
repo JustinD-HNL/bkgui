@@ -43,7 +43,7 @@ class TemplatesUI {
         if (actionsContainer && !document.getElementById('templates-button')) {
             const templatesBtn = document.createElement('button');
             templatesBtn.id = 'templates-button';
-            templatesBtn.className = 'action-btn';
+            templatesBtn.className = 'btn btn-secondary';
             
             // Show template count if available
             const templateCount = this.templates && this.templates.templates ? 
