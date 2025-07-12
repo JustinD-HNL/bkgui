@@ -536,6 +536,49 @@ class TemplatesUI {
                             { label: '📊 Generate Report', key: 'report', command: 'compliance-report' }
                         ]
                     }
+                },
+                'security-audits-group': {
+                    name: 'Security Audits Group',
+                    icon: 'fa-shield-alt',
+                    category: 'security',
+                    description: 'Comprehensive security audits organized in a logical group',
+                    pipeline: {
+                        steps: [
+                            {
+                                group: ':lock_with_ink_pen: Security Audits',
+                                key: 'security_audits',
+                                steps: [
+                                    {
+                                        label: ':shield: SAST Analysis',
+                                        command: 'semgrep --config=auto .',
+                                        key: 'sast'
+                                    },
+                                    {
+                                        label: ':closed_lock_with_key: Dependency Scan',
+                                        command: 'npm audit --audit-level high',
+                                        key: 'deps'
+                                    },
+                                    {
+                                        label: ':key: Secret Detection',
+                                        command: 'gitleaks detect --source .',
+                                        key: 'secrets'
+                                    },
+                                    {
+                                        label: ':scroll: License Check',
+                                        command: 'license-checker --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause"',
+                                        key: 'licenses'
+                                    }
+                                ]
+                            },
+                            'wait',
+                            {
+                                label: ':clipboard: Security Report',
+                                command: 'python scripts/generate-security-report.py',
+                                depends_on: ['security_audits'],
+                                key: 'security_report'
+                            }
+                        ]
+                    }
                 }
             },
             getAllCategories: () => ['ci-cd', 'deployment', 'security', 'microservices', 'workflow', 'testing'],
@@ -566,39 +609,51 @@ class TemplatesUI {
                                 }
                                 stepConfigs.push(blockStep);
                             } else if (step.input) {
-                                stepConfigs.push({
+                                const inputStep = {
                                     type: 'input',
                                     properties: {
                                         input: step.input,
-                                        key: step.key || undefined,
                                         fields: step.fields && step.fields.length > 0 ? step.fields : undefined
                                     }
-                                });
+                                };
+                                // Set key at step level for inputs
+                                if (step.key) {
+                                    inputStep.key = step.key;
+                                }
+                                stepConfigs.push(inputStep);
                             } else if (step.trigger) {
-                                stepConfigs.push({
+                                const triggerStep = {
                                     type: 'trigger',
                                     properties: {
                                         trigger: step.trigger,
                                         build: step.build && Object.keys(step.build).length > 0 ? step.build : undefined,
                                         async: step.async || undefined
                                     }
-                                });
+                                };
+                                // Set key at step level for triggers
+                                if (step.key) {
+                                    triggerStep.key = step.key;
+                                }
+                                stepConfigs.push(triggerStep);
                             } else if (step.group) {
-                                stepConfigs.push({
+                                const groupStep = {
                                     type: 'group',
                                     properties: {
                                         group: step.group,
-                                        key: step.key || undefined,
                                         steps: step.steps && step.steps.length > 0 ? step.steps : undefined
                                     }
-                                });
+                                };
+                                // Set key at step level for groups
+                                if (step.key) {
+                                    groupStep.key = step.key;
+                                }
+                                stepConfigs.push(groupStep);
                             } else {
                                 // Default to command step
-                                stepConfigs.push({
+                                const commandStep = {
                                     type: 'command',
                                     properties: {
                                         label: step.label || 'Step',
-                                        key: step.key || '',
                                         command: step.command || (Array.isArray(step.commands) ? step.commands.join('\n') : step.commands) || '',
                                         agents: step.agents && Object.keys(step.agents).length > 0 ? step.agents : undefined,
                                         artifact_paths: step.artifact_paths && step.artifact_paths.length > 0 ? (Array.isArray(step.artifact_paths) ? step.artifact_paths.join('\n') : step.artifact_paths) : undefined,
@@ -615,7 +670,12 @@ class TemplatesUI {
                                         concurrency: step.concurrency || undefined,
                                         concurrency_group: step.concurrency_group || undefined
                                     }
-                                });
+                                };
+                                // Set key at step level for commands
+                                if (step.key) {
+                                    commandStep.key = step.key;
+                                }
+                                stepConfigs.push(commandStep);
                             }
                         }
                     });
@@ -634,9 +694,9 @@ class TemplatesUI {
                             if (step.properties.plugins && Object.keys(step.properties.plugins).length === 0) delete step.properties.plugins;
                             if (step.properties.agents && Object.keys(step.properties.agents).length === 0) delete step.properties.agents;
                             
-                            // Set step-level properties (like key for blocks)
+                            // Set key in properties (pipeline builder expects it there)
                             if (stepConfig.key) {
-                                step.key = stepConfig.key;
+                                step.properties.key = stepConfig.key;
                             }
                             
                             // Set step properties
@@ -1530,7 +1590,7 @@ if (typeof window !== 'undefined') {
                     templatesBtn.className = 'btn btn-secondary';
                     
                     // Count templates from embedded templates
-                    let templateCount = 16; // We have 16 embedded templates
+                    let templateCount = 17; // We have 17 embedded templates
                     
                     templatesBtn.innerHTML = `<i class="fas fa-file-code"></i> Templates${templateCount > 0 ? ` (${templateCount})` : ''}`;
                     templatesBtn.addEventListener('click', () => {

@@ -224,30 +224,54 @@ class YAMLGenerator {
             yaml += this.generateCommonProperties(step);
             
             // Retry
-            if (step.retry) {
+            if (step.retry && (step.retry.automatic || step.retry.manual)) {
                 yaml += this.indent() + 'retry:\n';
                 this.currentIndent++;
                 
-                if (step.retry.automatic) {
+                if (step.retry.automatic && (Array.isArray(step.retry.automatic) ? step.retry.automatic.length > 0 : Object.keys(step.retry.automatic).length > 0)) {
                     yaml += this.indent() + 'automatic:\n';
                     this.currentIndent++;
                     
-                    if (step.retry.automatic.exit_status) {
-                        yaml += this.indent() + `exit_status: ${this.quote(step.retry.automatic.exit_status)}\n`;
-                    }
-                    
-                    if (step.retry.automatic.limit) {
-                        yaml += this.indent() + `limit: ${step.retry.automatic.limit}\n`;
-                    }
-                    
-                    if (step.retry.automatic.delay) {
-                        yaml += this.indent() + `delay: ${step.retry.automatic.delay}\n`;
+                    if (Array.isArray(step.retry.automatic)) {
+                        // Handle array format: [{exit_status: -1, limit: 2}]
+                        step.retry.automatic.forEach(retryConfig => {
+                            yaml += this.indent() + '-';
+                            if (typeof retryConfig === 'object') {
+                                if (Object.keys(retryConfig).length === 1 && retryConfig.exit_status !== undefined) {
+                                    // Simple format: - exit_status: -1
+                                    yaml += ` exit_status: ${this.quote(retryConfig.exit_status)}\n`;
+                                } else {
+                                    // Complex format with multiple properties
+                                    yaml += '\n';
+                                    this.currentIndent++;
+                                    Object.entries(retryConfig).forEach(([key, value]) => {
+                                        yaml += this.indent() + `${key}: ${this.quote(value)}\n`;
+                                    });
+                                    this.currentIndent--;
+                                }
+                            } else {
+                                yaml += ` ${this.quote(retryConfig)}\n`;
+                            }
+                        });
+                    } else {
+                        // Handle object format (legacy)
+                        if (step.retry.automatic.exit_status) {
+                            yaml += this.indent() + `exit_status: ${this.quote(step.retry.automatic.exit_status)}\n`;
+                        }
+                        
+                        if (step.retry.automatic.limit) {
+                            yaml += this.indent() + `limit: ${step.retry.automatic.limit}\n`;
+                        }
+                        
+                        if (step.retry.automatic.delay) {
+                            yaml += this.indent() + `delay: ${step.retry.automatic.delay}\n`;
+                        }
                     }
                     
                     this.currentIndent--;
                 }
                 
-                if (step.retry.manual) {
+                if (step.retry.manual && Object.keys(step.retry.manual).length > 0) {
                     yaml += this.indent() + 'manual:\n';
                     this.currentIndent++;
                     
@@ -621,7 +645,7 @@ class YAMLGenerator {
             yaml += this.indent() + `- ${pluginKey}:\n`;
             this.currentIndent++;
             
-            if (typeof config === 'object' && config !== null) {
+            if (typeof config === 'object' && config !== null && Object.keys(config).length > 0) {
                 Object.entries(config).forEach(([key, value]) => {
                     if (value !== '' && value !== null && value !== undefined) {
                         if (Array.isArray(value)) {
@@ -643,6 +667,9 @@ class YAMLGenerator {
                         }
                     }
                 });
+            } else {
+                // Empty plugin config - add placeholder to maintain valid YAML structure
+                yaml += this.indent() + '# Plugin configuration\n';
             }
             
             this.currentIndent--;
