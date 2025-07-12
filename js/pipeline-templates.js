@@ -50,11 +50,11 @@ class PipelineTemplates {
                         },
                         {
                             block: '🚀 Deploy to Production',
-                            key: 'deploy-gate',
+                            key: 'deploy_gate',
                             prompt: 'Deploy this build to production?',
                             fields: [
                                 {
-                                    key: 'release-notes',
+                                    key: 'release_notes',
                                     text: 'Release Notes',
                                     required: false
                                 }
@@ -68,7 +68,7 @@ class PipelineTemplates {
                                 echo "Deploying to production..."
                                 npm run deploy:prod
                             `,
-                            depends_on: ['build', 'deploy-gate'],
+                            depends_on: ['build', 'deploy_gate'],
                             branches: 'main',
                             agents: { queue: 'deploy' }
                         }
@@ -143,7 +143,7 @@ class PipelineTemplates {
                     steps: [
                         {
                             label: '📊 Validate Data',
-                            key: 'validate-data',
+                            key: 'validate_data',
                             command: `
                                 python -m pip install -r requirements.txt
                                 python scripts/validate_data.py
@@ -169,7 +169,7 @@ class PipelineTemplates {
                                 'models/**/*',
                                 'reports/**/*'
                             ].join(' '),
-                            depends_on: ['validate-data', 'test'],
+                            depends_on: ['validate_data', 'test'],
                             agents: { 
                                 python: '3.9',
                                 gpu: 'true'
@@ -183,7 +183,7 @@ class PipelineTemplates {
                             prompt: 'Review the model metrics and approve for deployment',
                             fields: [
                                 {
-                                    key: 'accuracy-threshold',
+                                    key: 'accuracy_threshold',
                                     text: 'Minimum accuracy threshold',
                                     default: '0.95',
                                     required: true
@@ -213,7 +213,7 @@ class PipelineTemplates {
                     steps: [
                         {
                             label: '📱 iOS Build',
-                            key: 'ios-build',
+                            key: 'ios_build',
                             command: `
                                 bundle install
                                 bundle exec fastlane ios build
@@ -227,7 +227,7 @@ class PipelineTemplates {
                         },
                         {
                             label: '🤖 Android Build',
-                            key: 'android-build',
+                            key: 'android_build',
                             command: `
                                 ./gradlew clean assembleRelease
                                 ./gradlew bundleRelease
@@ -242,7 +242,7 @@ class PipelineTemplates {
                         'wait',
                         {
                             label: '🧪 Run UI Tests',
-                            key: 'ui-tests',
+                            key: 'ui_tests',
                             command: 'npm run test:e2e',
                             parallelism: 5,
                             retry: {
@@ -255,7 +255,7 @@ class PipelineTemplates {
                         },
                         {
                             block: '📲 Deploy to Stores',
-                            key: 'deploy-gate',
+                            key: 'deploy_gate',
                             prompt: 'Deploy to App Store and Play Store?',
                             branches: 'main release/*'
                         },
@@ -266,13 +266,13 @@ class PipelineTemplates {
                                 {
                                     label: '🍎 Deploy to App Store',
                                     command: 'bundle exec fastlane ios deploy',
-                                    depends_on: ['ios-build', 'ui-tests', 'deploy-gate'],
+                                    depends_on: ['ios_build', 'ui_tests', 'deploy_gate'],
                                     agents: { queue: 'mac' }
                                 },
                                 {
                                     label: '🤖 Deploy to Play Store',
                                     command: 'bundle exec fastlane android deploy',
-                                    depends_on: ['android-build', 'ui-tests', 'deploy-gate'],
+                                    depends_on: ['android_build', 'ui_tests', 'deploy_gate'],
                                     agents: { queue: 'android' }
                                 }
                             ]
@@ -289,7 +289,7 @@ class PipelineTemplates {
                     steps: [
                         {
                             label: '🔍 Terraform Format Check',
-                            key: 'fmt-check',
+                            key: 'fmt_check',
                             command: 'terraform fmt -check -recursive',
                             agents: { terraform: 'latest' }
                         },
@@ -310,7 +310,7 @@ class PipelineTemplates {
                                 terraform plan -out=tfplan
                             `,
                             artifact_paths: 'tfplan',
-                            depends_on: ['fmt-check', 'validate'],
+                            depends_on: ['fmt_check', 'validate'],
                             agents: { terraform: 'latest' },
                             plugins: {
                                 'artifacts': {
@@ -321,11 +321,11 @@ class PipelineTemplates {
                         'wait',
                         {
                             block: '🔍 Review Terraform Plan',
-                            key: 'review-plan',
+                            key: 'review_plan',
                             prompt: 'Review the Terraform plan before applying',
                             fields: [
                                 {
-                                    key: 'confirm-changes',
+                                    key: 'confirm_changes',
                                     text: 'Type CONFIRM to proceed',
                                     required: true
                                 }
@@ -339,7 +339,7 @@ class PipelineTemplates {
                                 buildkite-agent artifact download tfplan .
                                 terraform apply tfplan
                             `,
-                            depends_on: ['plan', 'review-plan'],
+                            depends_on: ['plan', 'review_plan'],
                             branches: 'main',
                             agents: { terraform: 'latest' },
                             concurrency: 1,
@@ -357,7 +357,7 @@ class PipelineTemplates {
                     steps: [
                         {
                             label: '🔍 Detect Changes',
-                            key: 'detect-changes',
+                            key: 'detect_changes',
                             command: `
                                 # Detect which packages changed
                                 ./scripts/detect-changes.sh > changed-packages.txt
@@ -374,7 +374,7 @@ class PipelineTemplates {
                                 buildkite-agent artifact download changed-packages.txt .
                                 ./scripts/build-changed.sh
                             `,
-                            depends_on: ['detect-changes'],
+                            depends_on: ['detect_changes'],
                             agents: { queue: 'default' },
                             matrix: [
                                 {
@@ -384,13 +384,13 @@ class PipelineTemplates {
                         },
                         {
                             label: '🧪 Test Changed Packages',
-                            key: 'test-packages',
+                            key: 'test_packages',
                             command: `
                                 # Test only changed packages
                                 buildkite-agent artifact download changed-packages.txt .
                                 ./scripts/test-changed.sh
                             `,
-                            depends_on: ['build-packages'],
+                            depends_on: ['build_packages'],
                             parallelism: 4,
                             agents: { queue: 'default' }
                         },
@@ -405,7 +405,7 @@ class PipelineTemplates {
                                 }
                             },
                             branches: 'main',
-                            depends_on: ['test-packages']
+                            depends_on: ['test_packages']
                         }
                     ]
                 }
@@ -434,188 +434,30 @@ class PipelineTemplates {
                         'wait',
                         {
                             input: '🔐 Deployment Configuration',
-                            key: 'deploy-config',
+                            key: 'deploy_config',
                             prompt: 'Configure deployment settings',
                             fields: [
                                 {
-                                    text: 'Environment',
                                     key: 'environment',
-                                    select: [
+                                    type: 'select',
+                                    text: 'Environment',
+                                    options: [
                                         { label: 'Staging', value: 'staging' },
                                         { label: 'Production', value: 'production' }
                                     ],
                                     required: true
                                 },
                                 {
-                                    text: 'Version Tag',
                                     key: 'version',
-                                    hint: 'e.g., v1.2.3',
-                                    required: true
-                                }
-                            ]
-                        },
-                        {
-                            label: '🚀 Deploy to ${BUILDKITE_BUILD_META_DATA_ENVIRONMENT}',
-                            key: 'deploy',
-                            command: 'make deploy ENV=${BUILDKITE_BUILD_META_DATA_ENVIRONMENT} VERSION=${BUILDKITE_BUILD_META_DATA_VERSION}',
-                            depends_on: ['deploy-config'],
-                            agents: { queue: 'deploy' }
-                        },
-                        {
-                            block: '✋ Approve for Production',
-                            key: 'prod-approval',
-                            prompt: 'Approve deployment to production?',
-                            if: 'build.meta_data.environment == "production"',
-                            blocked_state: 'running',
-                            fields: [
-                                {
-                                    text: 'Approval Notes',
-                                    key: 'approval-notes',
-                                    required: false
-                                }
-                            ]
-                        },
-                        {
-                            trigger: 'production-deploy',
-                            label: '🚀 Trigger Production Deploy',
-                            depends_on: ['prod-approval'],
-                            if: 'build.meta_data.environment == "production"',
-                            build: {
-                                message: 'Production deployment approved',
-                                commit: '${BUILDKITE_COMMIT}',
-                                branch: '${BUILDKITE_BRANCH}',
-                                meta_data: {
-                                    version: '${BUILDKITE_BUILD_META_DATA_VERSION}',
-                                    approved_by: '${BUILDKITE_BUILD_CREATOR_EMAIL}'
-                                }
-                            }
-                        }
-                    ]
-                }
-            },
-            
-            'parallel-testing': {
-                name: 'Parallel Testing',
-                icon: 'fa-tasks',
-                description: 'Run tests in parallel with grouping',
-                pipeline: {
-                    steps: [
-                        {
-                            label: '📦 Setup',
-                            key: 'setup',
-                            command: 'npm ci',
-                            artifact_paths: 'node_modules/**/*',
-                            agents: { queue: 'default' }
-                        },
-                        {
-                            group: '🧪 Test Suite',
-                            key: 'test-suite',
-                            depends_on: ['setup'],
-                            steps: [
-                                {
-                                    label: 'Unit Tests',
-                                    command: 'npm run test:unit',
-                                    key: 'unit-tests',
-                                    agents: { queue: 'default' }
-                                },
-                                {
-                                    label: 'Integration Tests',
-                                    command: 'npm run test:integration',
-                                    key: 'integration-tests',
-                                    agents: { queue: 'default' }
-                                },
-                                {
-                                    label: 'E2E Tests',
-                                    command: 'npm run test:e2e',
-                                    key: 'e2e-tests',
-                                    parallelism: 3,
-                                    agents: { queue: 'e2e' }
-                                }
-                            ]
-                        },
-                        'wait',
-                        {
-                            label: '📈 Test Report',
-                            key: 'test-report',
-                            command: 'npm run test:report',
-                            agents: { queue: 'default' }
-                        }
-                    ]
-                }
-            },
-            
-            'security-scan': {
-                name: 'Security Pipeline',
-                icon: 'fa-shield-alt',
-                description: 'Comprehensive security scanning pipeline for dependencies and code',
-                pipeline: {
-                    steps: [
-                        {
-                            label: '🔍 Dependency Check',
-                            key: 'dep-check',
-                            command: `
-                                # Check for vulnerable dependencies
-                                npm audit --audit-level=moderate
-                                safety check --json > safety-report.json
-                            `,
-                            soft_fail: true,
-                            artifact_paths: '*-report.json',
-                            agents: { queue: 'security' }
-                        },
-                        {
-                            label: '🔒 SAST Scan',
-                            key: 'sast',
-                            command: `
-                                # Static Application Security Testing
-                                semgrep --config=auto --json -o sast-report.json .
-                            `,
-                            soft_fail: 'exit_status:1',
-                            artifact_paths: 'sast-report.json',
-                            agents: { queue: 'security' }
-                        },
-                        {
-                            label: '🌐 Secret Scanning',
-                            key: 'secrets',
-                            command: `
-                                # Scan for secrets and credentials
-                                trufflehog filesystem . --json > secrets-report.json
-                            `,
-                            artifact_paths: 'secrets-report.json',
-                            agents: { queue: 'security' }
-                        },
-                        {
-                            label: '📊 License Check',
-                            key: 'license',
-                            command: `
-                                # Check for license compliance
-                                license-checker --json > license-report.json
-                            `,
-                            soft_fail: true,
-                            artifact_paths: 'license-report.json',
-                            agents: { queue: 'security' }
-                        },
-                        'wait',
-                        {
-                            label: '📈 Generate Security Report',
-                            key: 'report',
-                            command: `
-                                # Aggregate all security reports
-                                buildkite-agent artifact download '*-report.json' .
-                                ./scripts/generate-security-report.sh
-                            `,
-                            artifact_paths: 'security-report.html',
-                            agents: { queue: 'security' }
-                        },
-                        {
-                            block: '🛡️ Security Review',
-                            key: 'security-review',
-                            prompt: 'Review security findings before proceeding',
-                            fields: [
-                                {
-                                    key: 'security-approval',
-                                    text: 'Security team approval',
+                                    type: 'select',
+                                    text: 'Version Tag',
                                     required: true,
-                                    select: 'Approved\nRejected\nConditional'
+                                    hint: 'e.g., v1.2.3',
+                                    options: [
+                                        { label: 'Approved', value: 'approved' },
+                                        { label: 'Rejected', value: 'rejected' },
+                                        { label: 'Conditional', value: 'conditional' }
+                                    ]
                                 }
                             ]
                         }

@@ -27,14 +27,14 @@ class EnhancedPipelineTemplates {
                             artifact_paths: 'node_modules/**/*',
                             plugins: {
                                 'cache': {
-                                    key: 'npm-packages-{{ checksum "package-lock.json" }}',
+                                    key: 'npm_packages_{{ checksum 'package-lock.json" }}',
                                     paths: ['node_modules']
                                 }
                             }
                         },
                         {
                             group: '🔍 Code Quality',
-                            key: 'code-quality',
+                            key: 'code_quality',
                             depends_on: ['setup'],
                             steps: [
                                 {
@@ -42,11 +42,11 @@ class EnhancedPipelineTemplates {
                                     key: 'lint',
                                     command: 'npm run lint',
                                     agents: { queue: 'default' },
-                                    soft_fail: { exit_status: [1] }
+                                    soft_fail: [{ exit_status: 1 }]
                                 },
                                 {
                                     label: '🎨 Code Formatting',
-                                    key: 'format-check',
+                                    key: 'format_check',
                                     command: 'npm run format:check',
                                     agents: { queue: 'default' }
                                 },
@@ -65,7 +65,7 @@ class EnhancedPipelineTemplates {
                             steps: [
                                 {
                                     label: '🧪 Unit Tests',
-                                    key: 'unit-tests',
+                                    key: 'unit_tests',
                                     command: `
                                         npm run test:unit -- --coverage
                                         echo "--- :codecov: Upload coverage"
@@ -84,7 +84,7 @@ class EnhancedPipelineTemplates {
                                 },
                                 {
                                     label: '🔗 Integration Tests',
-                                    key: 'integration-tests',
+                                    key: 'integration_tests',
                                     command: 'npm run test:integration',
                                     agents: { queue: 'default' },
                                     timeout_in_minutes: 30,
@@ -97,7 +97,7 @@ class EnhancedPipelineTemplates {
                                 },
                                 {
                                     label: '🌐 E2E Tests',
-                                    key: 'e2e-tests',
+                                    key: 'e2e_tests',
                                     command: 'npm run test:e2e',
                                     agents: { queue: 'e2e-runners' },
                                     parallelism: 5,
@@ -137,7 +137,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🐳 Build Docker Image',
-                            key: 'docker-build',
+                            key: 'docker_build',
                             depends_on: ['build'],
                             plugins: {
                                 'docker-compose': {
@@ -153,58 +153,16 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             block: '🚀 Deploy to Staging',
-                            key: 'deploy-staging-gate',
+                            key: 'deploy_staging_gate',
                             branches: 'main develop',
                             fields: [
                                 {
+                                    key: 'release_notes',
+                                    type: 'select',
                                     text: 'Release Notes',
-                                    key: 'release-notes',
-                                    required: false,
-                                    hint: 'What changes are included in this release?'
-                                }
-                            ]
-                        },
-                        {
-                            label: '🚀 Deploy to Staging',
-                            key: 'deploy-staging',
-                            depends_on: ['deploy-staging-gate'],
-                            command: `
-                                echo "--- :rocket: Deploying to staging"
-                                ./deploy.sh staging \${BUILDKITE_BUILD_NUMBER}
-                                echo "--- :link: Application URL"
-                                echo "https://staging.myapp.com"
-                            `,
-                            agents: { queue: 'deploy' },
-                            env: {
-                                ENVIRONMENT: 'staging'
-                            },
-                            concurrency: 1,
-                            concurrency_group: 'deploy-staging'
-                        },
-                        {
-                            label: '🧪 Smoke Tests - Staging',
-                            key: 'smoke-tests-staging',
-                            depends_on: ['deploy-staging'],
-                            command: 'npm run test:smoke -- --env=staging',
-                            agents: { queue: 'default' },
-                            retry: {
-                                automatic: {
-                                    exit_status: '*',
-                                    limit: 3
-                                }
-                            }
-                        },
-                        'wait',
-                        {
-                            block: '🚀 Deploy to Production',
-                            key: 'deploy-prod-gate',
-                            branches: 'main',
-                            fields: [
-                                {
-                                    text: 'Deployment Checklist',
-                                    key: 'checklist',
                                     required: true,
-                                    select: [
+                                    hint: 'What changes are included in this release?',
+                                    options: [
                                         { label: 'Database migrations reviewed', value: 'db-reviewed' },
                                         { label: 'Rollback plan prepared', value: 'rollback-ready' },
                                         { label: 'Team notified', value: 'team-notified' },
@@ -217,7 +175,7 @@ class EnhancedPipelineTemplates {
                         {
                             trigger: 'production-deploy',
                             label: '🚀 Trigger Production Deploy',
-                            depends_on: ['deploy-prod-gate', 'smoke-tests-staging'],
+                            depends_on: ['deploy_prod_gate', 'smoke_tests_staging'],
                             branches: 'main',
                             build: {
                                 message: 'Production deployment for ${BUILDKITE_BUILD_NUMBER}',
@@ -241,7 +199,7 @@ class EnhancedPipelineTemplates {
                     steps: [
                         {
                             label: '📦 Test Environment Setup',
-                            key: 'test-setup',
+                            key: 'test_setup',
                             command: `
                                 echo "--- :package: Installing dependencies"
                                 npm ci
@@ -259,8 +217,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             group: '🧪 Test Execution',
-                            key: 'test-execution',
-                            depends_on: ['test-setup'],
+                            key: 'test_execution',
+                            depends_on: ['test_setup'],
                             steps: [
                                 {
                                     label: '🧪 Unit Tests',
@@ -334,7 +292,7 @@ class EnhancedPipelineTemplates {
                                 },
                                 {
                                     label: '🎨 Visual Regression Tests',
-                                    key: 'visual-regression',
+                                    key: 'visual_regression',
                                     command: `
                                         echo "--- :art: Running visual regression tests"
                                         npm run test:visual
@@ -344,7 +302,7 @@ class EnhancedPipelineTemplates {
                                         '.percy/screenshots/**/*',
                                         'visual-diff/**/*'
                                     ],
-                                    soft_fail: { exit_status: [1] }
+                                    soft_fail: [{ exit_status: 1 }]
                                 },
                                 {
                                     label: '♿ Accessibility Tests',
@@ -371,7 +329,7 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             label: '📊 Test Report Generation',
-                            key: 'test-report',
+                            key: 'test_report',
                             command: `
                                 echo "--- :bar_chart: Generating test report"
                                 buildkite-agent artifact download "coverage/**/*" .
@@ -408,7 +366,7 @@ class EnhancedPipelineTemplates {
                     steps: [
                         {
                             label: '🔍 Pre-deployment Checks',
-                            key: 'pre-checks',
+                            key: 'pre_checks',
                             command: `
                                 echo "--- :mag: Checking deployment prerequisites"
                                 ./scripts/pre-deployment-checks.sh
@@ -431,8 +389,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🔵 Deploy to Blue Environment',
-                            key: 'deploy-blue',
-                            depends_on: ['pre-checks', 'build-artifact'],
+                            key: 'deploy_blue',
+                            depends_on: ['pre_checks', 'build_artifact'],
                             command: `
                                 echo "--- :large_blue_circle: Deploying to blue environment"
                                 ./scripts/deploy.sh blue \${BUILDKITE_BUILD_NUMBER}
@@ -444,8 +402,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🧪 Validate Blue Deployment',
-                            key: 'validate-blue',
-                            depends_on: ['deploy-blue'],
+                            key: 'validate_blue',
+                            depends_on: ['deploy_blue'],
                             command: `
                                 echo "--- :test_tube: Running smoke tests on blue"
                                 npm run test:smoke -- --env=blue
@@ -457,12 +415,13 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             block: '🔄 Switch Traffic to Blue',
-                            key: 'switch-traffic',
+                            key: 'switch_traffic',
                             fields: [
                                 {
+                                    key: 'switch_strategy',
+                                    type: 'select',
                                     text: 'Traffic Switch Strategy',
-                                    key: 'switch-strategy',
-                                    select: [
+                                    options: [
                                         { label: 'Instant switch (100%)', value: 'instant' },
                                         { label: 'Gradual (10% → 50% → 100%)', value: 'gradual' },
                                         { label: 'Canary (5% for 30min)', value: 'canary' }
@@ -474,8 +433,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🔄 Execute Traffic Switch',
-                            key: 'traffic-switch',
-                            depends_on: ['switch-traffic'],
+                            key: 'traffic_switch',
+                            depends_on: ['switch_traffic'],
                             command: `
                                 STRATEGY=\${BUILDKITE_BUILD_META_DATA_SWITCH_STRATEGY:-gradual}
                                 echo "--- :twisted_rightwards_arrows: Switching traffic using \$STRATEGY strategy"
@@ -486,7 +445,7 @@ class EnhancedPipelineTemplates {
                         {
                             label: '📊 Monitor New Deployment',
                             key: 'monitor',
-                            depends_on: ['traffic-switch'],
+                            depends_on: ['traffic_switch'],
                             command: `
                                 echo "--- :chart_with_downwards_trend: Monitoring error rates"
                                 ./scripts/monitor-deployment.sh blue 300
@@ -496,7 +455,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🟢 Decommission Green',
-                            key: 'decommission-green',
+                            key: 'decommission_green',
                             depends_on: ['monitor'],
                             command: `
                                 echo "--- :large_green_circle: Decommissioning old green environment"
@@ -508,7 +467,7 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             label: '🔙 Rollback Preparation',
-                            key: 'rollback-prep',
+                            key: 'rollback_prep',
                             command: `
                                 echo "--- :back: Preparing rollback plan"
                                 ./scripts/prepare-rollback.sh blue green
@@ -539,7 +498,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🐤 Deploy Canary (5%)',
-                            key: 'deploy-canary-5',
+                            key: 'deploy_canary_5',
                             command: `
                                 echo "--- :hatching_chick: Deploying canary to 5% of traffic"
                                 kubectl set image deployment/app app=myapp:\${BUILDKITE_BUILD_NUMBER}
@@ -550,8 +509,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '⏱️ Monitor Canary (5 min)',
-                            key: 'monitor-5',
-                            depends_on: ['deploy-canary-5'],
+                            key: 'monitor_5',
+                            depends_on: ['deploy_canary_5'],
                             command: `
                                 echo "--- :stopwatch: Monitoring canary at 5%"
                                 ./scripts/monitor-canary.sh 5 300
@@ -560,8 +519,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🐥 Promote Canary (25%)',
-                            key: 'deploy-canary-25',
-                            depends_on: ['monitor-5'],
+                            key: 'deploy_canary_25',
+                            depends_on: ['monitor_5'],
                             command: `
                                 echo "--- :hatched_chick: Promoting canary to 25% of traffic"
                                 kubectl scale deployment/app-canary --replicas=5
@@ -571,8 +530,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '⏱️ Monitor Canary (10 min)',
-                            key: 'monitor-25',
-                            depends_on: ['deploy-canary-25'],
+                            key: 'monitor_25',
+                            depends_on: ['deploy_canary_25'],
                             command: `
                                 echo "--- :stopwatch: Monitoring canary at 25%"
                                 ./scripts/monitor-canary.sh 25 600
@@ -582,20 +541,25 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             block: '🚀 Full Rollout',
-                            key: 'full-rollout-approval',
+                            key: 'full_rollout_approval',
                             fields: [
                                 {
+                                    key: 'metrics_ok',
+                                    type: 'select',
                                     text: 'Canary Metrics Review',
-                                    key: 'metrics-ok',
-                                    select: 'All metrics healthy\nMinor degradation\nNeeds investigation',
+                                    options: [
+                                        { label: 'All metrics healthy', value: 'all-metrics-healthy' },
+                                        { label: 'Minor degradation', value: 'minor-degradation' },
+                                        { label: 'Needs investigation', value: 'needs-investigation' }
+                                    ],
                                     required: true
                                 }
                             ]
                         },
                         {
                             label: '🚀 Full Rollout (100%)',
-                            key: 'full-rollout',
-                            depends_on: ['full-rollout-approval'],
+                            key: 'full_rollout',
+                            depends_on: ['full_rollout_approval'],
                             command: `
                                 echo "--- :rocket: Rolling out to 100%"
                                 kubectl set image deployment/app app=myapp:\${BUILDKITE_BUILD_NUMBER}
@@ -618,7 +582,7 @@ class EnhancedPipelineTemplates {
                     steps: [
                         {
                             label: '🔍 Detect Changed Services',
-                            key: 'detect-changes',
+                            key: 'detect_changes',
                             command: `
                                 echo "--- :mag: Detecting changed services"
                                 git diff --name-only origin/main...HEAD | grep -E "^services/" | cut -d/ -f2 | sort -u > changed-services.txt
@@ -637,7 +601,7 @@ class EnhancedPipelineTemplates {
                         {
                             label: '🏗️ Build Changed Services',
                             key: 'build_services',
-                            depends_on: ['detect-changes'],
+                            depends_on: ['detect_changes'],
                             command: `
                                 buildkite-agent artifact download changed-services.txt .
                                 
@@ -657,12 +621,12 @@ class EnhancedPipelineTemplates {
                             matrix_setup: {
                                 SERVICE: '$(cat changed-services.txt)'
                             },
-                            soft_fail: { exit_status: [100] }
+                            soft_fail: [{ exit_status: 100 }]
                         },
                         {
                             label: '🧪 Test Changed Services',
-                            key: 'test-services',
-                            depends_on: ['build-services'],
+                            key: 'test_services',
+                            depends_on: ['build_services'],
                             command: `
                                 SERVICE=\${SERVICE:-unknown}
                                 echo "--- :test_tube: Testing service: \$SERVICE"
@@ -678,8 +642,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🔗 Integration Tests',
-                            key: 'integration-tests',
-                            depends_on: ['test-services'],
+                            key: 'integration_tests',
+                            depends_on: ['test_services'],
                             command: `
                                 echo "--- :link: Running cross-service integration tests"
                                 docker-compose -f docker-compose.integration.yml up --abort-on-container-exit
@@ -690,7 +654,7 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             label: '📤 Push Service Images',
-                            key: 'push-images',
+                            key: 'push_images',
                             branches: 'main develop',
                             command: `
                                 SERVICE=\${SERVICE:-unknown}
@@ -755,11 +719,11 @@ class EnhancedPipelineTemplates {
                                 ./scripts/validate-rbac.sh
                             `,
                             agents: { queue: 'security' },
-                            soft_fail: { exit_status: [1] }
+                            soft_fail: [{ exit_status: 1 }]
                         },
                         {
                             label: '📦 Package Helm Charts',
-                            key: 'package-helm',
+                            key: 'package_helm',
                             command: `
                                 echo "--- :package: Packaging Helm charts"
                                 for chart in charts/*/; do
@@ -777,7 +741,7 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             label: '🚀 Deploy to Development',
-                            key: 'deploy-dev',
+                            key: 'deploy_dev',
                             command: `
                                 echo "--- :rocket: Deploying to development cluster"
                                 kubectl config use-context dev-cluster
@@ -791,8 +755,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🧪 Run Service Mesh Tests',
-                            key: 'mesh-tests',
-                            depends_on: ['deploy-dev'],
+                            key: 'mesh_tests',
+                            depends_on: ['deploy_dev'],
                             command: `
                                 echo "--- :spider_web: Testing service mesh"
                                 ./scripts/test-istio-policies.sh
@@ -808,13 +772,14 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             block: '🚀 Deploy to Production',
-                            key: 'prod-gate',
+                            key: 'prod_gate',
                             branches: 'main',
                             fields: [
                                 {
-                                    text: 'Target Environment',
                                     key: 'environment',
-                                    select: [
+                                    type: 'select',
+                                    text: 'Target Environment',
+                                    options: [
                                         { label: 'US-East', value: 'us-east' },
                                         { label: 'EU-West', value: 'eu-west' },
                                         { label: 'APAC', value: 'apac' },
@@ -826,8 +791,8 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🌍 Deploy to Production',
-                            key: 'deploy-prod',
-                            depends_on: ['prod-gate'],
+                            key: 'deploy_prod',
+                            depends_on: ['prod_gate'],
                             command: `
                                 ENVIRONMENT=\${BUILDKITE_BUILD_META_DATA_ENVIRONMENT}
                                 echo "--- :earth_americas: Deploying to \$ENVIRONMENT"
@@ -862,7 +827,7 @@ class EnhancedPipelineTemplates {
                     steps: [
                         {
                             label: '🔍 PR Validation',
-                            key: 'pr-validation',
+                            key: 'pr_validation',
                             command: `
                                 echo "--- :mag: Validating pull request"
                                 ./scripts/validate-pr.sh
@@ -872,7 +837,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             group: '✅ PR Checks',
-                            key: 'pr-checks',
+                            key: 'pr_checks',
                             branches: '!main',
                             steps: [
                                 {
@@ -889,13 +854,13 @@ class EnhancedPipelineTemplates {
                                     label: '📊 Coverage',
                                     command: 'npm run test:coverage',
                                     agents: { queue: 'default' },
-                                    soft_fail: { exit_status: [1] }
+                                    soft_fail: [{ exit_status: 1 }]
                                 }
                             ]
                         },
                         {
                             label: '🔐 Security Check',
-                            key: 'security-check',
+                            key: 'security_check',
                             command: 'npm audit',
                             agents: { queue: 'security' },
                             branches: '!main',
@@ -904,7 +869,7 @@ class EnhancedPipelineTemplates {
                         'wait',
                         {
                             label: '✅ Update PR Status',
-                            key: 'update-pr',
+                            key: 'update_pr',
                             command: `
                                 echo "--- :github: Updating PR status"
                                 ./scripts/update-pr-status.sh success

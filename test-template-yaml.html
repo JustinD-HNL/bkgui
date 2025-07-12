@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Template YAML Generation</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f5f5f5; padding: 20px; white-space: pre-wrap; border-radius: 4px; margin: 10px 0; }
+        .controls { margin: 20px 0; }
+        button { 
+            margin: 5px; 
+            padding: 10px 20px; 
+            background: #0066cc; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        button:hover { background: #0052a3; }
+        h2 { margin-top: 30px; color: #333; }
+        .description { 
+            background: #e8f4f8; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-bottom: 10px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Template YAML Generation</h1>
+    <p>Testing templates to ensure they generate valid Buildkite YAML</p>
+    
+    <div class="controls">
+        <button onclick="loadFullStackTemplate()">Load Full Stack CI/CD Template</button>
+        <button onclick="validateYAML()">Validate Generated YAML</button>
+    </div>
+    
+    <h2>Generated YAML:</h2>
+    <pre id="yaml-output"></pre>
+    
+    <h2>Validation Results:</h2>
+    <pre id="validation-output"></pre>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script src="js/pipeline-builder.js"></script>
+    <script src="js/pipeline-templates-enhanced.js"></script>
+    <script>
+        const generator = new YAMLGenerator();
+        const builder = new PipelineBuilder();
+        const templates = new PipelineTemplatesEnhanced();
+        
+        function loadFullStackTemplate() {
+            // Clear existing steps
+            builder.steps = [];
+            
+            // Get the template
+            const template = templates.templates['full-stack-cicd'];
+            if (!template || !template.pipeline) {
+                document.getElementById('yaml-output').textContent = 'Template not found!';
+                return;
+            }
+            
+            // Load template steps
+            template.pipeline.steps.forEach(stepConfig => {
+                if (stepConfig === 'wait') {
+                    builder.steps.push('wait');
+                } else {
+                    const step = {
+                        id: `step-${Date.now()}-${Math.random()}`,
+                        type: detectStepType(stepConfig),
+                        properties: stepConfig
+                    };
+                    builder.steps.push(step);
+                }
+            });
+            
+            // Generate YAML
+            const config = builder.exportConfig();
+            const yaml = generator.generate(config);
+            document.getElementById('yaml-output').textContent = yaml;
+        }
+        
+        function detectStepType(stepConfig) {
+            if (stepConfig.command) return 'command';
+            if (stepConfig.block) return 'block';
+            if (stepConfig.input) return 'input';
+            if (stepConfig.trigger) return 'trigger';
+            if (stepConfig.group) return 'group';
+            if (stepConfig.annotate) return 'annotation';
+            if (stepConfig.notify) return 'notify';
+            return 'command';
+        }
+        
+        function validateYAML() {
+            const yaml = document.getElementById('yaml-output').textContent;
+            const validationResults = [];
+            
+            // Check for hyphens in keys
+            const keyWithHyphens = yaml.match(/key:\s*['"]*([^'":\s]+)/g);
+            if (keyWithHyphens) {
+                keyWithHyphens.forEach(match => {
+                    const key = match.replace(/key:\s*['"]*/g, '');
+                    if (key.includes('-')) {
+                        validationResults.push(`❌ Invalid key with hyphen: ${key}`);
+                    }
+                });
+            }
+            
+            // Check for invalid soft_fail format
+            if (yaml.includes('soft_fail:\n      exit_status:')) {
+                validationResults.push('❌ Invalid soft_fail format (should be array of objects)');
+            }
+            
+            // Check for fields with text and options
+            const lines = yaml.split('\n');
+            let inField = false;
+            let hasText = false;
+            let hasOptions = false;
+            
+            lines.forEach((line, i) => {
+                if (line.includes('- text:')) {
+                    inField = true;
+                    hasText = true;
+                } else if (line.includes('- select:')) {
+                    inField = true;
+                    hasText = false;
+                } else if (inField && line.includes('options:')) {
+                    hasOptions = true;
+                    if (hasText) {
+                        validationResults.push(`❌ Line ${i+1}: Text field has options (invalid)`);
+                    }
+                } else if (line.trim() === '' || !line.startsWith('    ')) {
+                    inField = false;
+                    hasText = false;
+                    hasOptions = false;
+                }
+            });
+            
+            // Check for group steps with keys
+            let groupFound = false;
+            lines.forEach((line, i) => {
+                if (line.includes('- group:')) {
+                    groupFound = true;
+                } else if (groupFound && line.includes('key:') && !line.includes('steps:')) {
+                    validationResults.push(`❌ Line ${i+1}: Group step has key at step level (invalid)`);
+                    groupFound = false;
+                } else if (!line.startsWith('  ')) {
+                    groupFound = false;
+                }
+            });
+            
+            if (validationResults.length === 0) {
+                validationResults.push('✅ All validation checks passed!');
+            }
+            
+            document.getElementById('validation-output').textContent = validationResults.join('\n');
+        }
+    </script>
+</body>
+</html>

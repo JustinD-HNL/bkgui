@@ -73,7 +73,7 @@ class PipelinePatterns {
                         properties: {
                             label: 'Build Services',
                             group: 'Services',
-                            key: 'services-group',
+                            key: 'services_group',
                             steps: [
                                 {
                                     type: 'command',
@@ -113,7 +113,7 @@ class PipelinePatterns {
                         properties: {
                             label: '🧪 Integration Tests',
                             command: 'npm run test:integration',
-                            key: 'integration-tests'
+                            key: 'integration_tests'
                         }
                     }
                 ]
@@ -127,7 +127,7 @@ class PipelinePatterns {
                         properties: {
                             label: '🧪 Matrix Tests',
                             command: 'npm test',
-                            key: 'matrix-test',
+                            key: 'matrix_test',
                             matrix: {
                                 setup: {
                                     os: ['ubuntu-latest', 'windows-latest', 'macos-latest'],
