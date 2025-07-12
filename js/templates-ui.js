@@ -19,11 +19,104 @@ class TemplatesUI {
                     description: 'Complete CI/CD pipeline for Node.js applications with testing, building, and deployment',
                     pipeline: {
                         steps: [
-                            { label: '📦 Install Dependencies', key: 'install', command: 'npm ci' },
-                            { label: '🔍 Lint Code', key: 'lint', command: 'npm run lint', depends_on: ['install'] },
-                            { label: '🧪 Run Tests', key: 'test', command: 'npm test', depends_on: ['install'] },
+                            {
+                                label: ':package: Install Dependencies',
+                                key: 'install',
+                                command: 'npm ci --prefer-offline --no-audit',
+                                agents: { queue: 'default', os: 'linux' },
+                                artifact_paths: ['node_modules.tar.gz'],
+                                plugins: {
+                                    'cache#v1.2.0': {
+                                        key: 'npm-v1-{{ checksum "package-lock.json" }}',
+                                        paths: ['node_modules']
+                                    }
+                                },
+                                timeout_in_minutes: 10
+                            },
+                            {
+                                label: ':mag: Lint Code',
+                                key: 'lint',
+                                command: 'npm run lint',
+                                depends_on: ['install'],
+                                agents: { queue: 'default' },
+                                artifact_paths: ['lint-results.json'],
+                                soft_fail: [{ exit_status: 1 }]
+                            },
+                            {
+                                label: ':test_tube: Run Tests',
+                                key: 'test',
+                                command: 'npm test -- --coverage --reporters=default --reporters=jest-junit',
+                                depends_on: ['install'],
+                                agents: { queue: 'default' },
+                                artifact_paths: ['coverage/**/*', 'junit.xml'],
+                                plugins: {
+                                    'test-collector#v1.11.0': {
+                                        files: 'junit.xml',
+                                        format: 'junit'
+                                    }
+                                },
+                                env: { CI: 'true', NODE_ENV: 'test' },
+                                parallelism: 2,
+                                timeout_in_minutes: 15,
+                                retry: {
+                                    automatic: [
+                                        { exit_status: -1, limit: 2 },
+                                        { exit_status: 143, limit: 2 }
+                                    ]
+                                }
+                            },
                             'wait',
-                            { label: '🏗️ Build Application', key: 'build', command: 'npm run build' }
+                            {
+                                label: ':hammer: Build Application',
+                                key: 'build',
+                                command: 'npm run build',
+                                depends_on: ['test', 'lint'],
+                                agents: { queue: 'default' },
+                                artifact_paths: ['dist/**/*', 'build/**/*'],
+                                env: { NODE_ENV: 'production' },
+                                timeout_in_minutes: 20
+                            },
+                            {
+                                block: ':shipit: Deploy to Production',
+                                key: 'deploy_gate',
+                                prompt: 'Deploy this build to production?',
+                                fields: [
+                                    {
+                                        key: 'release_notes',
+                                        text: 'Release Notes',
+                                        required: false,
+                                        default: 'Automated deployment'
+                                    },
+                                    {
+                                        key: 'notify_team',
+                                        select: 'Notify Team',
+                                        options: [
+                                            { label: 'Yes', value: 'true' },
+                                            { label: 'No', value: 'false' }
+                                        ],
+                                        default: 'true'
+                                    }
+                                ],
+                                branches: 'main'
+                            },
+                            {
+                                label: ':rocket: Deploy to Production',
+                                key: 'deploy',
+                                command: 'npm run deploy:prod',
+                                depends_on: ['build', 'deploy_gate'],
+                                branches: 'main',
+                                agents: { queue: 'deploy', os: 'linux' },
+                                env: { NODE_ENV: 'production' },
+                                concurrency: 1,
+                                concurrency_group: 'production-deploy',
+                                timeout_in_minutes: 30,
+                                retry: {
+                                    manual: {
+                                        allowed: false,
+                                        reason: 'Production deployments should not be retried'
+                                    }
+                                }
+                            }
                         ]
                     }
                 },
@@ -31,11 +124,67 @@ class TemplatesUI {
                     name: 'Docker Microservice',
                     icon: 'fa-docker',
                     category: 'deployment',
-                    description: 'Build, test, and deploy Docker-based microservices',
+                    description: 'Build, test, and deploy Docker-based microservices with multi-stage builds',
                     pipeline: {
                         steps: [
-                            { label: '🧪 Run Unit Tests', key: 'test', command: 'docker-compose run --rm test' },
-                            { label: '🏗️ Build Docker Image', key: 'build', command: 'docker build -t app .' }
+                            {
+                                label: ':test_tube: Unit Tests',
+                                key: 'test',
+                                command: 'docker-compose run --rm test',
+                                agents: { docker: 'true', queue: 'docker-runners' },
+                                plugins: {
+                                    'docker-compose#v4.14.0': {
+                                        config: 'docker-compose.test.yml',
+                                        run: 'app',
+                                        command: ['npm', 'test']
+                                    }
+                                },
+                                artifact_paths: ['test-results/**/*', 'coverage/**/*'],
+                                timeout_in_minutes: 15
+                            },
+                            {
+                                label: ':whale: Build Docker Image',
+                                key: 'build',
+                                command: 'docker build -t $$DOCKER_REGISTRY/$$BUILDKITE_PIPELINE_SLUG:$$BUILDKITE_BUILD_NUMBER .\ndocker build -t $$DOCKER_REGISTRY/$$BUILDKITE_PIPELINE_SLUG:latest .',
+                                depends_on: ['test'],
+                                agents: { docker: 'true', queue: 'docker-runners' },
+                                env: { 
+                                    DOCKER_REGISTRY: 'your-registry.com',
+                                    DOCKER_BUILDKIT: '1'
+                                },
+                                timeout_in_minutes: 20
+                            },
+                            {
+                                label: ':mag: Security Scan',
+                                key: 'security_scan',
+                                command: 'docker run --rm -v $$PWD:/workspace aquasec/trivy image $$DOCKER_REGISTRY/$$BUILDKITE_PIPELINE_SLUG:$$BUILDKITE_BUILD_NUMBER',
+                                depends_on: ['build'],
+                                agents: { docker: 'true' },
+                                artifact_paths: ['security-scan-results.json'],
+                                soft_fail: [{ exit_status: 1 }]
+                            },
+                            'wait',
+                            {
+                                label: ':arrow_up: Push to Registry',
+                                key: 'push',
+                                command: 'docker push $$DOCKER_REGISTRY/$$BUILDKITE_PIPELINE_SLUG:$$BUILDKITE_BUILD_NUMBER\ndocker push $$DOCKER_REGISTRY/$$BUILDKITE_PIPELINE_SLUG:latest',
+                                depends_on: ['security_scan'],
+                                agents: { docker: 'true' },
+                                branches: 'main',
+                                timeout_in_minutes: 10
+                            },
+                            {
+                                trigger: 'deploy-microservice',
+                                build: {
+                                    message: 'Deploy microservice version $$BUILDKITE_BUILD_NUMBER',
+                                    env: {
+                                        IMAGE_TAG: '$$BUILDKITE_BUILD_NUMBER',
+                                        SERVICE_NAME: '$$BUILDKITE_PIPELINE_SLUG'
+                                    }
+                                },
+                                depends_on: ['push'],
+                                branches: 'main'
+                            }
                         ]
                     }
                 },
@@ -43,11 +192,66 @@ class TemplatesUI {
                     name: 'Security Scanning',
                     icon: 'fa-shield-alt',
                     category: 'security',
-                    description: 'Comprehensive security scanning and vulnerability assessment',
+                    description: 'Comprehensive security scanning and vulnerability assessment pipeline',
                     pipeline: {
                         steps: [
-                            { label: '🔒 Dependency Scan', key: 'dep_scan', command: 'npm audit' },
-                            { label: '🛡️ SAST Scan', key: 'sast', command: 'semgrep --config=auto .' }
+                            {
+                                label: ':lock: Dependency Vulnerability Scan',
+                                key: 'dep_scan',
+                                command: 'npm audit --audit-level moderate --json > npm-audit.json\nnpm audit --audit-level moderate',
+                                agents: { queue: 'security-scanners' },
+                                artifact_paths: ['npm-audit.json'],
+                                soft_fail: [{ exit_status: 1 }],
+                                timeout_in_minutes: 10
+                            },
+                            {
+                                label: ':shield: SAST Code Analysis',
+                                key: 'sast',
+                                command: 'semgrep --config=auto --json --output=semgrep-results.json .',
+                                agents: { queue: 'security-scanners' },
+                                artifact_paths: ['semgrep-results.json'],
+                                plugins: {
+                                    'docker#v5.8.0': {
+                                        image: 'returntocorp/semgrep:latest',
+                                        workdir: '/src',
+                                        volumes: ['$PWD:/src']
+                                    }
+                                },
+                                timeout_in_minutes: 15
+                            },
+                            {
+                                label: ':mag: Secret Detection',
+                                key: 'secrets',
+                                command: 'gitleaks detect --source . --report-format json --report-path gitleaks-report.json',
+                                agents: { queue: 'security-scanners' },
+                                artifact_paths: ['gitleaks-report.json'],
+                                plugins: {
+                                    'docker#v5.8.0': {
+                                        image: 'zricethezav/gitleaks:latest',
+                                        workdir: '/workspace',
+                                        volumes: ['$PWD:/workspace']
+                                    }
+                                },
+                                timeout_in_minutes: 5
+                            },
+                            {
+                                label: ':microscope: License Compliance',
+                                key: 'license_check',
+                                command: 'license-checker --onlyAllow "MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC" --json > license-report.json',
+                                agents: { queue: 'default' },
+                                artifact_paths: ['license-report.json'],
+                                soft_fail: [{ exit_status: 1 }]
+                            },
+                            'wait',
+                            {
+                                label: ':clipboard: Generate Security Report',
+                                key: 'security_report',
+                                command: 'python scripts/generate-security-report.py',
+                                depends_on: ['dep_scan', 'sast', 'secrets', 'license_check'],
+                                agents: { queue: 'default' },
+                                artifact_paths: ['security-report.html', 'security-summary.json'],
+                                env: { PYTHONPATH: '.' }
+                            }
                         ]
                     }
                 },
@@ -92,11 +296,124 @@ class TemplatesUI {
                     name: 'Kubernetes Deployment',
                     icon: 'fa-dharmachakra',
                     category: 'deployment',
-                    description: 'Deploy applications to Kubernetes cluster',
+                    description: 'Deploy applications to Kubernetes cluster with health checks and rollback',
                     pipeline: {
                         steps: [
-                            { label: '⚙️ Apply Manifests', key: 'deploy', command: 'kubectl apply -f k8s/' },
-                            { label: '🔍 Check Status', key: 'status', command: 'kubectl rollout status deployment/app' }
+                            {
+                                label: ':gear: Validate Kubernetes Manifests',
+                                key: 'validate',
+                                command: 'kubeval k8s/*.yaml\nkube-score score k8s/*.yaml',
+                                agents: { kubectl: 'true', queue: 'k8s-deploy' },
+                                plugins: {
+                                    'docker#v5.8.0': {
+                                        image: 'zegl/kube-score:latest',
+                                        workdir: '/workspace',
+                                        volumes: ['$PWD:/workspace']
+                                    }
+                                },
+                                timeout_in_minutes: 5
+                            },
+                            {
+                                block: ':warning: Deploy to Staging',
+                                key: 'staging_gate',
+                                prompt: 'Deploy to staging environment?',
+                                fields: [
+                                    {
+                                        key: 'environment',
+                                        select: 'Target Environment',
+                                        default: 'staging',
+                                        options: [
+                                            { label: 'Staging', value: 'staging' },
+                                            { label: 'UAT', value: 'uat' }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                label: ':rocket: Deploy to Staging',
+                                key: 'deploy_staging',
+                                command: 'helm upgrade --install $$APP_NAME charts/$$APP_NAME --namespace staging --set image.tag=$$BUILDKITE_BUILD_NUMBER --set environment=staging --wait --timeout=600s\nkubectl rollout status deployment/$$APP_NAME -n staging --timeout=300s',
+                                depends_on: ['validate', 'staging_gate'],
+                                agents: { kubectl: 'true', queue: 'k8s-deploy' },
+                                env: { 
+                                    APP_NAME: '$$BUILDKITE_PIPELINE_SLUG',
+                                    KUBECONFIG: '/etc/kubeconfig/staging'
+                                },
+                                timeout_in_minutes: 15,
+                                retry: {
+                                    automatic: [
+                                        { exit_status: -1, limit: 1 }
+                                    ]
+                                }
+                            },
+                            {
+                                label: ':test_tube: Run Smoke Tests',
+                                key: 'smoke_tests',
+                                command: 'npm run test:smoke -- --env=staging',
+                                depends_on: ['deploy_staging'],
+                                agents: { queue: 'default' },
+                                artifact_paths: ['smoke-test-results.json'],
+                                timeout_in_minutes: 10
+                            },
+                            {
+                                block: ':shipit: Deploy to Production',
+                                key: 'production_gate',
+                                prompt: 'Deploy to production? This will update the live service.',
+                                fields: [
+                                    {
+                                        key: 'rollback_plan',
+                                        text: 'Rollback Plan',
+                                        required: true,
+                                        hint: 'Describe the rollback strategy if deployment fails'
+                                    },
+                                    {
+                                        key: 'maintenance_window',
+                                        select: 'Maintenance Window',
+                                        options: [
+                                            { label: 'Business Hours (High Risk)', value: 'business' },
+                                            { label: 'After Hours (Recommended)', value: 'after-hours' }
+                                        ],
+                                        default: 'after-hours'
+                                    }
+                                ],
+                                depends_on: ['smoke_tests'],
+                                branches: 'main'
+                            },
+                            {
+                                label: ':rocket: Deploy to Production',
+                                key: 'deploy_production',
+                                command: 'helm upgrade --install $$APP_NAME charts/$$APP_NAME --namespace production --set image.tag=$$BUILDKITE_BUILD_NUMBER --set environment=production --wait --timeout=900s\nkubectl rollout status deployment/$$APP_NAME -n production --timeout=600s',
+                                depends_on: ['production_gate'],
+                                branches: 'main',
+                                agents: { kubectl: 'true', queue: 'k8s-deploy' },
+                                env: { 
+                                    APP_NAME: '$$BUILDKITE_PIPELINE_SLUG',
+                                    KUBECONFIG: '/etc/kubeconfig/production'
+                                },
+                                concurrency: 1,
+                                concurrency_group: 'production-k8s-deploy',
+                                timeout_in_minutes: 20,
+                                retry: {
+                                    manual: {
+                                        allowed: true,
+                                        permit_on_passed: false,
+                                        reason: 'Production deployments can be retried with caution'
+                                    }
+                                }
+                            },
+                            {
+                                label: ':health: Production Health Check',
+                                key: 'health_check',
+                                command: 'sleep 30\ncurl -f http://$$APP_NAME.production.svc.cluster.local/health\nnpm run test:health -- --env=production',
+                                depends_on: ['deploy_production'],
+                                agents: { kubectl: 'true' },
+                                timeout_in_minutes: 5,
+                                retry: {
+                                    automatic: [
+                                        { exit_status: '*', limit: 3 }
+                                    ]
+                                }
+                            }
                         ]
                     }
                 },
@@ -226,7 +543,93 @@ class TemplatesUI {
             loadTemplate: (templateKey) => {
                 const template = this.templates.templates[templateKey];
                 if (template && window.pipelineBuilder) {
-                    window.pipelineBuilder.loadFromTemplate(template);
+                    // Convert template structure to pipeline builder format
+                    const stepConfigs = [];
+                    
+                    template.pipeline.steps.forEach(step => {
+                        if (step === 'wait') {
+                            stepConfigs.push({ type: 'wait', properties: {} });
+                        } else if (typeof step === 'object') {
+                            if (step.block) {
+                                stepConfigs.push({
+                                    type: 'block',
+                                    properties: {
+                                        block: step.block,
+                                        key: step.key || '',
+                                        prompt: step.prompt || '',
+                                        fields: step.fields || [],
+                                        branches: step.branches || ''
+                                    }
+                                });
+                            } else if (step.input) {
+                                stepConfigs.push({
+                                    type: 'input',
+                                    properties: {
+                                        input: step.input,
+                                        key: step.key || '',
+                                        fields: step.fields || []
+                                    }
+                                });
+                            } else if (step.trigger) {
+                                stepConfigs.push({
+                                    type: 'trigger',
+                                    properties: {
+                                        trigger: step.trigger,
+                                        build: step.build || {},
+                                        async: step.async || false
+                                    }
+                                });
+                            } else if (step.group) {
+                                stepConfigs.push({
+                                    type: 'group',
+                                    properties: {
+                                        group: step.group,
+                                        key: step.key || '',
+                                        steps: step.steps || []
+                                    }
+                                });
+                            } else {
+                                // Default to command step
+                                stepConfigs.push({
+                                    type: 'command',
+                                    properties: {
+                                        label: step.label || 'Step',
+                                        key: step.key || '',
+                                        command: step.command || (Array.isArray(step.commands) ? step.commands.join('\n') : step.commands) || '',
+                                        agents: step.agents || {},
+                                        artifact_paths: step.artifact_paths || '',
+                                        depends_on: step.depends_on || [],
+                                        if: step.if || '',
+                                        unless: step.unless || '',
+                                        branches: step.branches || '',
+                                        plugins: step.plugins || {},
+                                        timeout_in_minutes: step.timeout_in_minutes || '',
+                                        retry: step.retry || {},
+                                        soft_fail: step.soft_fail || [],
+                                        env: step.env || {}
+                                    }
+                                });
+                            }
+                        }
+                    });
+                    
+                    // Clear current pipeline and load template steps
+                    window.pipelineBuilder.clearPipeline(true);
+                    
+                    // Add each step
+                    stepConfigs.forEach(stepConfig => {
+                        const step = window.pipelineBuilder.addStep(stepConfig.type);
+                        if (step && stepConfig.properties) {
+                            Object.assign(step.properties, stepConfig.properties);
+                        }
+                    });
+                    
+                    // Re-render and save
+                    window.pipelineBuilder.renderPipeline();
+                    window.pipelineBuilder.renderProperties();
+                    window.pipelineBuilder.saveToLocalStorage();
+                    
+                    console.log('✅ Template loaded successfully:', template.name);
                 }
             }
         };
@@ -1085,7 +1488,7 @@ if (typeof window !== 'undefined') {
                     templatesBtn.className = 'btn btn-secondary';
                     
                     // Count templates from embedded templates
-                    let templateCount = 17; // We have 17 embedded templates
+                    let templateCount = 16; // We have 16 embedded templates
                     
                     templatesBtn.innerHTML = `<i class="fas fa-file-code"></i> Templates${templateCount > 0 ? ` (${templateCount})` : ''}`;
                     templatesBtn.addEventListener('click', () => {
