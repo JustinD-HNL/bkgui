@@ -27,7 +27,7 @@ class EnhancedPipelineTemplates {
                             artifact_paths: 'node_modules/**/*',
                             plugins: {
                                 'cache': {
-                                    key: 'npm_packages_{{ checksum 'package-lock.json" }}',
+                                    key: 'npm_packages_{{ checksum "package-lock.json" }}',
                                     paths: ['node_modules']
                                 }
                             }
@@ -142,7 +142,7 @@ class EnhancedPipelineTemplates {
                             plugins: {
                                 'docker-compose': {
                                     build: 'app',
-                                    image: 'myapp:${BUILDKITE_BUILD_NUMBER}',
+                                    image: 'myapp:\${BUILDKITE_BUILD_NUMBER}',
                                     args: {
                                         BUILDKIT_INLINE_CACHE: '1'
                                     }
@@ -178,9 +178,9 @@ class EnhancedPipelineTemplates {
                             depends_on: ['deploy_prod_gate', 'smoke_tests_staging'],
                             branches: 'main',
                             build: {
-                                message: 'Production deployment for ${BUILDKITE_BUILD_NUMBER}',
+                                message: 'Production deployment for \${BUILDKITE_BUILD_NUMBER}',
                                 env: {
-                                    BUILD_NUMBER: '${BUILDKITE_BUILD_NUMBER}',
+                                    BUILD_NUMBER: '\${BUILDKITE_BUILD_NUMBER}',
                                     RELEASE_NOTES: '${BUILDKITE_BUILD_META_DATA_RELEASE_NOTES}'
                                 }
                             }
@@ -382,7 +382,7 @@ class EnhancedPipelineTemplates {
                                 echo "--- :package: Building deployment package"
                                 ./scripts/build-deployment.sh
                                 echo "--- :arrow_up: Uploading to artifact store"
-                                aws s3 cp deployment.zip s3://artifacts/\${BUILDKITE_BUILD_NUMBER}.zip
+                                aws s3 cp deployment.zip s3://artifacts/\\${BUILDKITE_BUILD_NUMBER}.zip
                             `,
                             agents: { queue: 'builders' },
                             artifact_paths: 'deployment.zip'
@@ -393,7 +393,7 @@ class EnhancedPipelineTemplates {
                             depends_on: ['pre_checks', 'build_artifact'],
                             command: `
                                 echo "--- :large_blue_circle: Deploying to blue environment"
-                                ./scripts/deploy.sh blue \${BUILDKITE_BUILD_NUMBER}
+                                ./scripts/deploy.sh blue \\${BUILDKITE_BUILD_NUMBER}
                                 echo "--- :hourglass: Waiting for blue environment to be ready"
                                 ./scripts/wait-for-deployment.sh blue
                             `,
@@ -501,7 +501,7 @@ class EnhancedPipelineTemplates {
                             key: 'deploy_canary_5',
                             command: `
                                 echo "--- :hatching_chick: Deploying canary to 5% of traffic"
-                                kubectl set image deployment/app app=myapp:\${BUILDKITE_BUILD_NUMBER}
+                                kubectl set image deployment/app app=myapp:\\${BUILDKITE_BUILD_NUMBER}
                                 kubectl scale deployment/app-canary --replicas=1
                                 ./scripts/route-traffic.sh canary 5
                             `,
@@ -562,7 +562,7 @@ class EnhancedPipelineTemplates {
                             depends_on: ['full_rollout_approval'],
                             command: `
                                 echo "--- :rocket: Rolling out to 100%"
-                                kubectl set image deployment/app app=myapp:\${BUILDKITE_BUILD_NUMBER}
+                                kubectl set image deployment/app app=myapp:\\${BUILDKITE_BUILD_NUMBER}
                                 kubectl scale deployment/app --replicas=20
                                 kubectl scale deployment/app-canary --replicas=0
                             `,
@@ -614,8 +614,8 @@ class EnhancedPipelineTemplates {
                                 echo "--- :hammer: Building service: \$SERVICE"
                                 
                                 cd services/\$SERVICE
-                                docker build -t \$SERVICE:\${BUILDKITE_BUILD_NUMBER} .
-                                docker tag \$SERVICE:\${BUILDKITE_BUILD_NUMBER} \$SERVICE:latest
+                                docker build -t \$SERVICE:\\${BUILDKITE_BUILD_NUMBER} .
+                                docker tag \$SERVICE:\\${BUILDKITE_BUILD_NUMBER} \$SERVICE:latest
                             `,
                             agents: { docker: 'true' },
                             matrix_setup: {
@@ -660,11 +660,11 @@ class EnhancedPipelineTemplates {
                                 SERVICE=\${SERVICE:-unknown}
                                 echo "--- :arrow_up: Pushing \$SERVICE image"
                                 
-                                docker tag \$SERVICE:\${BUILDKITE_BUILD_NUMBER} registry.mycompany.com/\$SERVICE:\${BUILDKITE_BUILD_NUMBER}
-                                docker push registry.mycompany.com/\$SERVICE:\${BUILDKITE_BUILD_NUMBER}
+                                docker tag \$SERVICE:\\${BUILDKITE_BUILD_NUMBER} registry.mycompany.com/\$SERVICE:\\${BUILDKITE_BUILD_NUMBER}
+                                docker push registry.mycompany.com/\$SERVICE:\\${BUILDKITE_BUILD_NUMBER}
                                 
                                 if [[ "\${BUILDKITE_BRANCH}" == "main" ]]; then
-                                    docker tag \$SERVICE:\${BUILDKITE_BUILD_NUMBER} registry.mycompany.com/\$SERVICE:latest
+                                    docker tag \$SERVICE:\\${BUILDKITE_BUILD_NUMBER} registry.mycompany.com/\$SERVICE:latest
                                     docker push registry.mycompany.com/\$SERVICE:latest
                                 fi
                             `,
@@ -680,7 +680,7 @@ class EnhancedPipelineTemplates {
                                 message: 'Deploy changed services from ${BUILDKITE_COMMIT}',
                                 env: {
                                     CHANGED_SERVICES: '$(cat changed-services.txt | tr \'\\n\' \' \')',
-                                    BUILD_NUMBER: '${BUILDKITE_BUILD_NUMBER}'
+                                    BUILD_NUMBER: '\${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             branches: 'main'
@@ -983,8 +983,11 @@ class EnhancedPipelineTemplates {
 
 // Initialize enhanced templates
 if (typeof window !== 'undefined') {
+    console.log('pipeline-templates-enhanced.js: Script loaded, initializing...');
     window.EnhancedPipelineTemplates = EnhancedPipelineTemplates;
     window.enhancedTemplates = new EnhancedPipelineTemplates();
+    console.log('pipeline-templates-enhanced.js: Initialized with', Object.keys(window.enhancedTemplates.templates).length, 'templates');
+    console.log('pipeline-templates-enhanced.js: window.enhancedTemplates =', window.enhancedTemplates);
     
     // Don't override pipelineTemplates anymore - we want to keep our 16 templates
     // if (window.pipelineTemplates) {

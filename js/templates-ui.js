@@ -12,23 +12,56 @@ class TemplatesUI {
         this.searchQuery = '';
         
         // Debug log to check if templates are loaded
-        console.log('TemplatesUI: Available templates:', this.templates);
+        console.log('TemplatesUI: Constructor called');
+        console.log('TemplatesUI: window.pipelineTemplates:', window.pipelineTemplates);
+        console.log('TemplatesUI: window.enhancedTemplates:', window.enhancedTemplates);
+        console.log('TemplatesUI: this.templates:', this.templates);
+        
+        if (this.templates) {
+            console.log('TemplatesUI: this.templates.templates:', this.templates.templates);
+            if (this.templates.templates) {
+                console.log('TemplatesUI: Template keys:', Object.keys(this.templates.templates));
+            }
+        }
         
         // If templates aren't loaded yet, wait for them
         if (!this.templates || !this.templates.templates) {
-            console.log('TemplatesUI: Waiting for templates to load...');
-            setTimeout(() => {
-                this.templates = window.enhancedTemplates || window.pipelineTemplates;
-                if (this.templates && this.templates.templates) {
-                    console.log('TemplatesUI: Templates loaded:', Object.keys(this.templates.templates).length);
-                    this.init();
-                    this.updateTemplateCount();
-                }
-            }, 100);
+            console.log('TemplatesUI: Templates not ready, setting up retry mechanism...');
+            this.retryInitialization();
         } else {
+            console.log('TemplatesUI: Templates ready, initializing');
             this.init();
             this.updateTemplateCount();
         }
+    }
+
+    retryInitialization() {
+        let retryCount = 0;
+        const maxRetries = 50; // 5 seconds with 100ms intervals
+        
+        const retryInit = () => {
+            retryCount++;
+            this.templates = window.pipelineTemplates || window.enhancedTemplates;
+            console.log(`TemplatesUI: Retry ${retryCount}/${maxRetries} - this.templates:`, this.templates);
+            
+            if (this.templates && this.templates.templates) {
+                console.log('TemplatesUI: Templates loaded on retry:', Object.keys(this.templates.templates).length);
+                this.init();
+                this.updateTemplateCount();
+                return;
+            }
+            
+            if (retryCount < maxRetries) {
+                setTimeout(retryInit, 100);
+            } else {
+                console.error('TemplatesUI: Failed to load templates after', maxRetries, 'retries');
+                console.log('TemplatesUI: Creating fallback Templates button...');
+                // Initialize anyway to set up the UI, even without templates
+                this.init();
+            }
+        };
+        
+        setTimeout(retryInit, 100);
     }
 
     init() {
@@ -40,6 +73,10 @@ class TemplatesUI {
     createTemplatesButton() {
         // Add a prominent templates button to the header if it doesn't exist
         const actionsContainer = document.querySelector('.header-actions');
+        console.log('TemplatesUI: createTemplatesButton called');
+        console.log('TemplatesUI: actionsContainer:', actionsContainer);
+        console.log('TemplatesUI: existing templates-button:', document.getElementById('templates-button'));
+        
         if (actionsContainer && !document.getElementById('templates-button')) {
             const templatesBtn = document.createElement('button');
             templatesBtn.id = 'templates-button';
@@ -55,7 +92,11 @@ class TemplatesUI {
             // Insert at the beginning of actions
             actionsContainer.insertBefore(templatesBtn, actionsContainer.firstChild);
             
-            console.log(`TemplatesUI: Created button with ${templateCount} templates`);
+            console.log(`TemplatesUI: Created Templates button in header with ${templateCount} templates`);
+        } else if (!actionsContainer) {
+            console.warn('TemplatesUI: .header-actions container not found');
+        } else {
+            console.log('TemplatesUI: Templates button already exists');
         }
     }
     
@@ -871,8 +912,13 @@ if (typeof window !== 'undefined') {
     // Function to initialize when templates are ready
     const initializeTemplatesUI = () => {
         try {
+            console.log('TemplatesUI: Checking initialization conditions...');
+            console.log('TemplatesUI: window.pipelineTemplates:', window.pipelineTemplates);
+            console.log('TemplatesUI: window.enhancedTemplates:', window.enhancedTemplates);
+            
             // Check if templates are loaded - prefer pipelineTemplates with our 16 templates
             if (window.pipelineTemplates && window.pipelineTemplates.templates) {
+                console.log('TemplatesUI: Found pipelineTemplates with', Object.keys(window.pipelineTemplates.templates).length, 'templates');
                 console.log('TemplatesUI: Initializing with pipeline templates');
                 window.templatesUI = new TemplatesUI();
                 
@@ -883,15 +929,18 @@ if (typeof window !== 'undefined') {
                     }
                 }, 500);
             } else if (window.enhancedTemplates && window.enhancedTemplates.templates) {
+                console.log('TemplatesUI: Found enhancedTemplates with', Object.keys(window.enhancedTemplates.templates).length, 'templates');
                 console.log('TemplatesUI: Initializing with enhanced templates');
                 window.templatesUI = new TemplatesUI();
             } else {
-                console.log('TemplatesUI: Templates not ready yet, waiting...');
+                console.log('TemplatesUI: Templates not ready yet, retrying in 100ms...');
                 // Try again in a moment
                 setTimeout(initializeTemplatesUI, 100);
             }
         } catch (error) {
             console.error('TemplatesUI: Error during initialization:', error);
+            console.error('TemplatesUI: Retrying in 500ms...');
+            setTimeout(initializeTemplatesUI, 500);
         }
     };
     
@@ -924,5 +973,76 @@ if (typeof window !== 'undefined') {
             console.log('TemplatesUI: Running failsafe initialization on window load');
             initializeTemplatesUI();
         }
+        
+        // Force template button creation after a delay to ensure DOM is ready
+        setTimeout(() => {
+            console.log('TemplatesUI: Forcing Templates button creation...');
+            if (!document.getElementById('templates-button')) {
+                console.log('TemplatesUI: Templates button missing, creating now...');
+                const actionsContainer = document.querySelector('.header-actions');
+                if (actionsContainer) {
+                    const templatesBtn = document.createElement('button');
+                    templatesBtn.id = 'templates-button';
+                    templatesBtn.className = 'btn btn-secondary';
+                    
+                    // Count templates from available sources
+                    let templateCount = 0;
+                    if (window.pipelineTemplates && window.pipelineTemplates.templates) {
+                        templateCount = Object.keys(window.pipelineTemplates.templates).length;
+                    } else if (window.enhancedTemplates && window.enhancedTemplates.templates) {
+                        templateCount = Object.keys(window.enhancedTemplates.templates).length;
+                    }
+                    
+                    templatesBtn.innerHTML = `<i class="fas fa-file-code"></i> Templates${templateCount > 0 ? ` (${templateCount})` : ''}`;
+                    templatesBtn.addEventListener('click', () => {
+                        console.log('TemplatesUI: Templates button clicked');
+                        
+                        // Try multiple fallback approaches
+                        if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                            console.log('TemplatesUI: Using templatesUI.showTemplatesModal');
+                            window.templatesUI.showTemplatesModal();
+                        } else if (window.showTemplatesModal) {
+                            console.log('TemplatesUI: Using window.showTemplatesModal');
+                            window.showTemplatesModal();
+                        } else {
+                            // Fallback 1: Try old template modal
+                            console.log('TemplatesUI: Trying fallback step-templates-modal');
+                            const oldModal = document.getElementById('step-templates-modal');
+                            if (oldModal) {
+                                oldModal.style.display = 'block';
+                                oldModal.classList.remove('hidden');
+                                console.log('TemplatesUI: Opened step-templates-modal');
+                            } else {
+                                // Fallback 2: Try the app.js action handler
+                                console.log('TemplatesUI: Trying app action handler');
+                                if (window.app && window.app.handleQuickAction) {
+                                    window.app.handleQuickAction('step-templates');
+                                } else if (window.mainInitializer && window.mainInitializer.handleQuickAction) {
+                                    window.mainInitializer.handleQuickAction('step-templates');
+                                } else {
+                                    // Final fallback: click the sidebar templates button
+                                    console.log('TemplatesUI: Trying to click sidebar templates button');
+                                    const sidebarBtn = document.getElementById('templates-btn');
+                                    if (sidebarBtn) {
+                                        sidebarBtn.click();
+                                    } else {
+                                        alert('Templates are not available. Please refresh the page.');
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Insert at the beginning of actions
+                    actionsContainer.insertBefore(templatesBtn, actionsContainer.firstChild);
+                    
+                    console.log(`TemplatesUI: Force-created Templates button with ${templateCount} templates`);
+                } else {
+                    console.error('TemplatesUI: .header-actions container not found for forced creation');
+                }
+            } else {
+                console.log('TemplatesUI: Templates button already exists');
+            }
+        }, 2000); // Wait for scripts to load but not too long
     });
 }

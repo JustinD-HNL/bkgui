@@ -23,7 +23,8 @@
       "WebFetch(domain:github.com)",
       "Bash(node:*)",
       "Bash(touch:*)",
-      "WebFetch(domain:buildkite-pipeline-builder-431509168104.us-west1.run.app)"
+      "WebFetch(domain:buildkite-pipeline-builder-431509168104.us-west1.run.app)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }

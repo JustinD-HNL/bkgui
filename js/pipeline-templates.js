@@ -4,6 +4,8 @@
  * FIXED: Templates now provide full pipeline configurations, not just single steps
  */
 
+console.log('pipeline-templates.js: File starting to load...');
+
 class PipelineTemplates {
     constructor() {
         this.templates = {
@@ -94,7 +96,7 @@ class PipelineTemplates {
                             plugins: {
                                 'docker-compose': {
                                     build: 'app',
-                                    'image-name': 'myapp:${BUILDKITE_BUILD_NUMBER}'
+                                    'image-name': 'myapp:\${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             agents: { docker: 'true' }
@@ -102,7 +104,7 @@ class PipelineTemplates {
                         {
                             label: '🔒 Security Scan',
                             key: 'security',
-                            command: 'trivy image myapp:${BUILDKITE_BUILD_NUMBER}',
+                            command: 'trivy image myapp:\${BUILDKITE_BUILD_NUMBER}',
                             soft_fail: true,
                             agents: { docker: 'true' }
                         },
@@ -112,8 +114,8 @@ class PipelineTemplates {
                             key: 'push',
                             plugins: {
                                 'docker': {
-                                    image: 'myapp:${BUILDKITE_BUILD_NUMBER}',
-                                    tag: ['latest', '${BUILDKITE_BUILD_NUMBER}'],
+                                    image: 'myapp:\${BUILDKITE_BUILD_NUMBER}',
+                                    tag: ['latest', '\${BUILDKITE_BUILD_NUMBER}'],
                                     push: true
                                 }
                             },
@@ -124,9 +126,9 @@ class PipelineTemplates {
                             trigger: 'deploy-pipeline',
                             label: '🚀 Trigger Deployment',
                             build: {
-                                message: 'Deploy ${BUILDKITE_BUILD_NUMBER}',
+                                message: 'Deploy \${BUILDKITE_BUILD_NUMBER}',
                                 env: {
-                                    IMAGE_TAG: '${BUILDKITE_BUILD_NUMBER}'
+                                    IMAGE_TAG: '\${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             branches: 'main'
@@ -499,9 +501,9 @@ class PipelineTemplates {
                             key: 'build',
                             plugins: {
                                 'docker-buildkite-plugin#v3.0.0': {
-                                    image: 'myapp:${BUILDKITE_BUILD_NUMBER}',
+                                    image: 'myapp:\${BUILDKITE_BUILD_NUMBER}',
                                     dockerfile: 'Dockerfile',
-                                    push: 'registry.company.com/myapp:${BUILDKITE_BUILD_NUMBER}'
+                                    push: 'registry.company.com/myapp:\${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             agents: { docker: 'true' }
@@ -512,7 +514,7 @@ class PipelineTemplates {
                             command: `
                                 helm upgrade --install myapp-staging ./charts/myapp \
                                   --namespace staging \
-                                  --set image.tag=${BUILDKITE_BUILD_NUMBER} \
+                                  --set image.tag=\\${BUILDKITE_BUILD_NUMBER} \
                                   --wait --timeout 5m
                             `,
                             depends_on: ['validate', 'build'],
@@ -542,7 +544,7 @@ class PipelineTemplates {
                             command: `
                                 helm upgrade --install myapp ./charts/myapp \
                                   --namespace production \
-                                  --set image.tag=${BUILDKITE_BUILD_NUMBER} \
+                                  --set image.tag=\\${BUILDKITE_BUILD_NUMBER} \
                                   --wait --timeout 10m
                             `,
                             depends_on: ['smoke_tests', 'prod_gate'],
@@ -849,7 +851,7 @@ class PipelineTemplates {
                         {
                             label: '🏗️ Build Test Image',
                             key: 'build',
-                            command: 'docker build -t perftest:${BUILDKITE_BUILD_NUMBER} .',
+                            command: 'docker build -t perftest:\${BUILDKITE_BUILD_NUMBER} .',
                             agents: { docker: 'true' }
                         },
                         {
@@ -1146,8 +1148,16 @@ class PipelineTemplates {
 
 // Initialize and export
 if (typeof window !== 'undefined') {
-    window.PipelineTemplates = PipelineTemplates;
-    window.pipelineTemplates = new PipelineTemplates();
+    try {
+        console.log('pipeline-templates.js: Script loaded, initializing...');
+        window.PipelineTemplates = PipelineTemplates;
+        window.pipelineTemplates = new PipelineTemplates();
+        console.log('pipeline-templates.js: Initialized with', Object.keys(window.pipelineTemplates.templates).length, 'templates');
+        console.log('pipeline-templates.js: window.pipelineTemplates =', window.pipelineTemplates);
+        console.log('pipeline-templates.js: SUCCESS - Templates are available');
+    } catch (error) {
+        console.error('pipeline-templates.js: ERROR during initialization:', error);
+    }
 }
 
 // Export for Node.js/testing
