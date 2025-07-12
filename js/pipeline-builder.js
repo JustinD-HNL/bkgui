@@ -2179,13 +2179,13 @@ class PipelineBuilder {
                     <input type="text" id="group-label" value="${step.properties.group || ''}" placeholder="e.g., Test Suite">
                 </div>
                 <div class="property-group">
-                    <label for="group-key">Group Key</label>
-                    <input type="text" id="group-key" value="${step.properties.key || ''}" placeholder="Unique group key">
-                </div>
-                <div class="property-group">
                     <p class="info-text">
                         <i class="fas fa-info-circle"></i>
                         Add steps inside this group by configuring them separately
+                    </p>
+                    <p class="info-text">
+                        <i class="fas fa-info-circle"></i>
+                        Note: Group steps do not support step-level keys
                     </p>
                 </div>
             </div>
@@ -3468,24 +3468,13 @@ class PipelineBuilder {
                 step.properties.group = e.target.value;
                 this.renderPipeline();
                 if (this.debouncedSave) {
-                this.debouncedSave();
-            } else {
-                this.saveToLocalStorage();
-            }
+                    this.debouncedSave();
+                } else {
+                    this.saveToLocalStorage();
+                }
             });
         }
-
-        const keyInput = container.querySelector('#step-key');
-        if (keyInput) {
-            keyInput.addEventListener('input', (e) => {
-                step.properties.key = e.target.value;
-                if (this.debouncedSave) {
-                this.debouncedSave();
-            } else {
-                this.saveToLocalStorage();
-            }
-            });
-        }
+        // Note: Group steps do not support step-level keys, so we don't add a key listener
     }
 
     setupAnnotationStepListeners(step, container) {

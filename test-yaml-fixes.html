@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test YAML Fixes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f5f5f5; padding: 20px; white-space: pre-wrap; border-radius: 4px; }
+        .controls { margin: 20px 0; }
+        button { margin: 5px; padding: 10px 20px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0052a3; }
+        h2 { margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>Test YAML Generation Fixes</h1>
+    
+    <div class="controls">
+        <button onclick="testGroupStep()">Test Group Step (No Key)</button>
+        <button onclick="testSoftFailObject()">Test Soft Fail Object</button>
+        <button onclick="testSoftFailArray()">Test Soft Fail Array</button>
+        <button onclick="testComplexPipeline()">Test Complex Pipeline</button>
+        <button onclick="testBlockInputSteps()">Test Block/Input Steps (No Keys)</button>
+    </div>
+    
+    <h2>Generated YAML:</h2>
+    <pre id="yaml-output"></pre>
+    
+    <h2>Step Config:</h2>
+    <pre id="config-output"></pre>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        const generator = new YAMLGenerator();
+        
+        function showOutput(config, description) {
+            const yaml = generator.generate(config);
+            document.getElementById('yaml-output').textContent = description + '\n\n' + yaml;
+            document.getElementById('config-output').textContent = JSON.stringify(config, null, 2);
+            console.log(description, '\nConfig:', config, '\nYAML:', yaml);
+        }
+        
+        function testGroupStep() {
+            const config = {
+                steps: [{
+                    group: '📁 Test Suite',
+                    key: 'test_group', // This should NOT appear in YAML
+                    steps: [
+                        {
+                            label: 'Unit Tests',
+                            command: 'npm test',
+                            key: 'unit_tests'
+                        },
+                        {
+                            label: 'Integration Tests',
+                            command: 'npm run test:integration',
+                            key: 'integration_tests'
+                        }
+                    ]
+                }]
+            };
+            showOutput(config, 'Group Step Test (key should not appear in YAML):');
+        }
+        
+        function testSoftFailObject() {
+            const config = {
+                steps: [{
+                    label: 'Linting with Soft Fail',
+                    command: 'npm run lint',
+                    soft_fail: [
+                        { exit_status: 1 },
+                        { exit_status: 2 }
+                    ]
+                }]
+            };
+            showOutput(config, 'Soft Fail Object Test (Correct Format):');
+        }
+        
+        function testSoftFailArray() {
+            const config = {
+                steps: [{
+                    label: 'Tests with Soft Fail Array',
+                    command: 'npm test',
+                    soft_fail: [1, 2, 3]  // This will be converted to correct format
+                }]
+            };
+            showOutput(config, 'Soft Fail Array Test (Numbers will be converted):');
+        }
+        
+        function testComplexPipeline() {
+            const config = {
+                steps: [
+                    {
+                        label: '📦 Build',
+                        command: 'npm run build',
+                        key: 'build_step',
+                        agents: { queue: 'default' },
+                        artifact_paths: ['dist/**/*', 'coverage/**/*'],
+                        soft_fail: [{ exit_status: 1 }]
+                    },
+                    {
+                        group: '🧪 Tests',
+                        key: 'test_group', // This should NOT appear in YAML
+                        steps: [
+                            {
+                                label: 'Unit Tests',
+                                command: 'npm test',
+                                key: 'unit_tests',
+                                depends_on: 'build_step'
+                            }
+                        ]
+                    },
+                    {
+                        block: '🚦 Deploy Approval',
+                        key: 'deploy_block', // This should NOT appear in YAML
+                        fields: [
+                            {
+                                key: 'deployment_target',
+                                text: 'Deployment Target',
+                                type: 'select',
+                                required: true,
+                                default: 'staging',
+                                options: [
+                                    { label: 'Staging', value: 'staging' },
+                                    { label: 'Production', value: 'production' }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        input: '📝 Release Notes',
+                        key: 'release_input', // This should NOT appear in YAML
+                        fields: [
+                            {
+                                key: 'release_notes',
+                                text: 'Release Notes',
+                                required: true
+                            }
+                        ]
+                    }
+                ]
+            };
+            showOutput(config, 'Complex Pipeline Test:');
+        }
+        
+        function testBlockInputSteps() {
+            const config = {
+                steps: [
+                    {
+                        block: '🚦 Manual Approval',
+                        key: 'approval_block', // This should NOT appear in YAML
+                        prompt: 'Please review and approve',
+                        fields: [
+                            {
+                                key: 'approval_reason',
+                                text: 'Approval Reason',
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        input: '📋 Configuration',
+                        key: 'config_input', // This should NOT appear in YAML
+                        prompt: 'Please provide configuration',
+                        fields: [
+                            {
+                                key: 'environment',
+                                text: 'Environment',
+                                type: 'select',
+                                options: [
+                                    { label: 'Staging', value: 'staging' },
+                                    { label: 'Production', value: 'production' }
+                                ],
+                                required: true
+                            }
+                        ]
+                    }
+                ]
+            };
+            showOutput(config, 'Block and Input Steps Test (keys should not appear in YAML):');
+        }
+    </script>
+</body>
+</html>

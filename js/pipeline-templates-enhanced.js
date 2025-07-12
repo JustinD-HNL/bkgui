@@ -419,7 +419,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🏗️ Build Deployment Artifact',
-                            key: 'build-artifact',
+                            key: 'build_artifact',
                             command: `
                                 echo "--- :package: Building deployment package"
                                 ./scripts/build-deployment.sh
@@ -636,7 +636,7 @@ class EnhancedPipelineTemplates {
                         },
                         {
                             label: '🏗️ Build Changed Services',
-                            key: 'build-services',
+                            key: 'build_services',
                             depends_on: ['detect-changes'],
                             command: `
                                 buildkite-agent artifact download changed-services.txt .

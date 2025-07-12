@@ -368,7 +368,7 @@ class PipelineTemplates {
                         },
                         {
                             label: '📦 Build Changed Packages',
-                            key: 'build-packages',
+                            key: 'build_packages',
                             command: `
                                 # Build only changed packages
                                 buildkite-agent artifact download changed-packages.txt .

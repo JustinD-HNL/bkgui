@@ -274,14 +274,33 @@ class YAMLGenerator {
                 if (step.soft_fail === true) {
                     yaml += this.indent() + 'soft_fail: true\n';
                 } else if (Array.isArray(step.soft_fail)) {
+                    // For array format, check if it's already in the correct format
+                    if (step.soft_fail.length > 0 && typeof step.soft_fail[0] === 'object' && 'exit_status' in step.soft_fail[0]) {
+                        // Already in correct format: [{exit_status: 1}, {exit_status: 2}]
+                        yaml += this.indent() + 'soft_fail:\n';
+                        this.currentIndent++;
+                        step.soft_fail.forEach(item => {
+                            yaml += this.indent() + `- exit_status: ${item.exit_status}\n`;
+                        });
+                        this.currentIndent--;
+                    } else {
+                        // Array of numbers: [1, 2, 3] - convert to correct format
+                        yaml += this.indent() + 'soft_fail:\n';
+                        this.currentIndent++;
+                        step.soft_fail.forEach(code => {
+                            yaml += this.indent() + `- exit_status: ${code}\n`;
+                        });
+                        this.currentIndent--;
+                    }
+                } else if (typeof step.soft_fail === 'object' && step.soft_fail.exit_status) {
+                    // Handle object format { exit_status: [1, 2] } - convert to array format
                     yaml += this.indent() + 'soft_fail:\n';
                     this.currentIndent++;
-                    yaml += this.indent() + 'exit_status:\n';
-                    this.currentIndent++;
-                    step.soft_fail.forEach(code => {
-                        yaml += this.indent() + `- ${code}\n`;
+                    const exitStatuses = Array.isArray(step.soft_fail.exit_status) ? step.soft_fail.exit_status : [step.soft_fail.exit_status];
+                    exitStatuses.forEach(code => {
+                        yaml += this.indent() + `- exit_status: ${code}\n`;
                     });
-                    this.currentIndent -= 2;
+                    this.currentIndent--;
                 } else {
                     yaml += this.indent() + `soft_fail: ${this.quote(step.soft_fail)}\n`;
                 }
@@ -445,9 +464,7 @@ class YAMLGenerator {
             yaml += this.indent() + `label: ${this.quote(step.label)}\n`;
         }
         
-        if (step.key) {
-            yaml += this.indent() + `key: ${this.quote(step.key)}\n`;
-        }
+        // Note: key is not valid at step level for group steps - removed
         
         if (step.steps && step.steps.length > 0) {
             yaml += this.indent() + 'steps:\n';
@@ -743,48 +760,77 @@ class YAMLGenerator {
     }
 
     generateField(field) {
-        let yaml = this.indent() + `- key: ${this.quote(field.key)}\n`;
-        this.currentIndent++;
+        let yaml = this.indent() + '-';
         
-        // Type (from version 2 - before text)
-        if (field.type && field.type !== 'text') {
-            yaml += this.indent() + `type: ${field.type}\n`;
-        }
-        
-        if (field.text) {
-            yaml += this.indent() + `text: ${this.quote(field.text)}\n`;
-        }
-        
-        if (field.hint) {
-            yaml += this.indent() + `hint: ${this.quote(field.hint)}\n`;
-        }
-        
-        if (field.required) {
-            yaml += this.indent() + 'required: true\n';
-        }
-        
-        if (field.default) {
-            yaml += this.indent() + `default: ${this.quote(field.default)}\n`;
-        }
-        
-        if (field.options && field.options.length > 0) {
-            yaml += this.indent() + 'options:\n';
+        // Determine field type and generate accordingly
+        if (field.type === 'select' || (field.options && field.options.length > 0)) {
+            // Select field format
+            yaml += ` select: ${this.quote(field.text || field.label || '')}\n`;
             this.currentIndent++;
-            field.options.forEach(option => {
-                if (typeof option === 'object') {
-                    yaml += this.indent() + `- label: ${this.quote(option.label)}\n`;
+            
+            yaml += this.indent() + `key: ${this.quote(field.key)}\n`;
+            
+            if (field.hint) {
+                yaml += this.indent() + `hint: ${this.quote(field.hint)}\n`;
+            }
+            
+            if (field.required) {
+                yaml += this.indent() + 'required: true\n';
+            }
+            
+            if (field.default !== undefined) {
+                if (field.multiple && Array.isArray(field.default)) {
+                    yaml += this.indent() + 'default:\n';
                     this.currentIndent++;
-                    yaml += this.indent() + `value: ${this.quote(option.value)}\n`;
+                    field.default.forEach(val => {
+                        yaml += this.indent() + `- ${this.quote(val)}\n`;
+                    });
                     this.currentIndent--;
                 } else {
-                    // Enhanced from version 2
-                    yaml += this.indent() + `- label: ${this.quote(option)}\n`;
-                    this.currentIndent++;
-                    yaml += this.indent() + `value: ${this.quote(option)}\n`;
-                    this.currentIndent--;
+                    yaml += this.indent() + `default: ${this.quote(field.default)}\n`;
                 }
-            });
-            this.currentIndent--;
+            }
+            
+            if (field.multiple) {
+                yaml += this.indent() + 'multiple: true\n';
+            }
+            
+            if (field.options && field.options.length > 0) {
+                yaml += this.indent() + 'options:\n';
+                this.currentIndent++;
+                field.options.forEach(option => {
+                    if (typeof option === 'object') {
+                        yaml += this.indent() + `- label: ${this.quote(option.label)}\n`;
+                        this.currentIndent++;
+                        yaml += this.indent() + `value: ${this.quote(option.value)}\n`;
+                        this.currentIndent--;
+                    } else {
+                        yaml += this.indent() + `- label: ${this.quote(option)}\n`;
+                        this.currentIndent++;
+                        yaml += this.indent() + `value: ${this.quote(option)}\n`;
+                        this.currentIndent--;
+                    }
+                });
+                this.currentIndent--;
+            }
+        } else {
+            // Text field format (default)
+            yaml += ` text: ${this.quote(field.text || field.label || '')}\n`;
+            this.currentIndent++;
+            
+            yaml += this.indent() + `key: ${this.quote(field.key)}\n`;
+            
+            if (field.hint) {
+                yaml += this.indent() + `hint: ${this.quote(field.hint)}\n`;
+            }
+            
+            if (field.required) {
+                yaml += this.indent() + 'required: true\n';
+            }
+            
+            if (field.default !== undefined) {
+                yaml += this.indent() + `default: ${this.quote(field.default)}\n`;
+            }
         }
         
         this.currentIndent--;

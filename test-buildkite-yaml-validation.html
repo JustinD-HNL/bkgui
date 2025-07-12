@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Buildkite YAML Validation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f5f5f5; padding: 20px; white-space: pre-wrap; border-radius: 4px; margin: 10px 0; }
+        .controls { margin: 20px 0; }
+        button { 
+            margin: 5px; 
+            padding: 10px 20px; 
+            background: #0066cc; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        button:hover { background: #0052a3; }
+        h2 { margin-top: 30px; color: #333; }
+        .description { 
+            background: #e8f4f8; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-bottom: 10px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Buildkite YAML Validation Test</h1>
+    <p>Tests for correct Buildkite YAML format according to official documentation</p>
+    
+    <div class="controls">
+        <button onclick="testSoftFailBoolean()">Test Soft Fail Boolean</button>
+        <button onclick="testSoftFailArray()">Test Soft Fail Array Format</button>
+        <button onclick="testTextFields()">Test Text Fields (No Options)</button>
+        <button onclick="testSelectFields()">Test Select Fields (With Options)</button>
+        <button onclick="testCompleteExample()">Test Complete Example</button>
+    </div>
+    
+    <h2>Generated YAML:</h2>
+    <pre id="yaml-output"></pre>
+    
+    <h2>Configuration Object:</h2>
+    <pre id="config-output"></pre>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        const generator = new YAMLGenerator();
+        
+        function showOutput(config, description) {
+            const yaml = generator.generate(config);
+            document.getElementById('yaml-output').innerHTML = 
+                `<div class="description">${description}</div>${yaml}`;
+            document.getElementById('config-output').textContent = 
+                JSON.stringify(config, null, 2);
+        }
+        
+        function testSoftFailBoolean() {
+            const config = {
+                steps: [
+                    {
+                        label: 'Tests with Boolean Soft Fail',
+                        command: 'npm test',
+                        soft_fail: true
+                    },
+                    {
+                        label: 'Linting',
+                        command: 'npm run lint',
+                        soft_fail: false
+                    }
+                ]
+            };
+            showOutput(config, 'Soft Fail Boolean Test - Valid format: true/false');
+        }
+        
+        function testSoftFailArray() {
+            const config = {
+                steps: [
+                    {
+                        label: 'Tests with Specific Exit Codes',
+                        command: 'npm test',
+                        // Correct format: array of objects
+                        soft_fail: [
+                            { exit_status: 1 },
+                            { exit_status: 2 },
+                            { exit_status: 42 }
+                        ]
+                    },
+                    {
+                        label: 'Linting (auto-converted)',
+                        command: 'npm run lint',
+                        // This format will be auto-converted
+                        soft_fail: [1, 2]
+                    }
+                ]
+            };
+            showOutput(config, 'Soft Fail Array Test - Array of objects with exit_status');
+        }
+        
+        function testTextFields() {
+            const config = {
+                steps: [
+                    {
+                        block: '🚦 Deployment Approval',
+                        fields: [
+                            {
+                                key: 'deployment_reason',
+                                text: 'Reason for Deployment',
+                                hint: 'Please provide a brief explanation',
+                                required: true
+                            },
+                            {
+                                key: 'version_number',
+                                text: 'Version Number',
+                                default: 'v1.0.0',
+                                required: false
+                            }
+                        ]
+                    }
+                ]
+            };
+            showOutput(config, 'Text Fields Test - Text fields should NOT have options property');
+        }
+        
+        function testSelectFields() {
+            const config = {
+                steps: [
+                    {
+                        input: '📋 Deployment Configuration',
+                        fields: [
+                            {
+                                key: 'target_environment',
+                                text: 'Target Environment',
+                                type: 'select',
+                                required: true,
+                                default: 'staging',
+                                options: [
+                                    { label: 'Development', value: 'dev' },
+                                    { label: 'Staging', value: 'staging' },
+                                    { label: 'Production', value: 'prod' }
+                                ]
+                            },
+                            {
+                                key: 'regions',
+                                text: 'Deployment Regions',
+                                type: 'select',
+                                multiple: true,
+                                default: ['us-east-1', 'eu-west-1'],
+                                options: [
+                                    { label: 'US East', value: 'us-east-1' },
+                                    { label: 'US West', value: 'us-west-2' },
+                                    { label: 'EU West', value: 'eu-west-1' },
+                                    { label: 'Asia Pacific', value: 'ap-southeast-1' }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+            showOutput(config, 'Select Fields Test - Select fields MUST have options property');
+        }
+        
+        function testCompleteExample() {
+            const config = {
+                steps: [
+                    {
+                        label: '🔨 Build Application',
+                        command: 'npm run build',
+                        key: 'build_app',
+                        agents: { queue: 'docker' },
+                        soft_fail: [
+                            { exit_status: 1 },
+                            { exit_status: 2 }
+                        ]
+                    },
+                    {
+                        label: '🧪 Run Tests',
+                        command: 'npm test',
+                        key: 'run_tests',
+                        depends_on: 'build_app',
+                        soft_fail: true
+                    },
+                    {
+                        block: '🚦 Deploy Gate',
+                        depends_on: ['build_app', 'run_tests'],
+                        fields: [
+                            {
+                                key: 'deploy_confirmation',
+                                text: 'Confirm deployment to production?',
+                                type: 'select',
+                                required: true,
+                                options: [
+                                    { label: 'Yes, deploy now', value: 'yes' },
+                                    { label: 'No, cancel deployment', value: 'no' }
+                                ]
+                            },
+                            {
+                                key: 'deployment_notes',
+                                text: 'Deployment Notes',
+                                hint: 'Any special instructions?',
+                                required: false
+                            }
+                        ]
+                    },
+                    {
+                        trigger: 'deploy-pipeline',
+                        label: '🚀 Trigger Deployment',
+                        depends_on: 'deploy_gate',
+                        build: {
+                            branch: 'main',
+                            message: 'Production deployment'
+                        }
+                    }
+                ]
+            };
+            showOutput(config, 'Complete Pipeline Example - Demonstrates all correct formats');
+        }
+    </script>
+</body>
+</html>

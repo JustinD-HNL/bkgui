@@ -80,7 +80,7 @@ class PipelinePatterns {
                                     properties: {
                                         label: '🔨 Build Service A',
                                         command: 'cd services/a && npm run build',
-                                        key: 'build-service-a'
+                                        key: 'build_service_a'
                                     }
                                 },
                                 {
@@ -88,7 +88,7 @@ class PipelinePatterns {
                                     properties: {
                                         label: '🔨 Build Service B',
                                         command: 'cd services/b && npm run build',
-                                        key: 'build-service-b'
+                                        key: 'build_service_b'
                                     }
                                 },
                                 {
@@ -96,7 +96,7 @@ class PipelinePatterns {
                                     properties: {
                                         label: '🔨 Build Service C',
                                         command: 'cd services/c && npm run build',
-                                        key: 'build-service-c'
+                                        key: 'build_service_c'
                                     }
                                 }
                             ]

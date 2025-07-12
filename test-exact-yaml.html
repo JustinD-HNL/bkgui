@@ -41,7 +41,7 @@
                 steps: [{
                     label: '📦 Build',
                     command: 'echo "Building..."',
-                    key: 'build-1',
+                    key: 'build_1',
                     agents: { queue: 'default' },
                     env: {},
                     plugins: {}
@@ -74,7 +74,7 @@
                 steps: [{
                     label: 'Complex Build',
                     command: 'npm run build',
-                    key: 'complex-build',
+                    key: 'complex_build',
                     env: {
                         NODE_ENV: 'production'
                     },
