@@ -551,23 +551,27 @@ class TemplatesUI {
                             stepConfigs.push({ type: 'wait', properties: {} });
                         } else if (typeof step === 'object') {
                             if (step.block) {
-                                stepConfigs.push({
+                                const blockStep = {
                                     type: 'block',
                                     properties: {
                                         block: step.block,
-                                        key: step.key || '',
-                                        prompt: step.prompt || '',
-                                        fields: step.fields || [],
-                                        branches: step.branches || ''
+                                        prompt: step.prompt || undefined,
+                                        fields: step.fields && step.fields.length > 0 ? step.fields : undefined,
+                                        branches: step.branches || undefined
                                     }
-                                });
+                                };
+                                // Set key at step level for blocks
+                                if (step.key) {
+                                    blockStep.key = step.key;
+                                }
+                                stepConfigs.push(blockStep);
                             } else if (step.input) {
                                 stepConfigs.push({
                                     type: 'input',
                                     properties: {
                                         input: step.input,
-                                        key: step.key || '',
-                                        fields: step.fields || []
+                                        key: step.key || undefined,
+                                        fields: step.fields && step.fields.length > 0 ? step.fields : undefined
                                     }
                                 });
                             } else if (step.trigger) {
@@ -575,8 +579,8 @@ class TemplatesUI {
                                     type: 'trigger',
                                     properties: {
                                         trigger: step.trigger,
-                                        build: step.build || {},
-                                        async: step.async || false
+                                        build: step.build && Object.keys(step.build).length > 0 ? step.build : undefined,
+                                        async: step.async || undefined
                                     }
                                 });
                             } else if (step.group) {
@@ -584,8 +588,8 @@ class TemplatesUI {
                                     type: 'group',
                                     properties: {
                                         group: step.group,
-                                        key: step.key || '',
-                                        steps: step.steps || []
+                                        key: step.key || undefined,
+                                        steps: step.steps && step.steps.length > 0 ? step.steps : undefined
                                     }
                                 });
                             } else {
@@ -596,17 +600,20 @@ class TemplatesUI {
                                         label: step.label || 'Step',
                                         key: step.key || '',
                                         command: step.command || (Array.isArray(step.commands) ? step.commands.join('\n') : step.commands) || '',
-                                        agents: step.agents || {},
-                                        artifact_paths: step.artifact_paths || '',
-                                        depends_on: step.depends_on || [],
-                                        if: step.if || '',
-                                        unless: step.unless || '',
-                                        branches: step.branches || '',
-                                        plugins: step.plugins || {},
-                                        timeout_in_minutes: step.timeout_in_minutes || '',
-                                        retry: step.retry || {},
-                                        soft_fail: step.soft_fail || [],
-                                        env: step.env || {}
+                                        agents: step.agents && Object.keys(step.agents).length > 0 ? step.agents : undefined,
+                                        artifact_paths: step.artifact_paths && step.artifact_paths.length > 0 ? (Array.isArray(step.artifact_paths) ? step.artifact_paths.join('\n') : step.artifact_paths) : undefined,
+                                        depends_on: step.depends_on && step.depends_on.length > 0 ? step.depends_on : undefined,
+                                        if: step.if || undefined,
+                                        unless: step.unless || undefined,
+                                        branches: step.branches || undefined,
+                                        plugins: step.plugins && Object.keys(step.plugins).length > 0 ? step.plugins : undefined,
+                                        timeout_in_minutes: step.timeout_in_minutes || undefined,
+                                        retry: step.retry && Object.keys(step.retry).length > 0 ? step.retry : undefined,
+                                        soft_fail: step.soft_fail && step.soft_fail.length > 0 ? step.soft_fail : undefined,
+                                        env: step.env && Object.keys(step.env).length > 0 ? step.env : undefined,
+                                        parallelism: step.parallelism || undefined,
+                                        concurrency: step.concurrency || undefined,
+                                        concurrency_group: step.concurrency_group || undefined
                                     }
                                 });
                             }
@@ -619,8 +626,43 @@ class TemplatesUI {
                     // Add each step
                     stepConfigs.forEach(stepConfig => {
                         const step = window.pipelineBuilder.addStep(stepConfig.type);
-                        if (step && stepConfig.properties) {
-                            Object.assign(step.properties, stepConfig.properties);
+                        if (step) {
+                            // Clear problematic default properties that cause empty YAML objects
+                            if (step.properties.retry === null) delete step.properties.retry;
+                            if (step.properties.soft_fail === false) delete step.properties.soft_fail;
+                            if (step.properties.env && Object.keys(step.properties.env).length === 0) delete step.properties.env;
+                            if (step.properties.plugins && Object.keys(step.properties.plugins).length === 0) delete step.properties.plugins;
+                            if (step.properties.agents && Object.keys(step.properties.agents).length === 0) delete step.properties.agents;
+                            
+                            // Set step-level properties (like key for blocks)
+                            if (stepConfig.key) {
+                                step.key = stepConfig.key;
+                            }
+                            
+                            // Set step properties
+                            if (stepConfig.properties) {
+                                // Filter out undefined, empty, and null values to prevent empty properties in YAML
+                                const cleanProperties = {};
+                                Object.entries(stepConfig.properties).forEach(([key, value]) => {
+                                    // Skip undefined, null, empty strings
+                                    if (value === undefined || value === null || value === '') {
+                                        return;
+                                    }
+                                    
+                                    // Skip empty objects
+                                    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+                                        return;
+                                    }
+                                    
+                                    // Skip empty arrays
+                                    if (Array.isArray(value) && value.length === 0) {
+                                        return;
+                                    }
+                                    
+                                    cleanProperties[key] = value;
+                                });
+                                Object.assign(step.properties, cleanProperties);
+                            }
                         }
                     });
                     
