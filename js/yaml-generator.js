@@ -964,21 +964,39 @@ class YAMLGenerator {
             'BUILDKITE_BLOCK_STEP_[A-Z_]+'
         ];
         
-        // Create regex pattern for runtime variables
-        const runtimeVarPattern = new RegExp(
-            `\\$\\{(${runtimeVariables.join('|')}|BUILDKITE_BLOCK_STEP_[A-Za-z0-9_]+)\\}`,
+        // First check if variables are already escaped ($$)
+        const alreadyEscapedPattern = new RegExp(
+            `\\$\\$\\{(${runtimeVariables.join('|')}|BUILDKITE_BLOCK_STEP_[A-Za-z0-9_]+)\\}`,
             'g'
         );
         
-        // Escape $ to $$ for runtime interpolation
-        str = str.replace(runtimeVarPattern, '$$${$1}');
+        // If already escaped, don't process further
+        if (alreadyEscapedPattern.test(str)) {
+            // Variable is already properly escaped, skip the escaping
+        } else {
+            // Create regex pattern for runtime variables that need escaping
+            const runtimeVarPattern = new RegExp(
+                `\\$\\{(${runtimeVariables.join('|')}|BUILDKITE_BLOCK_STEP_[A-Za-z0-9_]+)\\}`,
+                'g'
+            );
+            
+            // Escape $ to $$ for runtime interpolation
+            str = str.replace(runtimeVarPattern, '$$${$1}');
+        }
         
         // Also handle variables without curly braces
-        const noBracesPattern = new RegExp(
-            `\\$(${runtimeVariables.join('|')})(?![A-Z_])`,
+        const alreadyEscapedNoBracesPattern = new RegExp(
+            `\\$\\$(${runtimeVariables.join('|')})(?![A-Z_])`,
             'g'
         );
-        str = str.replace(noBracesPattern, '$$$1');
+        
+        if (!alreadyEscapedNoBracesPattern.test(str)) {
+            const noBracesPattern = new RegExp(
+                `\\$(${runtimeVariables.join('|')})(?![A-Z_])`,
+                'g'
+            );
+            str = str.replace(noBracesPattern, '$$$1');
+        }
         
         // Enhanced quoting logic
         if (this.needsQuotes(str)) {

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Double Escape Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-case {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pass { color: green; font-weight: bold; }
+        .fail { color: red; font-weight: bold; }
+        pre { margin: 0; font-family: monospace; background: #f0f0f0; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Double Escape Fix</h1>
+    
+    <div id="test-results"></div>
+    
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        const generator = new YAMLGenerator();
+        const testCases = [
+            {
+                name: "Already escaped variable (from template)",
+                input: 'junit-$${BUILDKITE_PARALLEL_JOB}.xml',
+                expected: '"junit-$${BUILDKITE_PARALLEL_JOB}.xml"',
+                description: "Should NOT double-escape"
+            },
+            {
+                name: "Unescaped variable (user input)",
+                input: 'junit-${BUILDKITE_PARALLEL_JOB}.xml',
+                expected: '"junit-$${BUILDKITE_PARALLEL_JOB}.xml"',
+                description: "Should escape once"
+            },
+            {
+                name: "Already escaped BUILD_NUMBER",
+                input: 'Build $${BUILDKITE_BUILD_NUMBER}',
+                expected: '"Build $${BUILDKITE_BUILD_NUMBER}"',
+                description: "Should NOT double-escape"
+            },
+            {
+                name: "Unescaped BUILD_NUMBER",
+                input: 'Build ${BUILDKITE_BUILD_NUMBER}',
+                expected: '"Build $${BUILDKITE_BUILD_NUMBER}"',
+                description: "Should escape once"
+            },
+            {
+                name: "Editor variable (should never escape)",
+                input: 'Branch ${BUILDKITE_BRANCH}',
+                expected: '"Branch ${BUILDKITE_BRANCH}"',
+                description: "BRANCH is available in editor"
+            },
+            {
+                name: "Already escaped BLOCK_STEP",
+                input: 'Approver: $${BUILDKITE_BLOCK_STEP_approval_approver}',
+                expected: '"Approver: $${BUILDKITE_BLOCK_STEP_approval_approver}"',
+                description: "Should NOT double-escape"
+            },
+            {
+                name: "Unescaped BLOCK_STEP",
+                input: 'Approver: ${BUILDKITE_BLOCK_STEP_approval_approver}',
+                expected: '"Approver: $${BUILDKITE_BLOCK_STEP_approval_approver}"',
+                description: "Should escape once"
+            }
+        ];
+        
+        const resultsDiv = document.getElementById('test-results');
+        let passCount = 0;
+        
+        testCases.forEach(testCase => {
+            const result = generator.quote(testCase.input);
+            const passed = result === testCase.expected;
+            if (passed) passCount++;
+            
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-case';
+            testDiv.innerHTML = `
+                <h3>${testCase.name} - <span class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</span></h3>
+                <p>${testCase.description}</p>
+                <div><strong>Input:</strong> <pre>${testCase.input}</pre></div>
+                <div><strong>Expected:</strong> <pre>${testCase.expected}</pre></div>
+                <div><strong>Actual:</strong> <pre>${result}</pre></div>
+            `;
+            resultsDiv.appendChild(testDiv);
+        });
+        
+        // Summary
+        const summary = document.createElement('div');
+        summary.className = 'test-case';
+        summary.style.background = passCount === testCases.length ? '#d4edda' : '#f8d7da';
+        summary.innerHTML = `
+            <h2>Summary: ${passCount}/${testCases.length} tests passed</h2>
+        `;
+        resultsDiv.insertBefore(summary, resultsDiv.firstChild);
+    </script>
+</body>
+</html>

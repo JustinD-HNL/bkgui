@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Node Template YAML Generation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Node Template YAML Generation</h1>
+        <button onclick="loadAndTest()">Load Node Template and Generate YAML</button>
+        <div id="status"></div>
+        <h2>Generated YAML:</h2>
+        <pre id="yaml-output"></pre>
+        <h2>Specific Test Step:</h2>
+        <pre id="test-step"></pre>
+    </div>
+    
+    <script src="js/pipeline-templates.js"></script>
+    <script src="js/yaml-generator.js"></script>
+    <script>
+        // Mock pipeline builder
+        window.pipelineBuilder = {
+            steps: [],
+            clearPipeline: function() {
+                this.steps = [];
+            },
+            addStep: function(type) {
+                const step = {
+                    type: type,
+                    properties: {}
+                };
+                this.steps.push(step);
+                return step;
+            },
+            exportConfig: function() {
+                return { steps: this.steps };
+            }
+        };
+        
+        function loadAndTest() {
+            const statusDiv = document.getElementById('status');
+            const yamlDiv = document.getElementById('yaml-output');
+            const testStepDiv = document.getElementById('test-step');
+            
+            try {
+                // Load pipeline templates
+                if (!window.pipelineTemplates) {
+                    window.pipelineTemplates = new PipelineTemplates();
+                }
+                
+                // Get the node-app template
+                const nodeTemplate = window.pipelineTemplates.templates['node-app'];
+                if (!nodeTemplate) {
+                    statusDiv.innerHTML = '<span class="error">Node template not found!</span>';
+                    return;
+                }
+                
+                statusDiv.innerHTML = '<span class="success">Template loaded successfully</span>';
+                
+                // Find the test step with BUILDKITE_PARALLEL_JOB
+                const testStep = nodeTemplate.pipeline.steps.find(step => 
+                    step.label && step.label.includes('Run Tests')
+                );
+                
+                if (testStep) {
+                    testStepDiv.textContent = JSON.stringify(testStep, null, 2);
+                }
+                
+                // Generate YAML using the yaml generator
+                const yamlGenerator = new YAMLGenerator();
+                const yaml = yamlGenerator.generate(nodeTemplate.pipeline);
+                
+                yamlDiv.textContent = yaml;
+                
+                // Highlight the problematic line
+                const lines = yaml.split('\n');
+                const problemLine = lines.find(line => line.includes('JEST_JUNIT_OUTPUT_NAME'));
+                if (problemLine) {
+                    console.log('Problem line:', problemLine);
+                    statusDiv.innerHTML += '<br><br><strong>JEST_JUNIT_OUTPUT_NAME line:</strong><br><code>' + problemLine + '</code>';
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = '<span class="error">Error: ' + error.message + '</span>';
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
