@@ -13,7 +13,7 @@ class TemplatesUI {
         // Use templates from pipeline-templates.js if available, otherwise use embedded
         if (window.pipelineTemplates && window.pipelineTemplates.templates) {
             console.log('TemplatesUI: Using templates from pipeline-templates.js');
-            this.templates = { templates: window.pipelineTemplates.templates };
+            this.templates = window.pipelineTemplates;
         } else {
             console.log('TemplatesUI: Using embedded templates');
             this.templates = {
@@ -1142,8 +1142,8 @@ class TemplatesUI {
         const modal = document.getElementById('enhanced-templates-modal');
         if (modal) {
             // Refresh templates from pipeline-templates.js if available
-            if (window.pipelineTemplates && window.pipelineTemplates.templates) {
-                this.templates = { templates: window.pipelineTemplates.templates };
+            if (window.pipelineTemplates) {
+                this.templates = window.pipelineTemplates;
             }
             
             console.log('TemplatesUI: Showing templates modal with', Object.keys(this.templates.templates).length, 'templates');
@@ -1162,7 +1162,10 @@ class TemplatesUI {
             return;
         }
 
-        const categories = this.templates.getAllCategories();
+        console.log('TemplatesUI: templates object:', this.templates);
+        console.log('TemplatesUI: typeof getAllCategories:', typeof this.templates.getAllCategories);
+        
+        const categories = this.getAllCategories();
         const allTemplates = Object.keys(this.templates.templates).length;
 
         let html = `
@@ -1220,9 +1223,14 @@ class TemplatesUI {
             return;
         }
 
-        let templates = this.selectedCategory === 'all' 
-            ? Object.entries(this.templates.templates)
-            : Object.entries(this.templates.templates).filter(([_, t]) => t.category === this.selectedCategory);
+        let templates;
+        if (this.selectedCategory === 'all') {
+            templates = Object.entries(this.templates.templates);
+        } else {
+            // Use the getTemplatesByCategory method
+            const categoryTemplates = this.getTemplatesByCategory(this.selectedCategory);
+            templates = categoryTemplates.map(t => [t.key, t]);
+        }
 
         // Apply search filter
         if (this.searchQuery) {

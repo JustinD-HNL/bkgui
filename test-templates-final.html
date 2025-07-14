@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Final Templates Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .log {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .hidden { display: none !important; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <h1>Final Templates Test</h1>
+    
+    <div class="test-section">
+        <h2>Load and Test Templates</h2>
+        <button onclick="loadAndTest()">Load Scripts and Test</button>
+        <button onclick="showTemplateDetails()">Show Template Details</button>
+        <button onclick="testModal()">Test Modal Functionality</button>
+        <div id="results" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Template Details</h2>
+        <div id="template-details"></div>
+    </div>
+    
+    <!-- Mock elements -->
+    <div class="header-actions" style="display: none;"></div>
+    <div id="enhanced-templates-modal" class="modal hidden" style="background: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <h2>Templates Modal</h2>
+            <button class="close-modal">Close</button>
+            <div id="template-categories"></div>
+            <div id="templates-grid"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Mock pipeline builder
+        window.pipelineBuilder = {
+            steps: [],
+            addStep: () => ({ properties: {} }),
+            clearPipeline: () => {},
+            renderPipeline: () => {},
+            renderProperties: () => {},
+            saveToLocalStorage: () => {},
+            loadTemplate: () => console.log('Mock loadTemplate called')
+        };
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(entry);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        async function loadAndTest() {
+            log('Starting test...', 'info');
+            
+            // Load pipeline-templates.js
+            await loadScript('js/pipeline-templates.js');
+            
+            // Check if loaded correctly
+            if (window.pipelineTemplates) {
+                log('✓ pipeline-templates.js loaded', 'success');
+                const count = Object.keys(window.pipelineTemplates.templates).length;
+                log(`✓ Found ${count} templates`, 'success');
+                
+                // Check for robust-cicd
+                if (window.pipelineTemplates.templates['robust-cicd']) {
+                    log('✓ robust-cicd template found', 'success');
+                } else {
+                    log('✗ robust-cicd template NOT found', 'error');
+                }
+                
+                // Check categories
+                let categoriesOk = true;
+                Object.entries(window.pipelineTemplates.templates).forEach(([key, template]) => {
+                    if (!template.category) {
+                        log(`✗ Template ${key} missing category`, 'error');
+                        categoriesOk = false;
+                    }
+                });
+                if (categoriesOk) {
+                    log('✓ All templates have categories', 'success');
+                }
+            } else {
+                log('✗ pipeline-templates.js failed to load', 'error');
+                return;
+            }
+            
+            // Load templates-ui.js
+            await loadScript('js/templates-ui.js');
+            
+            // Check if loaded correctly
+            if (window.templatesUI) {
+                log('✓ templates-ui.js loaded', 'success');
+                
+                // Check if using correct templates
+                const uiCount = Object.keys(window.templatesUI.templates.templates).length;
+                log(`Templates UI has ${uiCount} templates`, 'info');
+                
+                // Test getAllCategories
+                try {
+                    const categories = window.templatesUI.getAllCategories();
+                    log(`✓ getAllCategories works: ${categories.join(', ')}`, 'success');
+                } catch (e) {
+                    log(`✗ getAllCategories error: ${e.message}`, 'error');
+                }
+                
+                // Test getTemplatesByCategory
+                try {
+                    const cicdTemplates = window.templatesUI.getTemplatesByCategory('ci-cd');
+                    log(`✓ getTemplatesByCategory works: ${cicdTemplates.length} CI/CD templates`, 'success');
+                } catch (e) {
+                    log(`✗ getTemplatesByCategory error: ${e.message}`, 'error');
+                }
+            } else {
+                log('✗ templates-ui.js failed to load', 'error');
+            }
+            
+            // Load button fix
+            await loadScript('js/templates-button-fix.js');
+            log('✓ templates-button-fix.js loaded', 'success');
+            
+            // Check button
+            setTimeout(() => {
+                const btn = document.getElementById('templates-button');
+                if (btn) {
+                    log(`✓ Templates button created: ${btn.textContent}`, 'success');
+                } else {
+                    log('✗ Templates button not found', 'error');
+                }
+            }, 1500);
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
+        function showTemplateDetails() {
+            const details = document.getElementById('template-details');
+            if (!window.pipelineTemplates) {
+                details.innerHTML = '<p class="error">Templates not loaded</p>';
+                return;
+            }
+            
+            const templates = window.pipelineTemplates.templates;
+            const categories = {};
+            
+            Object.entries(templates).forEach(([key, template]) => {
+                const cat = template.category || 'uncategorized';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push({ key, ...template });
+            });
+            
+            let html = '<h3>Templates by Category</h3>';
+            Object.entries(categories).forEach(([cat, temps]) => {
+                html += `<h4>${cat} (${temps.length})</h4><ul>`;
+                temps.forEach(t => {
+                    html += `<li><strong>${t.name}</strong> - ${t.description}</li>`;
+                });
+                html += '</ul>';
+            });
+            
+            details.innerHTML = html;
+        }
+        
+        function testModal() {
+            log('Testing modal...', 'info');
+            
+            if (window.templatesUI && window.templatesUI.showTemplatesModal) {
+                try {
+                    window.templatesUI.showTemplatesModal();
+                    log('✓ Modal opened', 'success');
+                    
+                    // Check if modal is visible
+                    const modal = document.getElementById('enhanced-templates-modal');
+                    if (modal && !modal.classList.contains('hidden')) {
+                        log('✓ Modal is visible', 'success');
+                    } else {
+                        log('✗ Modal not visible', 'error');
+                    }
+                } catch (e) {
+                    log(`✗ Error opening modal: ${e.message}`, 'error');
+                }
+            } else {
+                log('✗ showTemplatesModal not available', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

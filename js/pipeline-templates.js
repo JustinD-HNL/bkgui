@@ -12,6 +12,7 @@ class PipelineTemplates {
             'node-app': {
                 name: 'Node.js Application',
                 icon: 'fa-node-js',
+                category: 'ci-cd',
                 description: 'Complete CI/CD pipeline for Node.js applications with testing, building, and deployment',
                 pipeline: {
                     steps: [
@@ -152,6 +153,7 @@ class PipelineTemplates {
             'docker-microservice': {
                 name: 'Docker Microservice',
                 icon: 'fa-docker',
+                category: 'microservices',
                 description: 'Build, test, and deploy Docker-based microservices with multi-stage builds',
                 pipeline: {
                     steps: [
@@ -278,6 +280,7 @@ class PipelineTemplates {
             'python-ml': {
                 name: 'Python ML Pipeline',
                 icon: 'fa-python',
+                category: 'workflow',
                 description: 'Machine learning pipeline with data validation, model training, and deployment',
                 pipeline: {
                     steps: [
@@ -348,6 +351,7 @@ class PipelineTemplates {
             'mobile-app': {
                 name: 'Mobile App CI/CD',
                 icon: 'fa-mobile-alt',
+                category: 'ci-cd',
                 description: 'Build and deploy iOS and Android apps with parallel builds',
                 pipeline: {
                     steps: [
@@ -424,6 +428,7 @@ class PipelineTemplates {
             'terraform-infra': {
                 name: 'Terraform Infrastructure',
                 icon: 'fa-server',
+                category: 'deployment',
                 description: 'Infrastructure as Code pipeline with plan, review, and apply stages',
                 pipeline: {
                     steps: [
@@ -487,6 +492,7 @@ class PipelineTemplates {
             'monorepo': {
                 name: 'Monorepo Pipeline',
                 icon: 'fa-code-branch',
+                category: 'workflow',
                 description: 'Intelligent monorepo pipeline that only builds changed packages',
                 pipeline: {
                     steps: [
@@ -584,6 +590,7 @@ class PipelineTemplates {
             'security-scan': {
                 name: 'Security Pipeline',
                 icon: 'fa-shield-alt',
+                category: 'security',
                 description: 'Comprehensive security scanning with SAST, dependency checks, and container scanning',
                 pipeline: {
                     steps: [
@@ -656,6 +663,7 @@ class PipelineTemplates {
             'k8s-deploy': {
                 name: 'Kubernetes Deploy',
                 icon: 'fa-dharmachakra',
+                category: 'deployment',
                 description: 'Deploy applications to Kubernetes with Helm charts and health checks',
                 pipeline: {
                     steps: [
@@ -782,6 +790,7 @@ class PipelineTemplates {
             'serverless': {
                 name: 'Serverless Deploy',
                 icon: 'fa-bolt',
+                category: 'deployment',
                 description: 'Deploy serverless functions with testing and staged rollouts',
                 pipeline: {
                     steps: [
@@ -848,6 +857,7 @@ class PipelineTemplates {
             'data-pipeline': {
                 name: 'Data Pipeline',
                 icon: 'fa-database',
+                category: 'workflow',
                 description: 'ETL pipeline with data validation, transformation, and quality checks',
                 pipeline: {
                     steps: [
@@ -919,6 +929,7 @@ class PipelineTemplates {
             'multi-platform': {
                 name: 'Multi-Platform Build',
                 icon: 'fa-layer-group',
+                category: 'ci-cd',
                 description: 'Build and test across multiple platforms and architectures',
                 pipeline: {
                     steps: [
@@ -979,6 +990,7 @@ class PipelineTemplates {
             'compliance': {
                 name: 'Compliance Pipeline',
                 icon: 'fa-certificate',
+                category: 'security',
                 description: 'Automated compliance checks, audit trails, and certification',
                 pipeline: {
                     steps: [
@@ -1067,6 +1079,7 @@ class PipelineTemplates {
             'performance': {
                 name: 'Performance Testing',
                 icon: 'fa-tachometer-alt',
+                category: 'testing',
                 description: 'Load testing, performance benchmarks, and regression detection',
                 pipeline: {
                     steps: [
@@ -1145,6 +1158,7 @@ class PipelineTemplates {
             'release': {
                 name: 'Release Pipeline',
                 icon: 'fa-tag',
+                category: 'deployment',
                 description: 'Automated release process with versioning, changelog, and distribution',
                 pipeline: {
                     steps: [
@@ -1256,6 +1270,7 @@ class PipelineTemplates {
             'robust-cicd': {
                 name: 'Robust CI/CD Pipeline',
                 icon: 'fa-shield-check',
+                category: 'ci-cd',
                 description: 'Enterprise-grade CI/CD pipeline with comprehensive error handling, retries, and best practices',
                 pipeline: {
                     env: {
@@ -1753,6 +1768,63 @@ class PipelineTemplates {
         
         console.log(`✅ Imported template: ${templateData.name}`);
         return key;
+    }
+
+    getAllCategories() {
+        // Extract categories from template keys and names
+        const categories = new Set();
+        
+        Object.entries(this.templates).forEach(([key, template]) => {
+            // Infer category from template key or name
+            if (key.includes('node') || key.includes('npm') || key.includes('javascript')) {
+                categories.add('ci-cd');
+            } else if (key.includes('python') || key.includes('pip')) {
+                categories.add('ci-cd');
+            } else if (key.includes('docker')) {
+                categories.add('deployment');
+            } else if (key.includes('test') || template.name.toLowerCase().includes('test')) {
+                categories.add('testing');
+            } else if (key.includes('deploy') || template.name.toLowerCase().includes('deploy')) {
+                categories.add('deployment');
+            } else if (key.includes('security') || template.name.toLowerCase().includes('security')) {
+                categories.add('security');
+            } else if (key.includes('microservice')) {
+                categories.add('microservices');
+            } else {
+                categories.add('workflow');
+            }
+        });
+        
+        return Array.from(categories).sort();
+    }
+
+    getTemplatesByCategory(category) {
+        const templatesInCategory = [];
+        
+        Object.entries(this.templates).forEach(([key, template]) => {
+            let templateCategory = 'workflow'; // default
+            
+            // Infer category from template key or name
+            if (key.includes('node') || key.includes('npm') || key.includes('javascript') || key.includes('python') || key.includes('pip')) {
+                templateCategory = 'ci-cd';
+            } else if (key.includes('docker')) {
+                templateCategory = 'deployment';
+            } else if (key.includes('test') || template.name.toLowerCase().includes('test')) {
+                templateCategory = 'testing';
+            } else if (key.includes('deploy') || template.name.toLowerCase().includes('deploy')) {
+                templateCategory = 'deployment';
+            } else if (key.includes('security') || template.name.toLowerCase().includes('security')) {
+                templateCategory = 'security';
+            } else if (key.includes('microservice')) {
+                templateCategory = 'microservices';
+            }
+            
+            if (templateCategory === category) {
+                templatesInCategory.push({ key, ...template, category: templateCategory });
+            }
+        });
+        
+        return templatesInCategory;
     }
 }
 

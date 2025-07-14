@@ -6,6 +6,7 @@
     function ensureCorrectTemplates() {
         if (window.pipelineTemplates && window.pipelineTemplates.templates && window.templatesUI) {
             console.log('[Templates Fix] Updating templatesUI to use pipeline-templates.js templates');
+            // Keep the templates object structure
             window.templatesUI.templates = { templates: window.pipelineTemplates.templates };
             
             // Update template count on button
