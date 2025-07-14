@@ -4579,3 +4579,8 @@ body {
     display: inline-flex;
     align-items: center;
 }
+
+/* Ensure labels don't wrap help icons */
+.property-group label .help-icon {
+    flex-shrink: 0;
+}

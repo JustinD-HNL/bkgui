@@ -254,8 +254,18 @@ class HelpTooltip {
      * Initialize help tooltips for all elements with data-help-id
      */
     initializeAll() {
-        document.querySelectorAll('.help-icon[data-help-id]').forEach(icon => {
+        console.log('Initializing all help icons...');
+        const helpIcons = document.querySelectorAll('.help-icon[data-help-id]');
+        console.log(`Found ${helpIcons.length} help icons to initialize`);
+        
+        helpIcons.forEach(icon => {
+            // Skip if already initialized
+            if (icon.hasAttribute('data-help-initialized')) {
+                return;
+            }
+            
             this.bindEvents(icon);
+            icon.setAttribute('data-help-initialized', 'true');
         });
     }
 
