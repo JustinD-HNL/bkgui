@@ -95,7 +95,7 @@ class PipelineTemplates {
                             parallelism: 2,
                             env: {
                                 JEST_JUNIT_OUTPUT_DIR: './test-results',
-                                JEST_JUNIT_OUTPUT_NAME: 'junit-${BUILDKITE_PARALLEL_JOB}.xml'
+                                JEST_JUNIT_OUTPUT_NAME: 'junit-$${BUILDKITE_PARALLEL_JOB}.xml'
                             }
                         },
                         'wait',
@@ -104,7 +104,7 @@ class PipelineTemplates {
                             key: 'build',
                             command: [
                                 'echo "Building application..."',
-                                'echo "Build number: ${BUILDKITE_BUILD_NUMBER}"',
+                                'echo "Build number: $${BUILDKITE_BUILD_NUMBER}"',
                                 'echo "Commit: ${BUILDKITE_COMMIT:0:7}"',
                                 'npm run build',
                                 'ls -la dist/',
@@ -117,7 +117,7 @@ class PipelineTemplates {
                             agents: { queue: 'default' },
                             env: {
                                 NODE_ENV: 'production',
-                                BUILD_NUMBER: '${BUILDKITE_BUILD_NUMBER}',
+                                BUILD_NUMBER: '$${BUILDKITE_BUILD_NUMBER}',
                                 COMMIT_SHA: '${BUILDKITE_COMMIT}'
                             },
                             timeout_in_minutes: 20
@@ -187,7 +187,7 @@ class PipelineTemplates {
                             key: 'build',
                             command: [
                                 'echo "Building Docker image..."',
-                                'echo "Build args: BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}, COMMIT=${BUILDKITE_COMMIT:0:7}"'
+                                'echo "Build args: BUILD_NUMBER=$${BUILDKITE_BUILD_NUMBER}, COMMIT=$${BUILDKITE_COMMIT:0:7}"'
                             ].join('\n'),
                             plugins: [
                                 {
@@ -196,7 +196,7 @@ class PipelineTemplates {
                                         dockerfile: 'Dockerfile',
                                         'image-repository': 'myapp',
                                         'build-args': [
-                                            'BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER}',
+                                            'BUILD_NUMBER=$${BUILDKITE_BUILD_NUMBER}',
                                             'COMMIT_SHA=${BUILDKITE_COMMIT}',
                                             'BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")'
                                         ],
@@ -215,8 +215,8 @@ class PipelineTemplates {
                             key: 'security',
                             command: [
                                 'echo "Running security scan..."',
-                                'trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-report.json myapp:${BUILDKITE_BUILD_NUMBER}',
-                                'trivy image --exit-code 1 --severity CRITICAL myapp:${BUILDKITE_BUILD_NUMBER} || security_exit=$?',
+                                'trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-report.json myapp:$${BUILDKITE_BUILD_NUMBER}',
+                                'trivy image --exit-code 1 --severity CRITICAL myapp:$${BUILDKITE_BUILD_NUMBER} || security_exit=$?',
                                 'echo "Security scan exit code: ${security_exit:-0}"',
                                 'exit ${security_exit:-0}'
                             ].join('\n'),
@@ -250,7 +250,7 @@ class PipelineTemplates {
                                 {
                                     'docker-buildkite-plugin#v5.7.0': {
                                         push: [
-                                            'myapp:${BUILDKITE_BUILD_NUMBER}',
+                                            'myapp:$${BUILDKITE_BUILD_NUMBER}',
                                             'myapp:${BUILDKITE_BRANCH}',
                                             'myapp:latest'
                                         ]
@@ -266,9 +266,9 @@ class PipelineTemplates {
                             trigger: 'deploy-pipeline',
                             label: '🚀 Trigger Deployment',
                             build: {
-                                message: 'Deploy \${BUILDKITE_BUILD_NUMBER}',
+                                message: 'Deploy $${BUILDKITE_BUILD_NUMBER}',
                                 env: {
-                                    IMAGE_TAG: '\${BUILDKITE_BUILD_NUMBER}'
+                                    IMAGE_TAG: '$${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             branches: 'main'
@@ -706,9 +706,9 @@ class PipelineTemplates {
                             key: 'build',
                             plugins: {
                                 'docker-buildkite-plugin#v3.0.0': {
-                                    image: 'myapp:\${BUILDKITE_BUILD_NUMBER}',
+                                    image: 'myapp:$${BUILDKITE_BUILD_NUMBER}',
                                     dockerfile: 'Dockerfile',
-                                    push: 'registry.company.com/myapp:\${BUILDKITE_BUILD_NUMBER}'
+                                    push: 'registry.company.com/myapp:$${BUILDKITE_BUILD_NUMBER}'
                                 }
                             },
                             agents: { docker: 'true' }
@@ -725,7 +725,7 @@ class PipelineTemplates {
                                 '# Deploy with Helm',
                                 'helm upgrade --install myapp-staging ./charts/myapp \\',
                                 '  --namespace staging \\',
-                                '  --set image.tag=${BUILDKITE_BUILD_NUMBER} \\',
+                                '  --set image.tag=$${BUILDKITE_BUILD_NUMBER} \\',
                                 '  --set image.pullPolicy=Always \\',
                                 '  --set env=staging \\',
                                 '  --wait --timeout 5m \\',
@@ -774,7 +774,7 @@ class PipelineTemplates {
                             command: [
                                 'helm upgrade --install myapp ./charts/myapp \\',
                                 '  --namespace production \\',
-                                '  --set image.tag=${BUILDKITE_BUILD_NUMBER} \\',
+                                '  --set image.tag=$${BUILDKITE_BUILD_NUMBER} \\',
                                 '  --wait --timeout 10m'
                             ].join('\n'),
                             depends_on: ['smoke_tests', 'prod_gate'],
@@ -1066,7 +1066,7 @@ class PipelineTemplates {
                                 '# Submit compliance artifacts to corporate registry',
                                 'compliance-cli submit \\',
                                 '  --report=audit-report-*.pdf \\',
-                                '  --approver="${BUILDKITE_BLOCK_STEP_approval_approver}"'
+                                '  --approver="$${BUILDKITE_BLOCK_STEP_approval_approver}"'
                             ].join('\n'),
                             depends_on: ['audit', 'approval'],
                             branches: 'main',
@@ -1086,7 +1086,7 @@ class PipelineTemplates {
                         {
                             label: '🏗️ Build Test Image',
                             key: 'build',
-                            command: 'docker build -t perftest:\${BUILDKITE_BUILD_NUMBER} .',
+                            command: 'docker build -t perftest:$${BUILDKITE_BUILD_NUMBER} .',
                             agents: { docker: 'true' }
                         },
                         {
@@ -1172,7 +1172,7 @@ class PipelineTemplates {
                                 '  npx semantic-release --dry-run --no-ci | grep "next release version" | sed "s/.*next release version is //" > .version',
                                 'else',
                                 '  # Fallback to build number versioning',
-                                '  echo "0.0.${BUILDKITE_BUILD_NUMBER}" > .version',
+                                '  echo "0.0.$${BUILDKITE_BUILD_NUMBER}" > .version',
                                 'fi',
                                 'echo "Next version: $(cat .version)"'
                             ].join('\n'),
@@ -1443,14 +1443,14 @@ class PipelineTemplates {
                             command: [
                                 'echo "Building application..."',
                                 'echo "Build info:"',
-                                'echo "  Number: ${BUILDKITE_BUILD_NUMBER}"',
+                                'echo "  Number: $${BUILDKITE_BUILD_NUMBER}"',
                                 'echo "  Commit: ${BUILDKITE_COMMIT:0:7}"',
                                 'echo "  Branch: ${BUILDKITE_BRANCH}"',
                                 '',
                                 '# Set build metadata',
                                 'export BUILD_METADATA=$(cat <<EOF',
                                 '{',
-                                '  "buildNumber": "${BUILDKITE_BUILD_NUMBER}",',
+                                '  "buildNumber": "$${BUILDKITE_BUILD_NUMBER}",',
                                 '  "commit": "${BUILDKITE_COMMIT}",',
                                 '  "branch": "${BUILDKITE_BRANCH}",',
                                 '  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"',
@@ -1507,10 +1507,10 @@ class PipelineTemplates {
                                 '',
                                 '# Build with BuildKit',
                                 'docker build \\',
-                                '  --build-arg BUILD_NUMBER=${BUILDKITE_BUILD_NUMBER} \\',
+                                '  --build-arg BUILD_NUMBER=$${BUILDKITE_BUILD_NUMBER} \\',
                                 '  --build-arg COMMIT_SHA=${BUILDKITE_COMMIT} \\',
                                 '  --cache-from myapp:latest \\',
-                                '  --tag myapp:${BUILDKITE_BUILD_NUMBER} \\',
+                                '  --tag myapp:$${BUILDKITE_BUILD_NUMBER} \\',
                                 '  --tag myapp:${BUILDKITE_BRANCH} \\',
                                 '  --progress=plain \\',
                                 '  .',
@@ -1522,7 +1522,7 @@ class PipelineTemplates {
                                 '  --exit-code 0 \\',
                                 '  --format json \\',
                                 '  --output trivy-report.json \\',
-                                '  myapp:${BUILDKITE_BUILD_NUMBER}',
+                                '  myapp:$${BUILDKITE_BUILD_NUMBER}',
                                 '',
                                 '# Check scan results',
                                 'critical_vulns=$(jq "[.Results[].Vulnerabilities[]? | select(.Severity==\"CRITICAL\")] | length" trivy-report.json)',
@@ -1608,7 +1608,7 @@ class PipelineTemplates {
                             key: 'deploy',
                             command: [
                                 'echo "Deploying to production..."',
-                                'DEPLOYMENT_TYPE="\${BUILDKITE_BLOCK_STEP_deploy_gate_deployment_type}"',
+                                'DEPLOYMENT_TYPE="$${BUILDKITE_BLOCK_STEP_deploy_gate_deployment_type}"',
                                 '',
                                 'case "$DEPLOYMENT_TYPE" in',
                                 '  blue_green)',
@@ -1630,8 +1630,8 @@ class PipelineTemplates {
                                 './scripts/validate-deployment.sh',
                                 '',
                                 '# Notify if requested',
-                                'if [ "\${BUILDKITE_BLOCK_STEP_deploy_gate_notify_team}" = "yes" ]; then',
-                                '  ./scripts/notify-slack.sh "Deployment completed: ${BUILDKITE_BUILD_NUMBER}"',
+                                'if [ "$${BUILDKITE_BLOCK_STEP_deploy_gate_notify_team}" = "yes" ]; then',
+                                '  ./scripts/notify-slack.sh "Deployment completed: $${BUILDKITE_BUILD_NUMBER}"',
                                 'fi'
                             ].join('\n'),
                             depends_on: ['deploy_gate'],

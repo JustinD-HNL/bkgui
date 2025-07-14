@@ -936,6 +936,50 @@ class YAMLGenerator {
         // Convert to string
         str = String(str);
         
+        // Escape Buildkite variables for runtime interpolation
+        // Variables that need runtime interpolation (not available in editor)
+        const runtimeVariables = [
+            'BUILDKITE_PARALLEL_JOB',
+            'BUILDKITE_BUILD_NUMBER',
+            'BUILDKITE_BUILD_ID',
+            'BUILDKITE_JOB_ID',
+            'BUILDKITE_BUILD_URL',
+            'BUILDKITE_BUILD_META_DATA_[A-Z_]+',
+            'BUILDKITE_UNBLOCKER',
+            'BUILDKITE_UNBLOCKER_ID',
+            'BUILDKITE_UNBLOCKER_EMAIL',
+            'BUILDKITE_UNBLOCKER_NAME',
+            'BUILDKITE_UNBLOCKER_TEAMS',
+            'BUILDKITE_REBUILT_FROM_BUILD_ID',
+            'BUILDKITE_REBUILT_FROM_BUILD_NUMBER',
+            'BUILDKITE_GROUP_ID',
+            'BUILDKITE_GROUP_LABEL',
+            'BUILDKITE_GROUP_KEY',
+            'BUILDKITE_STEP_ID',
+            'BUILDKITE_STEP_KEY',
+            'BUILDKITE_PARALLEL_JOB_COUNT',
+            'BUILDKITE_ARTIFACT_UPLOAD_EXIT_STATUS',
+            'BUILDKITE_COMMAND_EXIT_STATUS',
+            'BUILDKITE_LAST_HOOK_EXIT_STATUS',
+            'BUILDKITE_BLOCK_STEP_[A-Z_]+'
+        ];
+        
+        // Create regex pattern for runtime variables
+        const runtimeVarPattern = new RegExp(
+            `\\$\\{(${runtimeVariables.join('|')}|BUILDKITE_BLOCK_STEP_[A-Za-z0-9_]+)\\}`,
+            'g'
+        );
+        
+        // Escape $ to $$ for runtime interpolation
+        str = str.replace(runtimeVarPattern, '$$${$1}');
+        
+        // Also handle variables without curly braces
+        const noBracesPattern = new RegExp(
+            `\\$(${runtimeVariables.join('|')})(?![A-Z_])`,
+            'g'
+        );
+        str = str.replace(noBracesPattern, '$$$1');
+        
         // Enhanced quoting logic
         if (this.needsQuotes(str)) {
             // Check for newlines
