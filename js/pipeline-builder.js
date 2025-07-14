@@ -1890,6 +1890,11 @@ class PipelineBuilder {
         
         container.innerHTML = this.generatePropertiesForm(this.selectedStep);
         this.setupPropertyFormListeners(this.selectedStep, container);
+        
+        // Dispatch event to initialize help tooltips
+        document.dispatchEvent(new CustomEvent('propertiesRendered', {
+            detail: { step: this.selectedStep }
+        }));
     }
 
     generatePropertiesForm(step) {

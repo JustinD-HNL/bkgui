@@ -22,6 +22,13 @@
     --danger: #ff6b81;
     --info: #70a1ff;
     
+    /* Help System Colors */
+    --help-icon-color: #9ca3af;
+    --help-icon-hover: #667eea;
+    --help-bg: #ffffff;
+    --help-border: #e2e8f0;
+    --help-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)
+    
     /* Neutral Colors */
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;
@@ -4281,4 +4288,294 @@ body {
     margin-bottom: 0.5rem;
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* Help Tooltip System */
+.help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-left: 6px;
+    color: var(--help-icon-color);
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+    vertical-align: middle;
+}
+
+.help-icon:hover {
+    color: var(--help-icon-hover);
+    transform: scale(1.1);
+}
+
+.help-icon:focus {
+    outline: 2px solid var(--help-icon-hover);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
+.help-icon i {
+    font-size: 14px;
+}
+
+/* Help Tooltip Container */
+.help-tooltip-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 10000;
+}
+
+.help-tooltip {
+    position: absolute;
+    padding: 8px 12px;
+    background: var(--help-bg);
+    border: 1px solid var(--help-border);
+    border-radius: 6px;
+    box-shadow: var(--help-shadow);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-primary);
+    max-width: 250px;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.help-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.help-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--help-border);
+}
+
+.help-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--help-bg);
+}
+
+.help-tooltip.tooltip-bottom::before {
+    top: -5px;
+    bottom: auto;
+    border-top: none;
+    border-bottom: 5px solid var(--help-border);
+}
+
+.help-tooltip.tooltip-bottom::after {
+    top: -4px;
+    bottom: auto;
+    border-top: none;
+    border-bottom: 5px solid var(--help-bg);
+}
+
+/* Help Modal */
+.help-modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.help-modal-container.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.help-modal {
+    background: var(--help-bg);
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 600px;
+    max-height: 80vh;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.help-modal-container.visible .help-modal {
+    transform: scale(1);
+}
+
+.help-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--help-border);
+}
+
+.help-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.help-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--gray-500);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.help-modal-close:hover {
+    background-color: var(--gray-100);
+    color: var(--text-primary);
+}
+
+.help-modal-content {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.help-description {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+}
+
+.help-examples {
+    margin-bottom: 1.5rem;
+}
+
+.help-examples h4,
+.help-notes h4,
+.help-links h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.help-example {
+    margin-bottom: 1.25rem;
+    background: var(--gray-50);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.help-example-title {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.help-example-code {
+    background: var(--gray-900);
+    color: #e5e7eb;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    overflow-x: auto;
+    margin-bottom: 0.5rem;
+}
+
+.help-example-description {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-top: 0.5rem;
+}
+
+.help-notes ul,
+.help-links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.help-notes li {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.help-notes li::before {
+    content: '•';
+    position: absolute;
+    left: 0.5rem;
+    color: var(--primary);
+}
+
+.help-links a {
+    color: var(--help-icon-hover);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.2s ease;
+}
+
+.help-links a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.help-links a i {
+    font-size: 0.75rem;
+}
+
+/* Dark theme support for help system */
+[data-theme="dark"] {
+    --help-icon-color: #6b7280;
+    --help-icon-hover: #818cf8;
+    --help-bg: #1f2937;
+    --help-border: #374151;
+    --help-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .help-example {
+    background: #111827;
+}
+
+[data-theme="dark"] .help-modal-close:hover {
+    background-color: #374151;
+}
+
+/* Integration with property groups */
+.property-group label {
+    display: inline-flex;
+    align-items: center;
 }
