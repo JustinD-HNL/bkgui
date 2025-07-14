@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Templates Button</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .header-actions {
+            background: #f5f5f5;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <h1>Templates Button Test</h1>
+    
+    <div class="header-actions">
+        <!-- Templates button should be added here -->
+    </div>
+    
+    <button onclick="loadScripts()">Load Scripts</button>
+    <button onclick="checkTemplatesUI()">Check Templates UI</button>
+    <button onclick="forceCreateButton()">Force Create Button</button>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        // Override console methods to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            log('CONSOLE: ' + args.join(' '), 'info');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            log('ERROR: ' + args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            log('WARN: ' + args.join(' '), 'info');
+        };
+        
+        // Create minimal pipeline builder mock
+        window.pipelineBuilder = {
+            steps: [],
+            addStep: function(type) {
+                log(`Mock: addStep called with type: ${type}`, 'info');
+                return { properties: {} };
+            },
+            clearPipeline: function() {
+                log('Mock: clearPipeline called', 'info');
+            },
+            renderPipeline: function() {
+                log('Mock: renderPipeline called', 'info');
+            },
+            renderProperties: function() {
+                log('Mock: renderProperties called', 'info');
+            },
+            saveToLocalStorage: function() {
+                log('Mock: saveToLocalStorage called', 'info');
+            },
+            showTemplateLoadOptions: async function() {
+                log('Mock: showTemplateLoadOptions called', 'info');
+                return 'overwrite';
+            }
+        };
+        
+        function loadScripts() {
+            log('Loading scripts...', 'info');
+            
+            // Load pipeline-templates.js
+            const script1 = document.createElement('script');
+            script1.src = 'js/pipeline-templates.js';
+            script1.onload = () => {
+                log('pipeline-templates.js loaded successfully', 'success');
+                
+                // Load templates-ui.js
+                const script2 = document.createElement('script');
+                script2.src = 'js/templates-ui.js';
+                script2.onload = () => {
+                    log('templates-ui.js loaded successfully', 'success');
+                };
+                script2.onerror = (e) => {
+                    log('Failed to load templates-ui.js: ' + e, 'error');
+                };
+                document.head.appendChild(script2);
+            };
+            script1.onerror = (e) => {
+                log('Failed to load pipeline-templates.js: ' + e, 'error');
+            };
+            document.head.appendChild(script1);
+        }
+        
+        function checkTemplatesUI() {
+            log('Checking Templates UI...', 'info');
+            
+            if (window.pipelineTemplates) {
+                log('pipelineTemplates exists', 'success');
+                log(`Templates count: ${Object.keys(window.pipelineTemplates.templates).length}`, 'info');
+                log(`Has robust-cicd: ${!!window.pipelineTemplates.templates['robust-cicd']}`, 'info');
+            } else {
+                log('pipelineTemplates does not exist', 'error');
+            }
+            
+            if (window.templatesUI) {
+                log('templatesUI exists', 'success');
+                log(`Templates count: ${Object.keys(window.templatesUI.templates.templates).length}`, 'info');
+            } else {
+                log('templatesUI does not exist', 'error');
+            }
+            
+            const templatesButton = document.getElementById('templates-button');
+            if (templatesButton) {
+                log('Templates button found in DOM', 'success');
+                log(`Button HTML: ${templatesButton.outerHTML}`, 'info');
+            } else {
+                log('Templates button NOT found in DOM', 'error');
+            }
+        }
+        
+        function forceCreateButton() {
+            log('Force creating templates button...', 'info');
+            
+            if (window.templatesUI && window.templatesUI.createTemplatesButton) {
+                window.templatesUI.createTemplatesButton();
+                log('createTemplatesButton called', 'success');
+            } else {
+                log('templatesUI.createTemplatesButton not available', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

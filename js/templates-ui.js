@@ -8,9 +8,15 @@ class TemplatesUI {
     constructor() {
         this.selectedCategory = 'all';
         this.searchQuery = '';
+        this.modalInitialized = false;
         
-        // Create embedded templates object directly since external scripts aren't loading
-        this.templates = {
+        // Use templates from pipeline-templates.js if available, otherwise use embedded
+        if (window.pipelineTemplates && window.pipelineTemplates.templates) {
+            console.log('TemplatesUI: Using templates from pipeline-templates.js');
+            this.templates = { templates: window.pipelineTemplates.templates };
+        } else {
+            console.log('TemplatesUI: Using embedded templates');
+            this.templates = {
             templates: {
                 'node-app': {
                     name: 'Node.js Application',
@@ -580,169 +586,51 @@ class TemplatesUI {
                         ]
                     }
                 }
-            },
-            getAllCategories: () => ['ci-cd', 'deployment', 'security', 'microservices', 'workflow', 'testing'],
-            getTemplatesByCategory: (category) => Object.entries(this.templates.templates).filter(([_, t]) => t.category === category).map(([key, template]) => ({ key, ...template })),
-            loadTemplate: (templateKey) => {
-                const template = this.templates.templates[templateKey];
-                if (template && window.pipelineBuilder) {
-                    // Convert template structure to pipeline builder format
-                    const stepConfigs = [];
-                    
-                    template.pipeline.steps.forEach(step => {
-                        if (step === 'wait') {
-                            stepConfigs.push({ type: 'wait', properties: {} });
-                        } else if (typeof step === 'object') {
-                            if (step.block) {
-                                const blockStep = {
-                                    type: 'block',
-                                    properties: {
-                                        block: step.block,
-                                        prompt: step.prompt || undefined,
-                                        fields: step.fields && step.fields.length > 0 ? step.fields : undefined,
-                                        branches: step.branches || undefined
-                                    }
-                                };
-                                // Set key at step level for blocks
-                                if (step.key) {
-                                    blockStep.key = step.key;
-                                }
-                                stepConfigs.push(blockStep);
-                            } else if (step.input) {
-                                const inputStep = {
-                                    type: 'input',
-                                    properties: {
-                                        input: step.input,
-                                        fields: step.fields && step.fields.length > 0 ? step.fields : undefined
-                                    }
-                                };
-                                // Set key at step level for inputs
-                                if (step.key) {
-                                    inputStep.key = step.key;
-                                }
-                                stepConfigs.push(inputStep);
-                            } else if (step.trigger) {
-                                const triggerStep = {
-                                    type: 'trigger',
-                                    properties: {
-                                        trigger: step.trigger,
-                                        build: step.build && Object.keys(step.build).length > 0 ? step.build : undefined,
-                                        async: step.async || undefined
-                                    }
-                                };
-                                // Set key at step level for triggers
-                                if (step.key) {
-                                    triggerStep.key = step.key;
-                                }
-                                stepConfigs.push(triggerStep);
-                            } else if (step.group) {
-                                const groupStep = {
-                                    type: 'group',
-                                    properties: {
-                                        group: step.group,
-                                        steps: step.steps && step.steps.length > 0 ? step.steps : undefined
-                                    }
-                                };
-                                // Set key at step level for groups
-                                if (step.key) {
-                                    groupStep.key = step.key;
-                                }
-                                stepConfigs.push(groupStep);
-                            } else {
-                                // Default to command step
-                                const commandStep = {
-                                    type: 'command',
-                                    properties: {
-                                        label: step.label || 'Step',
-                                        command: step.command || (Array.isArray(step.commands) ? step.commands.join('\n') : step.commands) || '',
-                                        agents: step.agents && Object.keys(step.agents).length > 0 ? step.agents : undefined,
-                                        artifact_paths: step.artifact_paths && step.artifact_paths.length > 0 ? (Array.isArray(step.artifact_paths) ? step.artifact_paths.join('\n') : step.artifact_paths) : undefined,
-                                        depends_on: step.depends_on && step.depends_on.length > 0 ? step.depends_on : undefined,
-                                        if: step.if || undefined,
-                                        unless: step.unless || undefined,
-                                        branches: step.branches || undefined,
-                                        plugins: step.plugins && Object.keys(step.plugins).length > 0 ? step.plugins : undefined,
-                                        timeout_in_minutes: step.timeout_in_minutes || undefined,
-                                        retry: step.retry && Object.keys(step.retry).length > 0 ? step.retry : undefined,
-                                        soft_fail: step.soft_fail && step.soft_fail.length > 0 ? step.soft_fail : undefined,
-                                        env: step.env && Object.keys(step.env).length > 0 ? step.env : undefined,
-                                        parallelism: step.parallelism || undefined,
-                                        concurrency: step.concurrency || undefined,
-                                        concurrency_group: step.concurrency_group || undefined
-                                    }
-                                };
-                                // Set key at step level for commands
-                                if (step.key) {
-                                    commandStep.key = step.key;
-                                }
-                                stepConfigs.push(commandStep);
-                            }
-                        }
-                    });
-                    
-                    // Clear current pipeline and load template steps
-                    window.pipelineBuilder.clearPipeline(true);
-                    
-                    // Add each step
-                    stepConfigs.forEach(stepConfig => {
-                        const step = window.pipelineBuilder.addStep(stepConfig.type);
-                        if (step) {
-                            // Clear problematic default properties that cause empty YAML objects
-                            if (step.properties.retry === null) delete step.properties.retry;
-                            if (step.properties.soft_fail === false) delete step.properties.soft_fail;
-                            if (step.properties.env && Object.keys(step.properties.env).length === 0) delete step.properties.env;
-                            if (step.properties.plugins && Object.keys(step.properties.plugins).length === 0) delete step.properties.plugins;
-                            if (step.properties.agents && Object.keys(step.properties.agents).length === 0) delete step.properties.agents;
-                            
-                            // Set key in properties (pipeline builder expects it there)
-                            if (stepConfig.key) {
-                                step.properties.key = stepConfig.key;
-                            }
-                            
-                            // Set step properties
-                            if (stepConfig.properties) {
-                                // Filter out undefined, empty, and null values to prevent empty properties in YAML
-                                const cleanProperties = {};
-                                Object.entries(stepConfig.properties).forEach(([key, value]) => {
-                                    // Skip undefined, null, empty strings
-                                    if (value === undefined || value === null || value === '') {
-                                        return;
-                                    }
-                                    
-                                    // Skip empty objects
-                                    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
-                                        return;
-                                    }
-                                    
-                                    // Skip empty arrays
-                                    if (Array.isArray(value) && value.length === 0) {
-                                        return;
-                                    }
-                                    
-                                    cleanProperties[key] = value;
-                                });
-                                Object.assign(step.properties, cleanProperties);
-                            }
-                        }
-                    });
-                    
-                    // Re-render and save
-                    window.pipelineBuilder.renderPipeline();
-                    window.pipelineBuilder.renderProperties();
-                    window.pipelineBuilder.saveToLocalStorage();
-                    
-                    console.log('✅ Template loaded successfully:', template.name);
-                }
             }
         };
+        }
         
-        console.log('TemplatesUI: Constructor called with embedded templates');
-        console.log('TemplatesUI: Available templates:', Object.keys(this.templates.templates).length);
+        console.log('TemplatesUI: Initialized with', Object.keys(this.templates.templates).length, 'templates');
         
         this.init();
         this.updateTemplateCount();
     }
-
+    
+    getAllCategories() {
+        return ['ci-cd', 'deployment', 'security', 'microservices', 'workflow', 'testing'];
+    }
+    
+    getTemplatesByCategory(category) {
+        return Object.entries(this.templates.templates).filter(([_, t]) => t.category === category).map(([key, template]) => ({ key, ...template }));
+    }
+    
+    loadTemplate(templateKey) {
+        const template = this.templates.templates[templateKey];
+        if (!template || !window.pipelineBuilder) {
+            console.error('Template or pipeline builder not available');
+            return;
+        }
+        
+        // Use pipeline-templates.js loadTemplate if available
+        if (window.pipelineTemplates && window.pipelineTemplates.loadTemplate) {
+            window.pipelineTemplates.loadTemplate(templateKey);
+            
+            // Close modal
+            const modal = document.getElementById('enhanced-templates-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = '';
+            }
+            
+            // Show notification
+            this.showNotification(`Loaded "${template.name}" template`, 'success');
+            return;
+        }
+        
+        // Fallback implementation
+        console.warn('Using fallback template loading');
+    }
+    
     retryInitialization() {
         console.log('TemplatesUI: Using embedded templates - no retry needed');
         this.init();
@@ -1223,13 +1111,20 @@ class TemplatesUI {
             }
         });
 
-        // Close modal
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('close-modal')) {
-                const modal = e.target.closest('.modal');
-                if (modal) modal.classList.add('hidden');
-            }
-        });
+        // Close modal - only add once
+        if (!this.modalInitialized) {
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('close-modal')) {
+                    const modal = e.target.closest('.modal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        // Also ensure display is not set to none
+                        modal.style.display = '';
+                    }
+                }
+            });
+            this.modalInitialized = true;
+        }
         
         // Import/Export buttons
         const importBtn = document.getElementById('import-template-btn');
@@ -1246,8 +1141,15 @@ class TemplatesUI {
     showTemplatesModal() {
         const modal = document.getElementById('enhanced-templates-modal');
         if (modal) {
+            // Refresh templates from pipeline-templates.js if available
+            if (window.pipelineTemplates && window.pipelineTemplates.templates) {
+                this.templates = { templates: window.pipelineTemplates.templates };
+            }
+            
             console.log('TemplatesUI: Showing templates modal with', Object.keys(this.templates.templates).length, 'templates');
             modal.classList.remove('hidden');
+            // Ensure display is not none
+            modal.style.display = '';
             this.renderCategories();
             this.renderTemplates();
         }

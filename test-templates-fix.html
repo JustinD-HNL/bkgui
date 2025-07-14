@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Templates Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Template System Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Load Scripts</h2>
+        <button onclick="loadScripts()">Load Scripts</button>
+        <div id="load-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Check Templates</h2>
+        <button onclick="checkTemplates()">Check Templates</button>
+        <div id="template-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Show Modal</h2>
+        <button onclick="showModal()">Show Templates Modal</button>
+        <div id="modal-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Check Robust Template</h2>
+        <button onclick="checkRobustTemplate()">Check Robust CI/CD Template</button>
+        <div id="robust-result"></div>
+    </div>
+    
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const msgElement = document.createElement('div');
+            msgElement.className = type;
+            msgElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            element.appendChild(msgElement);
+        }
+        
+        function loadScripts() {
+            log('load-result', 'Loading scripts...', 'info');
+            
+            // Load pipeline-templates.js first
+            const script1 = document.createElement('script');
+            script1.src = 'js/pipeline-templates.js';
+            script1.onload = () => {
+                log('load-result', 'pipeline-templates.js loaded', 'success');
+                
+                // Then load templates-ui.js
+                const script2 = document.createElement('script');
+                script2.src = 'js/templates-ui.js';
+                script2.onload = () => {
+                    log('load-result', 'templates-ui.js loaded', 'success');
+                };
+                script2.onerror = () => {
+                    log('load-result', 'Failed to load templates-ui.js', 'error');
+                };
+                document.head.appendChild(script2);
+            };
+            script1.onerror = () => {
+                log('load-result', 'Failed to load pipeline-templates.js', 'error');
+            };
+            document.head.appendChild(script1);
+        }
+        
+        function checkTemplates() {
+            log('template-result', 'Checking templates...', 'info');
+            
+            if (window.pipelineTemplates) {
+                log('template-result', 'pipeline-templates.js is loaded', 'success');
+                const templateCount = Object.keys(window.pipelineTemplates.templates).length;
+                log('template-result', `Found ${templateCount} templates in pipeline-templates.js`, 'success');
+                
+                // Check for robust-cicd template
+                if (window.pipelineTemplates.templates['robust-cicd']) {
+                    log('template-result', 'robust-cicd template found in pipeline-templates.js', 'success');
+                } else {
+                    log('template-result', 'robust-cicd template NOT found in pipeline-templates.js', 'error');
+                }
+            } else {
+                log('template-result', 'pipeline-templates.js not loaded', 'error');
+            }
+            
+            if (window.templatesUI) {
+                log('template-result', 'templates-ui.js is loaded', 'success');
+                const uiTemplateCount = Object.keys(window.templatesUI.templates.templates).length;
+                log('template-result', `Found ${uiTemplateCount} templates in templates-ui`, 'success');
+                
+                // Check if using pipeline-templates
+                if (window.templatesUI.templates.templates === window.pipelineTemplates?.templates) {
+                    log('template-result', 'templates-ui is using templates from pipeline-templates.js', 'success');
+                } else {
+                    log('template-result', 'templates-ui is using embedded templates', 'info');
+                }
+            } else {
+                log('template-result', 'templates-ui.js not loaded', 'error');
+            }
+        }
+        
+        function showModal() {
+            log('modal-result', 'Attempting to show modal...', 'info');
+            
+            if (window.showTemplatesModal) {
+                window.showTemplatesModal();
+                log('modal-result', 'Modal show function called', 'success');
+                
+                // Check if modal is visible
+                setTimeout(() => {
+                    const modal = document.getElementById('enhanced-templates-modal');
+                    if (modal) {
+                        const isHidden = modal.classList.contains('hidden');
+                        const displayStyle = window.getComputedStyle(modal).display;
+                        
+                        log('modal-result', `Modal found: hidden class = ${isHidden}, display = ${displayStyle}`, 'info');
+                        
+                        if (!isHidden && displayStyle !== 'none') {
+                            log('modal-result', 'Modal is visible', 'success');
+                        } else {
+                            log('modal-result', 'Modal is NOT visible', 'error');
+                        }
+                    } else {
+                        log('modal-result', 'Modal element not found', 'error');
+                    }
+                }, 100);
+            } else {
+                log('modal-result', 'showTemplatesModal function not found', 'error');
+            }
+        }
+        
+        function checkRobustTemplate() {
+            log('robust-result', 'Checking robust-cicd template...', 'info');
+            
+            if (window.pipelineTemplates?.templates['robust-cicd']) {
+                const template = window.pipelineTemplates.templates['robust-cicd'];
+                log('robust-result', `Template name: ${template.name}`, 'info');
+                log('robust-result', `Description: ${template.description}`, 'info');
+                log('robust-result', `Steps count: ${template.pipeline.steps.length}`, 'info');
+                
+                // Show first few steps
+                const preElement = document.createElement('pre');
+                preElement.textContent = JSON.stringify(template.pipeline.steps.slice(0, 3), null, 2);
+                document.getElementById('robust-result').appendChild(preElement);
+                
+                log('robust-result', 'Template structure looks good', 'success');
+            } else {
+                log('robust-result', 'robust-cicd template not found', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
