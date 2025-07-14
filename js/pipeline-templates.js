@@ -1600,8 +1600,7 @@ class PipelineTemplates {
                                     default: 'yes'
                                 }
                             ],
-                            branches: 'main release/*',
-                            if: 'build.branch == "main" || build.branch =~ /^release\//'
+                            branches: 'main release/*'
                         },
                         {
                             label: '🚀 Deploy to Production',
