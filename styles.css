@@ -4584,3 +4584,60 @@ body {
 .property-group label .help-icon {
     flex-shrink: 0;
 }
+
+/* Dark mode fixes for notifications and template items */
+[data-theme="dark"] .notification {
+    background: #1f2937;
+    color: #f9fafb;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .toast {
+    background: #1f2937;
+    color: #f9fafb;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .template-item,
+[data-theme="dark"] .pattern-item {
+    background: #1f2937;
+    color: #f9fafb;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .template-item:hover,
+[data-theme="dark"] .pattern-item:hover {
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    border-color: #818cf8;
+}
+
+[data-theme="dark"] .template-item span,
+[data-theme="dark"] .pattern-item span {
+    color: #f3f4f6;
+}
+
+[data-theme="dark"] .template-item small,
+[data-theme="dark"] .pattern-item small {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .template-item i,
+[data-theme="dark"] .pattern-item i {
+    color: #a5b4fc;
+}
+
+/* Dark mode for template category buttons */
+[data-theme="dark"] .template-cat {
+    background: #374151;
+    color: #f3f4f6;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .template-cat:hover {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .template-cat.active {
+    background: #667eea;
+    color: white;
+}
