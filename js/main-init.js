@@ -1069,7 +1069,7 @@ class MainInitializer {
                     }
                     break;
                 case 'pattern-library':
-                    window.showModal('patterns-modal');
+                    window.showModal('pattern-library-modal');
                     break;
                 case 'pipeline-preview':
                     window.showModal('yaml-preview-modal');

@@ -161,6 +161,187 @@ class PipelinePatterns {
                         }
                     }
                 ]
+            },
+            'microservice-cicd': {
+                name: 'Microservice CI/CD',
+                description: 'Complete microservice pipeline with testing, building, and deployment',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🧪 Test',
+                            command: 'make test',
+                            key: 'test'
+                        }
+                    },
+                    {
+                        type: 'wait',
+                        properties: {}
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🐳 Build & Push',
+                            key: 'docker-build',
+                            plugins: {
+                                'docker#v3.8.0': {
+                                    image: 'myapp',
+                                    push: true
+                                }
+                            }
+                        }
+                    },
+                    {
+                        type: 'wait',
+                        properties: {}
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '☸️ Deploy',
+                            command: 'kubectl apply -f k8s/',
+                            key: 'deploy'
+                        }
+                    }
+                ]
+            },
+            'service-mesh': {
+                name: 'Service Mesh Deploy',
+                description: 'Deploy microservices with Istio/Linkerd integration',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🔗 Service Mesh Config',
+                            command: 'istioctl analyze\nkubectl apply -f istio/',
+                            key: 'istio-config'
+                        }
+                    }
+                ]
+            },
+            'monorepo-pipeline': {
+                name: 'Monorepo Pipeline',
+                description: 'Build only changed packages in a monorepo',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '📦 Detect Changes',
+                            command: './scripts/detect-changes.sh',
+                            key: 'detect-changes'
+                        }
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🔨 Build Changed',
+                            command: 'lerna run build --since origin/main',
+                            key: 'build-changed'
+                        }
+                    }
+                ]
+            },
+            'selective-builds': {
+                name: 'Selective Builds',
+                description: 'Skip unchanged services',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🔍 Check Changes',
+                            command: 'git diff --name-only HEAD~1',
+                            key: 'check-changes'
+                        }
+                    }
+                ]
+            },
+            'ios-pipeline': {
+                name: 'iOS App Pipeline',
+                description: 'Build, test, and deploy iOS applications',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '📱 iOS Build',
+                            command: 'xcodebuild -workspace App.xcworkspace -scheme App',
+                            key: 'ios-build'
+                        }
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🧪 iOS Tests',
+                            command: 'xcodebuild test -workspace App.xcworkspace -scheme AppTests',
+                            key: 'ios-test'
+                        }
+                    }
+                ]
+            },
+            'android-pipeline': {
+                name: 'Android App Pipeline',
+                description: 'Build and test Android applications',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🤖 Android Build',
+                            command: './gradlew assembleDebug',
+                            key: 'android-build'
+                        }
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🧪 Android Tests',
+                            command: './gradlew test',
+                            key: 'android-test'
+                        }
+                    }
+                ]
+            },
+            'ml-training': {
+                name: 'ML Model Training',
+                description: 'Train and validate machine learning models',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '📊 Prepare Data',
+                            command: 'python scripts/prepare_data.py',
+                            key: 'prepare-data'
+                        }
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🧠 Train Model',
+                            command: 'python train.py --epochs 100',
+                            key: 'train-model'
+                        }
+                    }
+                ]
+            },
+            'ml-deployment': {
+                name: 'ML Model Deployment',
+                description: 'Deploy ML models to production',
+                steps: [
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🔍 Validate Model',
+                            command: 'python validate_model.py',
+                            key: 'validate-model'
+                        }
+                    },
+                    {
+                        type: 'command',
+                        properties: {
+                            label: '🚀 Deploy Model',
+                            command: 'python deploy_model.py --env production',
+                            key: 'deploy-model'
+                        }
+                    }
+                ]
             }
         };
     }
@@ -203,6 +384,16 @@ class PipelinePatterns {
             // Refresh UI
             pipelineBuilder.renderPipeline();
             pipelineBuilder.updateStepCount();
+            
+            // Update YAML display
+            if (pipelineBuilder.updateYAML) {
+                pipelineBuilder.updateYAML();
+            }
+            
+            // Save to local storage
+            if (pipelineBuilder.saveToLocalStorage) {
+                pipelineBuilder.saveToLocalStorage();
+            }
 
             console.log(`✅ Applied pattern: ${pattern.name}`);
             return true;
@@ -215,3 +406,59 @@ class PipelinePatterns {
 
 // Export to global scope
 window.PipelinePatterns = PipelinePatterns;
+
+// Initialize pattern library modal handlers when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle pattern category buttons
+    const categoryButtons = document.querySelectorAll('.pattern-cat');
+    categoryButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            categoryButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Get selected category
+            const category = this.getAttribute('data-category');
+            
+            // Show/hide pattern sections based on category
+            const sections = document.querySelectorAll('.pattern-section');
+            sections.forEach(section => {
+                const sectionCategory = section.getAttribute('data-category');
+                if (category === 'all' || sectionCategory === category) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // Handle "Use This Pattern" buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('use-pattern')) {
+            const patternCard = e.target.closest('.pattern-card');
+            const patternId = patternCard.getAttribute('data-pattern');
+            
+            // Get the pattern from the PipelinePatterns instance
+            if (window.pipelinePatterns && window.pipelineBuilder) {
+                const pattern = window.pipelinePatterns.patterns[patternId];
+                if (pattern) {
+                    // Apply the pattern with the pipelineBuilder instance
+                    const success = window.pipelinePatterns.applyPattern(patternId, window.pipelineBuilder);
+                    if (success) {
+                        // Close the modal
+                        window.closeModal('pattern-library-modal');
+                        
+                        // Show success message (optional)
+                        console.log(`Applied pattern: ${pattern.name}`);
+                    }
+                } else {
+                    console.warn(`Pattern not found: ${patternId}`);
+                }
+            } else {
+                console.error('Pipeline builder or patterns not available');
+            }
+        }
+    });
+});

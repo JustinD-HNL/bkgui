@@ -798,7 +798,7 @@ class BuildkiteApp {
                         }
                         break;
                     case 'pattern-library':
-                        window.showModal('patterns-modal');
+                        window.showModal('pattern-library-modal');
                         break;
                     case 'dependency-manager':
                         window.showModal('dependency-manager-modal');
