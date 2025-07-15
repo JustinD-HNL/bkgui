@@ -37,7 +37,7 @@ Deploy directly to Google Cloud Run:
 ```bash
 git clone https://github.com/your-repo/buildkite-pipeline-builder.git
 cd buildkite-pipeline-builder
-./deploy.sh
+./Docker/deploy.sh
 ```
 
 The deployment script will:
@@ -156,8 +156,11 @@ buildkite-pipeline-builder/
 ├── server.js               # Express server for production
 ├── package.json            # Node.js dependencies
 ├── Dockerfile              # Container configuration
-├── deploy.sh               # Quick deployment script
-├── cloudbuild.yaml         # Google Cloud Build configuration
+├── Docker/                 # Docker-related files
+│   ├── deploy.sh           # Quick deployment script
+│   ├── cloudbuild.yaml     # Google Cloud Build configuration
+│   ├── set-firebase-config.sh # Firebase configuration script
+│   └── supervisord.conf    # Supervisor configuration
 ├── DEPLOYMENT.md           # Detailed deployment guide
 └── README.md               # This documentation
 ```
@@ -189,7 +192,7 @@ This is an open-source project! Contributions are welcome:
 Use the included deployment script:
 
 ```bash
-./deploy.sh
+./Docker/deploy.sh
 ```
 
 This will:

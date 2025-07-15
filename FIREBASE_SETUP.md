@@ -92,10 +92,10 @@ Add this line to your `index.html` before other scripts (if testing locally):
 ## Step 4: Deployment Configuration
 
 ### 4.1 Using the Deploy Script
-The `deploy.sh` script will prompt you for Firebase configuration during deployment:
+The `Docker/deploy.sh` script will prompt you for Firebase configuration during deployment:
 
 ```bash
-./deploy.sh
+./Docker/deploy.sh
 ```
 
 You'll be asked to enter:
@@ -151,7 +151,7 @@ Your Firebase project should have appropriate security rules. For authentication
 4. Try signing up with Google
 
 ### 6.2 Production Testing
-1. Deploy your application using `./deploy.sh`
+1. Deploy your application using `./Docker/deploy.sh`
 2. Access your Cloud Run URL
 3. Test Google authentication
 4. Verify user info displays correctly after login

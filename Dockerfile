@@ -20,7 +20,7 @@ COPY . .
 RUN chmod +x mcp-server.js
 
 # Copy supervisor configuration
-COPY supervisord.conf /etc/supervisord.conf
+COPY Docker/supervisord.conf /etc/supervisord.conf
 
 # Create a non-root user to run the application
 RUN addgroup -g 1001 -S nodejs && \

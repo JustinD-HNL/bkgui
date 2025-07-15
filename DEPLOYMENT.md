@@ -23,7 +23,7 @@ This deployment now includes a built-in MCP (Model Context Protocol) server that
 The fastest way to deploy is using the included script:
 
 ```bash
-./deploy.sh
+./Docker/deploy.sh
 ```
 
 This will guide you through the entire deployment process.
@@ -193,7 +193,7 @@ Set up automatic deployments with Cloud Build:
 4. Configure trigger on `main` branch pushes
 
 #### 2. Use Included Configuration
-The project includes `cloudbuild.yaml` which will:
+The project includes `Docker/cloudbuild.yaml` which will:
 - Build the Docker image
 - Push to Container Registry  
 - Deploy to Cloud Run automatically
@@ -201,7 +201,7 @@ The project includes `cloudbuild.yaml` which will:
 #### 3. Manual Trigger
 ```bash
 # Trigger build manually
-gcloud builds submit --config cloudbuild.yaml .
+gcloud builds submit --config Docker/cloudbuild.yaml .
 ```
 
 ## Security Considerations
@@ -337,7 +337,7 @@ With default settings (512Mi memory, 1 CPU):
 
 ```bash
 # Rebuild and deploy
-./deploy.sh
+./Docker/deploy.sh
 
 # Or deploy specific image
 gcloud run deploy buildkite-pipeline-builder \
