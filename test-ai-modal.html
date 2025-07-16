@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test AI Assistant Modal</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .log-container {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .log-entry.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .log-entry.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Assistant Modal Test</h1>
+    <p>Click the button below to open the AI Assistant modal and test the dynamic model fetching.</p>
+    
+    <button class="test-button" onclick="openAIAssistant()">Open AI Assistant</button>
+    
+    <div class="log-container" id="logContainer">
+        <h3>Console Log:</h3>
+        <div id="logs"></div>
+    </div>
+
+    <!-- Mock pipeline builder object -->
+    <script>
+        window.pipelineBuilder = {
+            steps: [],
+            clearPipeline: function() {
+                console.log('Mock: Clearing pipeline');
+                this.steps = [];
+            },
+            addStep: function(type) {
+                const step = { type, properties: {} };
+                this.steps.push(step);
+                console.log('Mock: Added step', step);
+                return step;
+            },
+            renderPipeline: function() {
+                console.log('Mock: Rendering pipeline with', this.steps.length, 'steps');
+            },
+            selectStep: function(step) {
+                console.log('Mock: Selected step', step);
+            },
+            saveToLocalStorage: function() {
+                console.log('Mock: Saved to localStorage');
+            }
+        };
+
+        // Mock main initializer
+        window.mainInitializer = {
+            showToast: function(message, type) {
+                addLog(message, type);
+            }
+        };
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLog(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLog(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLog(args.join(' '), 'warning');
+        };
+
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+        }
+
+        function openAIAssistant() {
+            if (window.aiAssistant) {
+                window.aiAssistant.showAssistant();
+                addLog('AI Assistant modal opened', 'success');
+            } else {
+                addLog('AI Assistant not initialized', 'error');
+            }
+        }
+
+        // Load the AI Assistant script
+        window.addEventListener('DOMContentLoaded', function() {
+            addLog('Page loaded, initializing AI Assistant...', 'info');
+        });
+    </script>
+
+    <!-- Load the AI Assistant -->
+    <script src="js/ai-assistant.js"></script>
+</body>
+</html>

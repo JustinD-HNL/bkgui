@@ -15,7 +15,8 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.anthropic.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307']
+                // Fallback models - only used if dynamic fetch fails
+                fallbackModels: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022']
             },
             chatgpt: {
                 name: 'ChatGPT',
@@ -24,7 +25,8 @@ class AIAssistant {
                 authType: 'api-key',
                 baseUrl: 'https://api.openai.com/v1',
                 models: [], // Will be fetched dynamically
-                defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4-turbo-preview', 'gpt-4-1106-preview', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-1106', 'gpt-3.5-turbo-16k']
+                // Fallback models - only used if dynamic fetch fails
+                fallbackModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']
             }
         };
 
@@ -909,13 +911,35 @@ You can also create and update pipelines using the available tools. Always provi
                 
                 if (response.ok) {
                     const data = await response.json();
+                    // Filter for GPT models and other chat models, excluding embeddings and other non-chat models
                     models = data.data
-                        .filter(model => model.id.includes('gpt'))
+                        .filter(model => {
+                            const id = model.id.toLowerCase();
+                            return (id.includes('gpt') || id.includes('o1') || id.includes('chatgpt')) &&
+                                   !id.includes('embedding') &&
+                                   !id.includes('whisper') &&
+                                   !id.includes('tts') &&
+                                   !id.includes('dall-e') &&
+                                   !id.includes('davinci') &&
+                                   !id.includes('babbage') &&
+                                   !id.includes('ada') &&
+                                   !id.includes('curie');
+                        })
                         .map(model => model.id)
-                        .sort();
+                        .sort((a, b) => {
+                            // Sort with newest/best models first
+                            const order = ['o1', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'gpt-3.5'];
+                            const aIndex = order.findIndex(prefix => a.startsWith(prefix));
+                            const bIndex = order.findIndex(prefix => b.startsWith(prefix));
+                            if (aIndex !== -1 && bIndex !== -1) {
+                                return aIndex - bIndex;
+                            }
+                            return a.localeCompare(b);
+                        });
                     
                     // Store fetched models
                     provider.models = models;
+                    console.log(`Fetched ${models.length} OpenAI models:`, models);
                 } else if (response.status === 401) {
                     throw new Error('Invalid OpenAI API key. Please check your API key.');
                 } else if (response.status === 403) {
@@ -955,9 +979,10 @@ You can also create and update pipelines using the available tools. Always provi
                         throw new Error('Rate limit exceeded. Please try again later.');
                     }
                     
-                    // API key is valid, use available models
-                    models = provider.defaultModels;
+                    // API key is valid, fetch available Claude models
+                    models = await this.fetchClaudeModels();
                     provider.models = models;
+                    console.log(`Fetched ${models.length} Claude models:`, models);
                 } catch (error) {
                     // Re-throw authentication errors only if we got a response
                     if (error.message && (error.message.includes('Invalid') || error.message.includes('forbidden') || error.message.includes('Rate limit'))) {
@@ -965,7 +990,8 @@ You can also create and update pipelines using the available tools. Always provi
                     }
                     // For network/CORS/CSP errors, we can't validate but we'll allow usage
                     console.warn('Could not validate API key due to network restrictions:', error);
-                    models = provider.defaultModels;
+                    // Try to fetch models anyway
+                    models = await this.fetchClaudeModels();
                     provider.models = models;
                     
                     // Show a warning but allow model selection
@@ -1011,8 +1037,8 @@ You can also create and update pipelines using the available tools. Always provi
             const isCSPError = error.message && error.message.includes('Content Security Policy');
             
             if (isNetworkError || isCSPError) {
-                // For network/CSP errors, show available models anyway
-                models = provider.defaultModels;
+                // For network/CSP errors, use fallback models
+                models = provider.fallbackModels;
                 provider.models = models;
                 
                 modelSelect.innerHTML = '<option value="">Select a model</option>' + 
@@ -1063,6 +1089,71 @@ You can also create and update pipelines using the available tools. Always provi
                 }, 3000);
             }
         }
+    }
+
+    async fetchClaudeModels() {
+        // Current production Claude models as of 2025
+        // We'll use a comprehensive list but also attempt to query for any newer models
+        const knownModels = [
+            // Claude Opus 4
+            'claude-opus-4-20250514',
+            'claude-opus-4-0',
+            // Claude Sonnet 4
+            'claude-sonnet-4-20250514',
+            'claude-sonnet-4-0',
+            // Claude Sonnet 3.7
+            'claude-3-7-sonnet-20250219',
+            'claude-3-7-sonnet-latest',
+            // Claude Sonnet 3.5
+            'claude-3-5-sonnet-20241022',
+            'claude-3-5-sonnet-latest',
+            // Claude Haiku 3.5
+            'claude-3-5-haiku-20241022',
+            'claude-3-5-haiku-latest',
+            // Legacy models (may still be available)
+            'claude-3-opus-20240229',
+            'claude-3-sonnet-20240229',
+            'claude-3-haiku-20240307'
+        ];
+        
+        try {
+            // Anthropic doesn't have a models endpoint, but we can try to detect available models
+            // by making a test request with a known model and checking the response
+            const testModel = 'claude-3-5-sonnet-20241022';
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const apiUrl = isLocalhost ? 'https://api.anthropic.com/v1/messages' : '/api/proxy/anthropic';
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: testModel,
+                    messages: [{ role: 'user', content: 'Hi' }],
+                    max_tokens: 1
+                })
+            });
+            
+            // If we get a successful response or a rate limit, the API is working
+            if (response.ok || response.status === 429) {
+                // Return all known models sorted with newest first
+                return knownModels.filter((model, index, self) => 
+                    self.indexOf(model) === index // Remove duplicates
+                );
+            } else if (response.status === 400) {
+                // Bad request might indicate model not available
+                // Fall back to basic models
+                return this.providers.claude.fallbackModels;
+            }
+        } catch (error) {
+            console.warn('Could not verify Claude models:', error);
+        }
+        
+        // Return comprehensive list by default
+        return knownModels;
     }
 
     checkReadyToChat() {

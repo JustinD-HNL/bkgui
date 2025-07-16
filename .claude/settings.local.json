@@ -25,7 +25,9 @@
       "Bash(touch:*)",
       "WebFetch(domain:buildkite-pipeline-builder-431509168104.us-west1.run.app)",
       "Bash(python3:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:platform.openai.com)"
     ],
     "deny": []
   }
